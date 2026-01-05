@@ -7,11 +7,20 @@ import { GrowSurfClient, type GrowSurfRequestError } from "./growsurf/client.js"
 import { computeParticipantAuthHash } from "./growsurf/participantAuth.js";
 import { normalizeWebhook } from "./growsurf/webhooks.js";
 
+const optionalNonEmptyString = () =>
+  z
+    .string()
+    .optional()
+    .transform((v) => {
+      const trimmed = v?.trim();
+      return trimmed ? trimmed : undefined;
+    });
+
 const envSchema = z.object({
   GROWSURF_API_KEY: z.string().min(1),
   GROWSURF_CAMPAIGN_ID: z.string().min(1),
-  GROWSURF_PARTICIPANT_AUTH_SECRET: z.string().optional(),
-  GROWSURF_WEBHOOK_TOKEN: z.string().optional(),
+  GROWSURF_PARTICIPANT_AUTH_SECRET: optionalNonEmptyString(),
+  GROWSURF_WEBHOOK_TOKEN: optionalNonEmptyString(),
 });
 
 const getEnv = (): z.infer<typeof envSchema> => {
@@ -305,6 +314,7 @@ const main = async () => {
               participantId: { type: "string" },
               participantEmail: { type: "string" },
             },
+            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
             additionalProperties: false,
           },
         },
@@ -334,6 +344,7 @@ const main = async () => {
               description: { type: "string" },
             },
             required: ["currency", "grossAmount"],
+            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
             additionalProperties: false,
           },
         },
@@ -381,6 +392,18 @@ const main = async () => {
         }
         case "growsurf_add_participant": {
           const input = addParticipantSchema.parse(request.params.arguments ?? {});
+          if (input.metadata && Object.prototype.hasOwnProperty.call(input.metadata, "gdprAgreements")) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text:
+                    "Invalid metadata: 'gdprAgreements' is a restricted key. Pass GDPR agreements using the dedicated field (JS SDK) or remove it from metadata (REST).",
+                },
+              ],
+              isError: true,
+            };
+          }
           const result = await growsurf.addParticipant(omitUndefined(input) as Parameters<GrowSurfClient["addParticipant"]>[0]);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
