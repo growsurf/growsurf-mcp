@@ -269,6 +269,12 @@ const embeddableElementSchema = z.object({
     .optional(),
 });
 
+const grsfConfigSnippetSchema = z.object({
+  email: z.string().min(3),
+  hash: z.string().min(32),
+  includeUniversalCodePlaceholder: z.boolean().default(true),
+});
+
 const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>, env: z.infer<typeof envSchema>) => {
   const lines: string[] = [];
 
@@ -401,6 +407,29 @@ const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>, env: 
     lines.push("");
   }
 
+  return lines.join("\n");
+};
+
+const renderGrsfConfigSnippet = (input: z.infer<typeof grsfConfigSnippetSchema>) => {
+  const lines: string[] = [];
+  lines.push("## GrowSurf Universal Code + `window.grsfConfig` (participant auto-auth)");
+  lines.push("");
+  lines.push("- Put this in your page `<head>` **before** the GrowSurf Universal Code snippet.");
+  lines.push("- Replace the placeholder with your program-specific Universal Code from GrowSurf (Program Editor → Installation).");
+  lines.push("");
+  lines.push("```html");
+  lines.push("<script type=\"text/javascript\">");
+  lines.push("  // Participant Auto Authentication (only if participant auth/login is enabled)");
+  lines.push("  window.grsfConfig = {");
+  lines.push(`    email: ${JSON.stringify(input.email)},`);
+  lines.push(`    hash: ${JSON.stringify(input.hash)}`);
+  lines.push("  };");
+  lines.push("</script>");
+  lines.push("");
+  if (input.includeUniversalCodePlaceholder) {
+    lines.push("<!-- PASTE YOUR PROGRAM-SPECIFIC GROWSURF UNIVERSAL CODE SNIPPET HERE -->");
+  }
+  lines.push("```");
   return lines.join("\n");
 };
 
@@ -610,6 +639,21 @@ const main = async () => {
             required: ["element"],
             additionalProperties: false
           }
+        },
+        {
+          name: "growsurf_grsf_config_snippet",
+          description:
+            "Generate the <head> snippet for participant auto-auth using window.grsfConfig (place before the GrowSurf Universal Code).",
+          inputSchema: {
+            type: "object",
+            properties: {
+              email: { type: "string" },
+              hash: { type: "string" },
+              includeUniversalCodePlaceholder: { type: "boolean", default: true }
+            },
+            required: ["email", "hash"],
+            additionalProperties: false
+          }
         }
       ],
     };
@@ -706,6 +750,11 @@ const main = async () => {
         case "growsurf_embeddable_element_snippet": {
           const input = embeddableElementSchema.parse(request.params.arguments ?? {});
           const text = renderEmbeddableElementSnippet(input);
+          return { content: [{ type: "text", text }] };
+        }
+        case "growsurf_grsf_config_snippet": {
+          const input = grsfConfigSnippetSchema.parse(request.params.arguments ?? {});
+          const text = renderGrsfConfigSnippet(input);
           return { content: [{ type: "text", text }] };
         }
         default:

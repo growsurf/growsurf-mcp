@@ -76,6 +76,7 @@ Most MCP hosts let you configure a stdio server with a command + env vars. Examp
 - `growsurf_integration_guide`
 - `growsurf_client_snippets` (JS SDK + window + embeddables snippets)
 - `growsurf_embeddable_element_snippet` (HTML for a specific embeddable)
+- `growsurf_grsf_config_snippet` (head snippet for `window.grsfConfig` auto-auth)
 - `growsurf_get_campaign`
 - `growsurf_add_participant`
 - `growsurf_trigger_referral`
