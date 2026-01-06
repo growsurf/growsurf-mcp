@@ -6,7 +6,7 @@
   "author": "GrowSurf community",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/growsurf/GrowSurf-MCP.git"
   },
   "type": "module",
   "bin": {
@@ -33,7 +33,7 @@
     "eslint": "^9.17.0",
     "typescript": "^5.7.3",
     "tsx": "^4.19.2",
-    "vitest": "^2.1.8"
+    "vitest": "^4.0.16"
   }
 }
 
