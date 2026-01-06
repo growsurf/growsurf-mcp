@@ -1,3 +1,103 @@
+# GrowSurf MCP Server
+
+An **open-source Model Context Protocol (MCP) server** that helps you implement **GrowSurf referral programs and affiliate programs** using guided tools plus happy-path REST API wrappers.
+
+## What you get
+
+- **Guided integration plan** (Universal Code install, signup flow, qualifying action flow, affiliate sale tracking, webhooks)
+- **Happy-path REST tools**:
+  - Get campaign
+  - Add participant
+  - Trigger referral credit (for “Sign up + Qualifying Action” programs)
+  - Record affiliate sale/transaction
+- **Helpers**:
+  - Compute participant auto-auth HMAC hash
+  - Normalize webhook payloads + generate a best-effort idempotency key
+
+## Requirements
+
+- Node.js 22+
+- A GrowSurf **API key** and **campaign (program) ID**
+
+## Configuration
+
+Set these environment variables:
+
+- `GROWSURF_API_KEY` (required)
+- `GROWSURF_CAMPAIGN_ID` (required)
+- `GROWSURF_PARTICIPANT_AUTH_SECRET` (optional; used by the hash helper)
+- `GROWSURF_WEBHOOK_TOKEN` (optional; used for your own webhook URL token scheme)
+
+See `.env.example`.
+
+## Run with npx
+
+After publishing this package, customers can run:
+
+```bash
+npx growsurf-mcp
+```
+
+For local development in this repo:
+
+```bash
+npm install
+npm run build
+node dist/index.js
+```
+
+## Run with Docker
+
+```bash
+docker build -t growsurf-mcp .
+docker run -i --rm \
+  -e GROWSURF_API_KEY="..." \
+  -e GROWSURF_CAMPAIGN_ID="..." \
+  growsurf-mcp
+```
+
+## Add to an MCP host (example)
+
+Most MCP hosts let you configure a stdio server with a command + env vars. Example shape:
+
+```json
+{
+  "command": "npx",
+  "args": ["growsurf-mcp"],
+  "env": {
+    "GROWSURF_API_KEY": "YOUR_API_KEY",
+    "GROWSURF_CAMPAIGN_ID": "YOUR_CAMPAIGN_ID"
+  }
+}
+```
+
+## MCP tools
+
+- `growsurf_integration_guide`
+- `growsurf_client_snippets` (JS SDK + window + embeddables snippets)
+- `growsurf_embeddable_element_snippet` (HTML for a specific embeddable)
+- `growsurf_grsf_config_snippet` (head snippet for `window.grsfConfig` auto-auth)
+- `growsurf_get_campaign`
+- `growsurf_add_participant`
+- `growsurf_trigger_referral`
+- `growsurf_record_sale`
+- `growsurf_participant_auth_hash`
+- `growsurf_webhook_normalize`
+
+## Notes on webhook security
+
+GrowSurf’s public docs do not specify signed webhook headers. The simplest secure pattern is to:
+
+- Put a random token in the webhook URL (path or querystring) and validate it
+- Validate payload shape + dedupe using an idempotency key (because deliveries can be retried)
+
+## Development
+
+```bash
+npm run dev
+npm test
+```
+
 The GrowSurf MCP server helps GrowSurf customers implement referral programs and affiliate programs.
 
 Read developer docs at the following:
