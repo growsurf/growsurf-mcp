@@ -2,6 +2,9 @@
 
 An **open-source Model Context Protocol (MCP) server** that helps you implement **GrowSurf referral programs and affiliate programs** using guided tools plus happy-path REST API wrappers.
 
+- Learn more about GrowSurf at https://growsurf.com
+- Learn more about this MCP server at https://docs.growsurf.com/getting-started#mcp
+
 ## What you get
 
 - **Guided integration plan** (Universal Code install, signup flow, qualifying action flow, affiliate sale tracking, webhooks)
