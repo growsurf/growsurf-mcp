@@ -269,11 +269,33 @@ const embeddableElementSchema = z.object({
     .optional(),
 });
 
-const grsfConfigSnippetSchema = z.object({
-  email: z.string().min(3),
-  hash: z.string().min(32),
-  includeUniversalCodePlaceholder: z.boolean().default(true),
-});
+const grsfConfigSnippetSchema = z
+  .object({
+    /**
+     * If true, outputs campaignId as the literal string "REPLACE_WITH_CAMPAIGN_ID"
+     * to match GrowSurf's docs snippet format.
+     */
+    useCampaignIdPlaceholder: z.boolean().default(true),
+    /**
+     * Only used when useCampaignIdPlaceholder is false.
+     * If omitted, we'll default to GROWSURF_CAMPAIGN_ID from env.
+     */
+    campaignId: z.string().min(1).optional(),
+    /**
+     * If true, outputs window.grsfConfig as enabled (not commented) using email/hash.
+     * If false, outputs the docs-style commented block with placeholder values.
+     */
+    enableParticipantAutoAuth: z.boolean().default(false),
+    email: z.string().min(3).optional(),
+    hash: z.string().min(32).optional(),
+    /**
+     * GrowSurf's docs snippet includes the comment header above the auto-auth block.
+     */
+    includeAutoAuthCommentHeader: z.boolean().default(true),
+  })
+  .refine((v) => !v.enableParticipantAutoAuth || (Boolean(v.email) && Boolean(v.hash)), {
+    message: "If enableParticipantAutoAuth is true, provide email and hash.",
+  });
 
 const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>, env: z.infer<typeof envSchema>) => {
   const lines: string[] = [];
@@ -410,25 +432,38 @@ const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>, env: 
   return lines.join("\n");
 };
 
-const renderGrsfConfigSnippet = (input: z.infer<typeof grsfConfigSnippetSchema>) => {
+const renderGrsfConfigSnippet = (input: z.infer<typeof grsfConfigSnippetSchema>, env: z.infer<typeof envSchema>) => {
+  const campaignId = input.useCampaignIdPlaceholder ? "REPLACE_WITH_CAMPAIGN_ID" : (input.campaignId ?? env.GROWSURF_CAMPAIGN_ID);
   const lines: string[] = [];
-  lines.push("## GrowSurf Universal Code + `window.grsfConfig` (participant auto-auth)");
+  lines.push("## GrowSurf Universal Code wrapper (docs-style)");
   lines.push("");
-  lines.push("- Put this in your page `<head>` **before** the GrowSurf Universal Code snippet.");
-  lines.push("- Replace the placeholder with your program-specific Universal Code from GrowSurf (Program Editor → Installation).");
+  lines.push("- Put this in your page `<head>`.");
+  lines.push("- Make sure `campaignId` matches your GrowSurf program/campaign.");
   lines.push("");
   lines.push("```html");
   lines.push("<script type=\"text/javascript\">");
-  lines.push("  // Participant Auto Authentication (only if participant auth/login is enabled)");
-  lines.push("  window.grsfConfig = {");
-  lines.push(`    email: ${JSON.stringify(input.email)},`);
-  lines.push(`    hash: ${JSON.stringify(input.hash)}`);
-  lines.push("  };");
-  lines.push("</script>");
-  lines.push("");
-  if (input.includeUniversalCodePlaceholder) {
-    lines.push("<!-- PASTE YOUR PROGRAM-SPECIFIC GROWSURF UNIVERSAL CODE SNIPPET HERE -->");
+  if (input.includeAutoAuthCommentHeader) {
+    lines.push(
+      "  /* To enable Participant Auto Authentication for your logged-in users, uncomment this code below (https://docs.growsurf.com/getting-started/participant-auto-authentication) */",
+    );
   }
+  if (input.enableParticipantAutoAuth) {
+    lines.push("  window.grsfConfig = {");
+    lines.push(`    email: ${JSON.stringify(input.email)},// Replace this with the participant's email address`);
+    lines.push(`    hash: ${JSON.stringify(input.hash)} // Replace this with the SHA-256 HMAC value`);
+    lines.push("  };");
+  } else {
+    lines.push("  /*");
+    lines.push("  window.grsfConfig = {");
+    lines.push("    email: \"participant@email.com\",// Replace this with the participant's email address");
+    lines.push("    hash: \"HASH_VALUE\" // Replace this with the SHA-256 HMAC value");
+    lines.push("  };");
+    lines.push("  */");
+  }
+  lines.push(
+    `  (function(g,r,s,f){g.grsfSettings={campaignId:${JSON.stringify(campaignId)},version:"2.0.0"};s=r.getElementsByTagName("head")[0];f=r.createElement("script");f.async=1;f.src="https://app.growsurf.com/growsurf.js"+"?v="+g.grsfSettings.version;f.setAttribute("grsf-campaign", g.grsfSettings.campaignId);!g.grsfInit?s.appendChild(f):"";})(window,document);`,
+  );
+  lines.push("</script>");
   lines.push("```");
   return lines.join("\n");
 };
@@ -647,11 +682,14 @@ const main = async () => {
           inputSchema: {
             type: "object",
             properties: {
+              useCampaignIdPlaceholder: { type: "boolean", default: true },
+              campaignId: { type: "string" },
+              enableParticipantAutoAuth: { type: "boolean", default: false },
               email: { type: "string" },
               hash: { type: "string" },
-              includeUniversalCodePlaceholder: { type: "boolean", default: true }
+              includeAutoAuthCommentHeader: { type: "boolean", default: true }
             },
-            required: ["email", "hash"],
+            required: [],
             additionalProperties: false
           }
         }
@@ -754,7 +792,7 @@ const main = async () => {
         }
         case "growsurf_grsf_config_snippet": {
           const input = grsfConfigSnippetSchema.parse(request.params.arguments ?? {});
-          const text = renderGrsfConfigSnippet(input);
+          const text = renderGrsfConfigSnippet(input, env);
           return { content: [{ type: "text", text }] };
         }
         default:
