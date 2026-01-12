@@ -22,6 +22,61 @@ An **open-source Model Context Protocol (MCP) server** that helps you implement 
 - Node.js 22+
 - A GrowSurf **API key** and **campaign (program) ID**
 
+## Usage with AI Tools
+
+You can use this MCP server with any MCP-compatible AI host.
+
+### Cursor
+
+1. Open **Cursor Settings**.
+2. Go to **Features** > **MCP**.
+3. Click **+ Add New MCP Server**.
+4. Set the following:
+   - **Name**: `GrowSurf`
+   - **Type**: `command`
+   - **Command**: `npx growsurf-mcp`
+   - **Environment Variables**:
+     - `GROWSURF_API_KEY`: `your_api_key`
+     - `GROWSURF_CAMPAIGN_ID`: `your_campaign_id`
+
+### Claude Code
+
+Install the server directly into Claude Code:
+
+```bash
+claude mcp add growsurf-mcp -- \
+  -e GROWSURF_API_KEY=your_api_key \
+  -e GROWSURF_CAMPAIGN_ID=your_campaign_id
+```
+
+### ChatGPT (Desktop App)
+
+1. Open **Settings** in the ChatGPT Desktop app.
+2. Navigate to **Connected Apps** > **MCP**.
+3. Click **Add**.
+4. Configure with:
+   - **Command**: `npx growsurf-mcp`
+   - **Env Vars**: `GROWSURF_API_KEY`, `GROWSURF_CAMPAIGN_ID`
+
+### Antigravity & ChatGPT Codex
+
+For tools like **Antigravity** or **ChatGPT Codex**, follow their specific MCP configuration UI or config file (usually `mcp_config.json` or similar) using the following stdio configuration:
+
+```json
+{
+  "mcpServers": {
+    "growsurf": {
+      "command": "npx",
+      "args": ["growsurf-mcp"],
+      "env": {
+        "GROWSURF_API_KEY": "YOUR_API_KEY",
+        "GROWSURF_CAMPAIGN_ID": "YOUR_CAMPAIGN_ID"
+      }
+    }
+  }
+}
+```
+
 ## Configuration
 
 Set these environment variables:
@@ -30,8 +85,6 @@ Set these environment variables:
 - `GROWSURF_CAMPAIGN_ID` (required)
 - `GROWSURF_PARTICIPANT_AUTH_SECRET` (optional; used by the hash helper)
 - `GROWSURF_WEBHOOK_TOKEN` (optional; used for your own webhook URL token scheme)
-
-See `.env.example`.
 
 ## Run with npx
 
@@ -47,31 +100,6 @@ For local development in this repo:
 npm install
 npm run build
 node dist/index.js
-```
-
-## Run with Docker
-
-```bash
-docker build -t growsurf-mcp .
-docker run -i --rm \
-  -e GROWSURF_API_KEY="..." \
-  -e GROWSURF_CAMPAIGN_ID="..." \
-  growsurf-mcp
-```
-
-## Add to an MCP host (example)
-
-Most MCP hosts let you configure a stdio server with a command + env vars. Example shape:
-
-```json
-{
-  "command": "npx",
-  "args": ["growsurf-mcp"],
-  "env": {
-    "GROWSURF_API_KEY": "YOUR_API_KEY",
-    "GROWSURF_CAMPAIGN_ID": "YOUR_CAMPAIGN_ID"
-  }
-}
 ```
 
 ## MCP tools
