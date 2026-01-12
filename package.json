@@ -3,8 +3,7 @@
   "version": "0.1.0",
   "description": "Model Context Protocol (MCP) server for integrating GrowSurf referral + affiliate programs.",
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "license": "MIT",
   "author": "GrowSurf community",
@@ -21,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/growsurf/growsurf-mcp.git"
+    "url": "git+https://github.com/growsurf/growsurf-mcp.git"
   },
   "type": "module",
   "bin": {
