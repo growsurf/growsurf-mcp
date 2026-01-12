@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolRequestSchema,
+  ListResourcesRequestSchema,
+  ListToolsRequestSchema,
+  ReadResourceRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { GrowSurfClient, type GrowSurfRequestError } from "./growsurf/client.js";
 import { computeParticipantAuthHash } from "./growsurf/participantAuth.js";
@@ -514,9 +519,39 @@ const main = async () => {
     {
       capabilities: {
         tools: {},
+        resources: {},
       },
     },
   );
+
+  server.setRequestHandler(ListResourcesRequestSchema, async () => {
+    return {
+      resources: [
+        {
+          uri: "growsurf://campaign",
+          name: "GrowSurf Campaign Details",
+          description: "Full campaign (program) details fetched from GrowSurf REST API.",
+          mimeType: "application/json",
+        },
+      ],
+    };
+  });
+
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    if (request.params.uri === "growsurf://campaign") {
+      const result = await growsurf.getCampaign();
+      return {
+        contents: [
+          {
+            uri: request.params.uri,
+            mimeType: "application/json",
+            text: safeJson(result),
+          },
+        ],
+      };
+    }
+    throw new Error(`Unknown resource: ${request.params.uri}`);
+  });
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {

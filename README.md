@@ -32,12 +32,20 @@ You can use this MCP server with any MCP-compatible AI host.
 2. Go to **Features** > **MCP**.
 3. Click **+ Add New MCP Server**.
 4. Set the following:
-   - **Name**: `GrowSurf`
-   - **Type**: `command`
-   - **Command**: `npx @growsurfteam/growsurf-mcp`
-   - **Environment Variables**:
-     - `GROWSURF_API_KEY`: `your_api_key`
-     - `GROWSURF_CAMPAIGN_ID`: `your_campaign_id`
+
+```json
+{
+  "mcpServers": {
+    "growsurf": {
+      "command": "npx",
+      "args": ["-y", "@growsurfteam/growsurf-mcp"],
+      "env": {
+        "GROWSURF_API_KEY": "YOUR_API_KEY",
+        "GROWSURF_CAMPAIGN_ID": "YOUR_CAMPAIGN_ID"
+      }
+    }
+  }
+}
 
 ### Claude Code
 
