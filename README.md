@@ -34,7 +34,7 @@ You can use this MCP server with any MCP-compatible AI host.
 4. Set the following:
    - **Name**: `GrowSurf`
    - **Type**: `command`
-   - **Command**: `npx growsurf-mcp`
+   - **Command**: `npx @growsurfteam/growsurf-mcp`
    - **Environment Variables**:
      - `GROWSURF_API_KEY`: `your_api_key`
      - `GROWSURF_CAMPAIGN_ID`: `your_campaign_id`
@@ -44,7 +44,7 @@ You can use this MCP server with any MCP-compatible AI host.
 Install the server directly into Claude Code:
 
 ```bash
-claude mcp add growsurf-mcp -- \
+claude mcp add @growsurfteam/growsurf-mcp -- \
   -e GROWSURF_API_KEY=your_api_key \
   -e GROWSURF_CAMPAIGN_ID=your_campaign_id
 ```
@@ -55,7 +55,7 @@ claude mcp add growsurf-mcp -- \
 2. Navigate to **Connected Apps** > **MCP**.
 3. Click **Add**.
 4. Configure with:
-   - **Command**: `npx growsurf-mcp`
+   - **Command**: `npx @growsurfteam/growsurf-mcp`
    - **Env Vars**: `GROWSURF_API_KEY`, `GROWSURF_CAMPAIGN_ID`
 
 ### Antigravity & ChatGPT Codex
@@ -67,7 +67,7 @@ For tools like **Antigravity** or **ChatGPT Codex**, follow their specific MCP c
   "mcpServers": {
     "growsurf": {
       "command": "npx",
-      "args": ["growsurf-mcp"],
+      "args": ["-y", "@growsurfteam/growsurf-mcp"],
       "env": {
         "GROWSURF_API_KEY": "YOUR_API_KEY",
         "GROWSURF_CAMPAIGN_ID": "YOUR_CAMPAIGN_ID"
@@ -91,7 +91,7 @@ Set these environment variables:
 After publishing this package, customers can run:
 
 ```bash
-npx growsurf-mcp
+npx @growsurfteam/growsurf-mcp
 ```
 
 For local development in this repo:
