@@ -150,7 +150,29 @@ export class GrowSurfClient {
     const maxAttempts = 3;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const response = await fetch(url, init);
-      if (response.ok) return response.json();
+      if (response.ok) {
+        // Some endpoints may return 204 No Content or a non-JSON 2xx response.
+        // Avoid throwing by assuming all success bodies are valid JSON.
+        if (response.status === 204) return null;
+
+        const contentType = response.headers.get("content-type") ?? "";
+        const text = await response.text();
+        if (text.trim().length === 0) return null;
+
+        if (!contentType.includes("application/json")) return text;
+
+        try {
+          return JSON.parse(text) as unknown;
+        } catch {
+          throw {
+            name: "HttpError",
+            status: response.status,
+            code: "INVALID_JSON",
+            message: "GrowSurf API returned invalid JSON.",
+            body: text,
+          } satisfies GrowSurfRequestError;
+        }
+      }
 
       if ((response.status === 429 || response.status === 503) && attempt < maxAttempts) {
         const retryAfterMs =
