@@ -20,6 +20,17 @@ This MCP server is **NOT** for:
 
 ---
 
+## Who is this for
+
+This MCP server is for:  
+
+- Developers using MCP-compatible tools (Cursor, Claude Code, Codex, Antigravity)  
+- Teams that want guided, AI-assisted GrowSurf integrations  
+      
+This MCP server is NOT for:  
+
+- ChatGPT web users (ChatGPT does not support local MCP servers at this time)  
+
 ## What you get
 
 ### Guided Integration
@@ -92,7 +103,7 @@ The GrowSurf MCP server works with any MCP‑compatible host that supports **loc
 
 ### Claude Code (CLI‑based)
 
-Install the server directly into Claude Code:
+Open your terminal and install the server directly into Claude Code:
 
 ```bash
 claude mcp add @growsurfteam/growsurf-mcp -- \
@@ -179,6 +190,7 @@ Set the following environment variables when running the MCP server:
 * `GROWSURF_WEBHOOK_TOKEN` (optional; used for your own webhook URL token scheme)
 
 ---
+
 
 ## Run with npx
 
