@@ -1,24 +1,9 @@
 # GrowSurf MCP Server
 
-An **MCP (Model Context Protocol) server** that helps developers implement **GrowSurf referral and affiliate programs** using guided steps and safe, happy‑path REST API wrappers.
+An **open-source Model Context Protocol (MCP) server** that helps developers implement **GrowSurf referral and affiliate programs** using guided steps and safe REST API wrappers.
 
-* Learn more about GrowSurf: [https://growsurf.com](https://growsurf.com)
-* Learn more about this MCP server: [https://docs.growsurf.com/getting-started#mcp](https://docs.growsurf.com/getting-started#mcp)
-
----
-
-## Who is this for
-
-This MCP server is for:
-
-* Developers using **MCP‑compatible tools** (Cursor, Claude Code, OpenAI Codex, Antigravity)
-* Teams that want **guided, AI‑assisted GrowSurf integrations** with guardrails
-
-This MCP server is **NOT** for:
-
-* **ChatGPT web users** (ChatGPT web does not support running local MCP servers)
-
----
+- Learn more about GrowSurf at https://growsurf.com
+- Learn more about this MCP server at https://docs.growsurf.com/getting-started#mcp
 
 ## Who is this for
 
@@ -33,55 +18,42 @@ This MCP server is NOT for:
 
 ## What you get
 
-### Guided Integration
-
-* Universal Code installation
-* Signup flow integration
-* Qualifying action flow
-* Affiliate sale / transaction tracking
-* Webhook handling guidance
-
-### Happy‑Path REST API Wrappers
-
-* Get campaign
-* Add participant
-* Trigger a referral on qualify action (for **Sign Up + Qualifying Action** programs)
-* Record affiliate sale / transaction
-
-### Helpers
-
-* Compute participant auto‑auth HMAC hash
-* Normalize webhook payloads
-* Generate best‑effort idempotency keys for webhook deduplication
-
----
+- **Guided Integration**:
+  - Universal Code install
+  - Signup flow
+  - Qualifying action flow
+  - Affiliate sale / transaction tracking
+  - Webhooks
+- **Happy‑Path REST API Wrappers**:
+  - Get campaign
+  - Add participant
+  - Trigger referral credit (for referral programs)
+  - Record affiliate sale/transaction (for affiliate programs)
+- **Helpers**:
+  - Compute participant auto-auth HMAC hash
+  - Normalize webhook payloads
+  - Generate best‑effort idempotency keys for webhook deduplication
 
 ## Requirements
 
-* **Node.js 22+**
-* A GrowSurf **API key** and **campaign (program) ID**
-
----
+- Node.js 22+
+- A GrowSurf **API key** and **campaign (program) ID**
 
 ## Supported MCP Hosts
 
-The GrowSurf MCP server works with any MCP‑compatible host that supports **local (stdio) MCP servers**, including:
+The GrowSurf MCP server works with any MCP‑compatible host that supports local (stdio) MCP servers, including (but not limited to):
 
-* Cursor
-* Claude Code (CLI)
-* OpenAI Codex
-* Antigravity
-
----
-
-## Setup by Host
+- Cursor
+- Claude Code (CLI-based)
+- Antigravity
+- ChatGPT Codex (CLI-based)
 
 ### Cursor
 
-1. Open **Cursor**.
+1. Open Cursor.
 2. In the top menu, click **File > Preferences > Cursor Settings**.
-3. Open **Tools & MCP**.
-4. Click **+ New MCP Server**.
+3. In the Cursor Settings panel, open **Tools & MCP**.
+4. Click **+ Add New MCP Server**.
 5. Set the following:
 
 ```json
@@ -99,9 +71,7 @@ The GrowSurf MCP server works with any MCP‑compatible host that supports **loc
 }
 ```
 
----
-
-### Claude Code (CLI‑based)
+### Claude Code (CLI-based)
 
 Open your terminal and install the server directly into Claude Code:
 
@@ -111,22 +81,13 @@ claude mcp add @growsurfteam/growsurf-mcp -- \
   -e GROWSURF_CAMPAIGN_ID=your_campaign_id
 ```
 
----
-
-### ChatGPT
-
-GrowSurf provides a **local MCP server** that helps developers implement referral and affiliate programs using guided integration steps and ready‑to‑use tools.
-
-At this time, GrowSurf MCP is designed for **MCP‑compatible developer tools that support local (stdio) MCP servers**, such as Cursor and CLI‑based agents. ChatGPT web does not support running local MCP servers.
-
----
 
 ### Antigravity
 
-1. Open **Antigravity Editor**.
-2. Click the **“…”** menu in the right‑hand panel and select **MCP Store**.
+1. Open Antigravity.
+2. Click the **…** menu in the panel to the right and select **MCP Store**.
 3. Click **Manage MCP Servers > View raw config**.
-4. In `mcp_config.json`, add:
+4. In `mcp_config.json`, add the following:
 
 ```json
 {
@@ -143,21 +104,11 @@ At this time, GrowSurf MCP is designed for **MCP‑compatible developer tools th
 }
 ```
 
----
+### ChatGPT Codex
 
-### OpenAI Codex
+### Option 1: Configure via `config.toml`
 
-Codex does **not** use JSON-based MCP configuration files. MCP servers are configured via `~/.codex/config.toml` or through the Codex CLI.
-
-#### Option 1: Configure via `config.toml`
-
-Create or edit:
-
-```
-~/.codex/config.toml
-```
-
-Add:
+Create or edit file `~/.codex/config.toml` by adding the following:
 
 ```toml
 [mcp_servers.growsurf]
@@ -169,7 +120,7 @@ GROWSURF_API_KEY = "YOUR_API_KEY"
 GROWSURF_CAMPAIGN_ID = "YOUR_CAMPAIGN_ID"
 ```
 
-#### Option 2: Configure via Codex CLI
+### Option 2: Configure via Codex CLI
 
 ```bash
 codex mcp add growsurf \
@@ -178,18 +129,15 @@ codex mcp add growsurf \
   -- npx -y @growsurfteam/growsurf-mcp
 ```
 
----
 
 ## Configuration
 
-Set the following environment variables when running the MCP server:
+Set the following environment variables when running the MCP server:  
 
-* `GROWSURF_API_KEY` (required)
-* `GROWSURF_CAMPAIGN_ID` (required)
-* `GROWSURF_PARTICIPANT_AUTH_SECRET` (optional; used by the hash helper)
-* `GROWSURF_WEBHOOK_TOKEN` (optional; used for your own webhook URL token scheme)
-
----
+- `GROWSURF_API_KEY` (required)
+- `GROWSURF_CAMPAIGN_ID` (required)
+- `GROWSURF_PARTICIPANT_AUTH_SECRET` (optional; used by the hash helper)
+- `GROWSURF_WEBHOOK_TOKEN` (optional; used for your own webhook URL token scheme)
 
 
 ## Run with npx
@@ -208,92 +156,81 @@ npm run build
 node dist/index.js
 ```
 
----
-
-## MCP Tools
+## MCP tools
 
 ### Guided Integration
 
-* `growsurf_integration_guide`
-  Step‑by‑step guidance for implementing a GrowSurf referral or affiliate program.
+- `growsurf_integration_guide`  
+  Step-by-step guidance for implementing a GrowSurf referral or affiliate program.
 
 ### Client & UI Snippets
 
-* `growsurf_client_snippets`
+- `growsurf_client_snippets`  
   JavaScript SDK, GrowSurf window, and embeddable examples.
 
-* `growsurf_embeddable_element_snippet`
-  HTML snippet for a specific GrowSurf embeddable.
+- `growsurf_embeddable_element_snippet`  
+  HTML snippet for a specific GrowSurf embeddable element.
 
-* `growsurf_grsf_config_snippet`
-  `<head>` snippet for configuring `window.grsfConfig` and participant auto‑auth.
+- `growsurf_grsf_config_snippet`  
+  `<head>` snippet for configuring `window.grsfConfig` and participant auto-auth.
 
 ### API & Tracking
 
-* `growsurf_get_campaign`
+- `growsurf_get_campaign`  
   Fetch campaign configuration.
 
-* `growsurf_add_participant`
-  Add a participant during signup.
+- `growsurf_add_participant`  
+  Add a participant (or referred participant) during signup.
 
-* `growsurf_trigger_referral`
-  Trigger referral for **Sign up + Qualifying Action** programs only.
+- `growsurf_trigger_referral`  
+  Trigger referral (for referral programs only).
 
-* `growsurf_record_sale`
-  Record affiliate sales or transactions.
+- `growsurf_record_sale`  
+  Record affiliate sales or transactions (for affiliate programs only).
 
 ### Helpers
 
-* `growsurf_participant_auth_hash`
-  Generate participant auto‑auth HMAC hashes.
+- `growsurf_participant_auth_hash`  
+  Generate participant auto-auth HMAC hashes (to authenicate participants automatically).
 
-* `growsurf_webhook_normalize`
-  Normalize webhook payloads and generate idempotency keys.
-
----
+- `growsurf_webhook_normalize`  
+  Normalize webhook payloads and generate idempotency keys (to deduplicate webhook deliveries).
 
 ## Webhooks
 
-GrowSurf webhooks notify your server when key referral or affiliate events occur:
+GrowSurf webhooks notify your server when important referral or affiliate events occur, such as when new objects like participants, referrals, rewards, or transactions are created. Here are common use-cases:
 
-* A new participant is added to a program (referral and affiliate programs)
-* A participant unlocks a reward (referral programs only)
-* A participant’s fraud status changes (referral and affiliate programs)
-* A new affiliate commission is generated (affiliate programs only)
-* An affiliate commission is adjusted (affiliate programs only)
-* An affiliate payout is issued (affiliate programs only)
-* A program ends (referral and affiliate programs)
+- Fulfill rewards automatically
+- Maintain internal points or credit systems   
+- Sync participant and referral data into your database
 
 ### Retry Behavior
 
-GrowSurf delivers webhooks using a persistent queue with retry logic. If a webhook cannot be delivered, it will be retried for several days using exponential backoff.
-
-Because of this, **duplicate deliveries are possible** and must be handled safely by your server.
+GrowSurf delivers webhooks using a persistent queue with retry logic. If a webhook cannot be delivered, it will be retried for several days using exponential backoff. Because of this, duplicate deliveries are possible and must be handled safely by your server.
 
 ### Webhook Security & Idempotency
 
-GrowSurf does not currently publish signed webhook headers or a built‑in signature verification scheme. To securely use webhooks, we recommend:
+GrowSurf does not currently publish signed webhook headers or a built-in signature verification scheme. To securely use webhooks, we recommend the following:  
 
-* Including a random, unguessable token in your webhook URL (path or query string) and validating it
-* Validating payload shape and expected event type
-* Deduplicating webhook events using an idempotency key
+- Include a random, unguessable token in your webhook URL (path or query string) and validate it on receipt    
+- Validate the payload shape and expected event type  
+- Deduplicate webhook events using an idempotency key, since deliveries may be retried
 
-The GrowSurf MCP server provides a helper tool (`growsurf_webhook_normalize`) that normalizes webhook payloads and generates a best‑effort idempotency key to simplify safe webhook processing.
+The GrowSurf MCP server provides a helper tool (`growsurf_webhook_normalize` ) that normalizes webhook payloads and generates a best-effort idempotency key to simplify safe webhook processing.
 
----
-
-## Development & Testing
+## Development and Testing
 
 ```bash
 npm run dev
 npm test
 ```
 
----
-
 ## Additional Resources
 
-* JavaScript SDK reference: [https://docs.growsurf.com/developer-tools/javascript-sdk/api-reference](https://docs.growsurf.com/developer-tools/javascript-sdk/api-reference)
-* REST API reference: [https://docs.growsurf.com/developer-tools/rest-api/api-reference](https://docs.growsurf.com/developer-tools/rest-api/api-reference)
+Read developer docs at the following:
 
+- JavaScript SDK reference: https://docs.growsurf.com/developer-tools/javascript-sdk/api-reference
+- REST API reference: https://docs.growsurf.com/developer-tools/rest-api/api-reference
+- Getting Started with GrowSurf: https://docs.growsurf.com/getting-started
 
+The GrowSurf MCP server helps GrowSurf customers implement referral programs and affiliate programs quickly.
