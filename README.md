@@ -53,8 +53,8 @@ The GrowSurf MCP server works with any MCP‑compatible host that supports local
 1. Open Cursor.
 2. In the top menu, click **File > Preferences > Cursor Settings**.
 3. In the Cursor Settings panel, open **Tools & MCP**.
-4. Click **+ Add New MCP Server**.
-5. Set the following:
+4. Click **Add Custom MCP**.
+5. In the `mcp.json` file, add the following:
 
 ```json
 {
@@ -87,7 +87,7 @@ claude mcp add @growsurfteam/growsurf-mcp -- \
 1. Open Antigravity.
 2. Click the **…** menu in the panel to the right and select **MCP Store**.
 3. Click **Manage MCP Servers > View raw config**.
-4. In `mcp_config.json`, add the following:
+4. In the `mcp_config.json` file, add the following:
 
 ```json
 {
@@ -108,7 +108,7 @@ claude mcp add @growsurfteam/growsurf-mcp -- \
 
 ### Option 1: Configure via `config.toml`
 
-Create or edit file `~/.codex/config.toml` by adding the following:
+Create or edit the `~/.codex/config.toml` file by adding the following:
 
 ```toml
 [mcp_servers.growsurf]
