@@ -231,6 +231,7 @@ Read developer docs at the following:
 
 - JavaScript SDK reference: https://docs.growsurf.com/developer-tools/javascript-sdk/api-reference
 - REST API reference: https://docs.growsurf.com/developer-tools/rest-api/api-reference
+- REST API libraries: https://docs.growsurf.com/developer-tools/rest-api/api-libraries
 - Getting Started with GrowSurf: https://docs.growsurf.com/getting-started
 
 The GrowSurf MCP server helps GrowSurf customers implement referral programs and affiliate programs quickly.

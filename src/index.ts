@@ -207,6 +207,7 @@ const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInputSchem
       "",
       "- It **calls GrowSurf REST** for happy-path server-side actions (campaign, add participant, trigger referral, record sale).",
       "- It **guides implementation** and helps compute participant-auth hashes.",
+      "- For broader production REST API coverage, use the official GrowSurf API Libraries: https://docs.growsurf.com/developer-tools/rest-api/api-libraries",
       "- It **does not** embed the Universal Code for you (you copy that snippet from GrowSurf).",
       "- It **does not** host a webhook endpoint (you run that in your app), but it can normalize/validate payloads.",
       "",
