@@ -109,6 +109,13 @@ export class GrowSurfClient {
     );
   }
 
+  async createMobileParticipantToken(participantIdOrEmail: string): Promise<unknown> {
+    return this.requestJson(
+      "POST",
+      `/campaign/${encodeURIComponent(this.campaignId)}/participant/${encodeURIComponent(participantIdOrEmail)}/mobile-token`,
+    );
+  }
+
   async recordSaleByParticipantId(participantId: string, sale: Record<string, unknown>): Promise<unknown> {
     return this.recordSale(`/participant/${encodeURIComponent(participantId)}`, sale);
   }
@@ -168,4 +175,3 @@ export class GrowSurfClient {
     throw { name: "HttpError", code: "HTTP_ERROR", message: "Unreachable" } satisfies GrowSurfRequestError;
   }
 }
-

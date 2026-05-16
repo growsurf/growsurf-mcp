@@ -7,19 +7,21 @@ An **open-source Model Context Protocol (MCP) server** that helps developers imp
 
 ## Who is this for
 
-This MCP server is for:  
+This MCP server is for:
 
-- Developers using MCP-compatible tools (Cursor, Claude Code, Codex, Antigravity)  
-- Teams that want guided, AI-assisted GrowSurf integrations  
-      
-This MCP server is NOT for:  
+- Developers using MCP-compatible tools (Cursor, Claude Code, Codex, Antigravity)
+- Teams that want guided, AI-assisted GrowSurf integrations
 
-- ChatGPT web users (ChatGPT does not support local MCP servers at this time)  
+This MCP server is NOT for:
+
+- ChatGPT web users (ChatGPT does not support local MCP servers at this time)
 
 ## What you get
 
 - **Guided Integration**:
   - Universal Code install
+  - Native iOS/Android SDK implementation guidance
+  - Native GrowSurf Window guidance
   - Signup flow
   - Qualifying action flow
   - Affiliate sale / transaction tracking
@@ -29,6 +31,13 @@ This MCP server is NOT for:
   - Add participant
   - Trigger referral credit (for referral programs)
   - Record affiliate sale/transaction (for affiliate programs)
+  - Create mobile participant tokens for signed-in native app users
+- **Official API Library Snippets**:
+  - TypeScript
+  - Python
+  - PHP
+  - Ruby
+  - Java
 - **Helpers**:
   - Compute participant auto-auth HMAC hash
   - Normalize webhook payloads
@@ -37,7 +46,8 @@ This MCP server is NOT for:
 ## Requirements
 
 - Node.js 22+
-- A GrowSurf **API key** and **campaign (program) ID**
+- A GrowSurf **API key** and **campaign (program) ID** for API-calling tools
+- Static guidance/snippet tools can run without credentials
 
 ## Supported MCP Hosts
 
@@ -132,10 +142,10 @@ codex mcp add growsurf \
 
 ## Configuration
 
-Set the following environment variables when running the MCP server:  
+Set the following environment variables when running the MCP server:
 
-- `GROWSURF_API_KEY` (required)
-- `GROWSURF_CAMPAIGN_ID` (required)
+- `GROWSURF_API_KEY` (optional for startup; required for API-calling tools)
+- `GROWSURF_CAMPAIGN_ID` (optional for startup; required for API-calling tools)
 - `GROWSURF_PARTICIPANT_AUTH_SECRET` (optional; used by the hash helper)
 - `GROWSURF_WEBHOOK_TOKEN` (optional; used for your own webhook URL token scheme)
 
@@ -160,40 +170,49 @@ node dist/index.js
 
 ### Guided Integration
 
-- `growsurf_integration_guide`  
+- `growsurf_integration_guide`
   Step-by-step guidance for implementing a GrowSurf referral or affiliate program.
+
+- `growsurf_mobile_sdk_guide`
+  Native iOS/Android SDK guidance for attribution, `mobileShareUrl`, `trackShare`, and the native GrowSurf Window.
+
+- `growsurf_api_library_snippets`
+  Official REST API library snippets for TypeScript, Python, PHP, Ruby, and Java.
 
 ### Client & UI Snippets
 
-- `growsurf_client_snippets`  
+- `growsurf_client_snippets`
   JavaScript SDK, GrowSurf window, and embeddable examples.
 
-- `growsurf_embeddable_element_snippet`  
+- `growsurf_embeddable_element_snippet`
   HTML snippet for a specific GrowSurf embeddable element.
 
-- `growsurf_grsf_config_snippet`  
+- `growsurf_grsf_config_snippet`
   `<head>` snippet for configuring `window.grsfConfig` and participant auto-auth.
 
 ### API & Tracking
 
-- `growsurf_get_campaign`  
+- `growsurf_get_campaign`
   Fetch campaign configuration.
 
-- `growsurf_add_participant`  
+- `growsurf_add_participant`
   Add a participant (or referred participant) during signup.
 
-- `growsurf_trigger_referral`  
+- `growsurf_trigger_referral`
   Trigger referral (for referral programs only).
 
-- `growsurf_record_sale`  
+- `growsurf_record_sale`
   Record affiliate sales or transactions (for affiliate programs only).
+
+- `growsurf_create_mobile_participant_token`
+  Create a participant-scoped mobile SDK token for an existing signed-in user.
 
 ### Helpers
 
-- `growsurf_participant_auth_hash`  
+- `growsurf_participant_auth_hash`
   Generate participant auto-auth HMAC hashes (to authenicate participants automatically).
 
-- `growsurf_webhook_normalize`  
+- `growsurf_webhook_normalize`
   Normalize webhook payloads and generate idempotency keys (to deduplicate webhook deliveries).
 
 ## Webhooks
@@ -201,7 +220,7 @@ node dist/index.js
 GrowSurf webhooks notify your server when important referral or affiliate events occur, such as when new objects like participants, referrals, rewards, or transactions are created. Here are common use-cases:
 
 - Fulfill rewards automatically
-- Maintain internal points or credit systems   
+- Maintain internal points or credit systems
 - Sync participant and referral data into your database
 
 ### Retry Behavior
@@ -210,10 +229,10 @@ GrowSurf delivers webhooks using a persistent queue with retry logic. If a webho
 
 ### Webhook Security & Idempotency
 
-GrowSurf does not currently publish signed webhook headers or a built-in signature verification scheme. To securely use webhooks, we recommend the following:  
+GrowSurf does not currently publish signed webhook headers or a built-in signature verification scheme. To securely use webhooks, we recommend the following:
 
-- Include a random, unguessable token in your webhook URL (path or query string) and validate it on receipt    
-- Validate the payload shape and expected event type  
+- Include a random, unguessable token in your webhook URL (path or query string) and validate it on receipt
+- Validate the payload shape and expected event type
 - Deduplicate webhook events using an idempotency key, since deliveries may be retried
 
 The GrowSurf MCP server provides a helper tool (`growsurf_webhook_normalize` ) that normalizes webhook payloads and generates a best-effort idempotency key to simplify safe webhook processing.
@@ -232,6 +251,9 @@ Read developer docs at the following:
 - JavaScript SDK reference: https://docs.growsurf.com/developer-tools/javascript-sdk/api-reference
 - REST API reference: https://docs.growsurf.com/developer-tools/rest-api/api-reference
 - REST API libraries: https://docs.growsurf.com/developer-tools/rest-api/api-libraries
+- Native mobile guide: https://docs.growsurf.com/getting-started-for-native-mobile
+- iOS SDK: https://docs.growsurf.com/developer-tools/ios-sdk
+- Android SDK: https://docs.growsurf.com/developer-tools/android-sdk
 - Getting Started with GrowSurf: https://docs.growsurf.com/getting-started
 
 The GrowSurf MCP server helps GrowSurf customers implement referral programs and affiliate programs quickly.

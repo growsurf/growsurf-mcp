@@ -8,7 +8,9 @@ import {
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { GrowSurfClient, type GrowSurfRequestError } from "./growsurf/client.js";
+import { mobileSdkGuideInputSchema, renderMobileSdkGuide } from "./growsurf/mobileSdkGuide.js";
 import { computeParticipantAuthHash } from "./growsurf/participantAuth.js";
 import { normalizeWebhook } from "./growsurf/webhooks.js";
 
@@ -22,18 +24,29 @@ const optionalNonEmptyString = () =>
     });
 
 const envSchema = z.object({
-  GROWSURF_API_KEY: z.string().min(1),
-  GROWSURF_CAMPAIGN_ID: z.string().min(1),
+  GROWSURF_API_KEY: optionalNonEmptyString(),
+  GROWSURF_CAMPAIGN_ID: optionalNonEmptyString(),
   GROWSURF_PARTICIPANT_AUTH_SECRET: optionalNonEmptyString(),
   GROWSURF_WEBHOOK_TOKEN: optionalNonEmptyString(),
 });
 
-const getEnv = (): z.infer<typeof envSchema> => {
+type Env = z.infer<typeof envSchema>;
+
+const getEnv = (): Env => {
   const parsed = envSchema.safeParse(process.env);
   if (parsed.success) return parsed.data;
   // Throw a clear message for MCP host logs.
   const issues = parsed.error.issues.map((i) => `${i.path.join(".") || "env"}: ${i.message}`).join("; ");
   throw new Error(`Invalid environment. ${issues}`);
+};
+
+const requireGrowSurfClient = (env: Env): GrowSurfClient => {
+  if (!env.GROWSURF_API_KEY || !env.GROWSURF_CAMPAIGN_ID) {
+    throw new Error(
+      "Missing GrowSurf REST credentials. Set GROWSURF_API_KEY and GROWSURF_CAMPAIGN_ID to use API-calling tools.",
+    );
+  }
+  return new GrowSurfClient({ apiKey: env.GROWSURF_API_KEY, campaignId: env.GROWSURF_CAMPAIGN_ID });
 };
 
 const safeJson = (value: unknown): string => JSON.stringify(value, null, 2);
@@ -66,8 +79,8 @@ const integrationGuideInputSchema = z.object({
   webhookSecurity: z.enum(["token_in_url", "none"]).default("token_in_url"),
 });
 
-const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInputSchema>, env: z.infer<typeof envSchema>) => {
-  const campaignId = env.GROWSURF_CAMPAIGN_ID;
+const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInputSchema>, env: Env) => {
+  const campaignId = env.GROWSURF_CAMPAIGN_ID ?? "YOUR_CAMPAIGN_ID";
   const hasWebhookToken = Boolean(env.GROWSURF_WEBHOOK_TOKEN?.trim());
 
   const sections: string[] = [];
@@ -206,8 +219,10 @@ const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInputSchem
       "### 7) What this MCP server does / does not do",
       "",
       "- It **calls GrowSurf REST** for happy-path server-side actions (campaign, add participant, trigger referral, record sale).",
-      "- It **guides implementation** and helps compute participant-auth hashes.",
-      "- For broader production REST API coverage, use the official GrowSurf API Libraries: https://docs.growsurf.com/developer-tools/rest-api/api-libraries",
+      "- It **guides implementation** for web, backend, and native iOS/Android SDK 0.2.0 paths.",
+      "- For native mobile apps, use `growsurf_mobile_sdk_guide` for Mobile SDK, `mobileShareUrl`, `trackShare`, and native GrowSurf Window examples.",
+      "- It **helps compute participant-auth hashes** and create participant-scoped mobile SDK tokens.",
+      "- For broader production REST API coverage, use `growsurf_api_library_snippets` and the official GrowSurf API Libraries: https://docs.growsurf.com/developer-tools/rest-api/api-libraries",
       "- It **does not** embed the Universal Code for you (you copy that snippet from GrowSurf).",
       "- It **does not** host a webhook endpoint (you run that in your app), but it can normalize/validate payloads.",
       "",
@@ -260,6 +275,10 @@ const recordSaleSchema = z
   .refine((v) => Boolean(v.participantId) || Boolean(v.participantEmail), {
     message: "Provide participantId or participantEmail.",
   });
+
+const createMobileParticipantTokenSchema = z.object({
+  participantIdOrEmail: z.string().min(1),
+});
 
 const participantAuthHashSchema = z.object({
   email: z.string().min(3),
@@ -321,7 +340,7 @@ const grsfConfigSnippetSchema = z
     message: "If enableParticipantAutoAuth is true, provide email and hash.",
   });
 
-const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>, env: z.infer<typeof envSchema>) => {
+const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>, env: Env) => {
   const lines: string[] = [];
 
   lines.push("## GrowSurf client-side snippets");
@@ -513,8 +532,10 @@ const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>, env: 
   return lines.join("\n");
 };
 
-const renderGrsfConfigSnippet = (input: z.infer<typeof grsfConfigSnippetSchema>, env: z.infer<typeof envSchema>) => {
-  const campaignId = input.useCampaignIdPlaceholder ? "REPLACE_WITH_CAMPAIGN_ID" : (input.campaignId ?? env.GROWSURF_CAMPAIGN_ID);
+const renderGrsfConfigSnippet = (input: z.infer<typeof grsfConfigSnippetSchema>, env: Env) => {
+  const campaignId = input.useCampaignIdPlaceholder
+    ? "REPLACE_WITH_CAMPAIGN_ID"
+    : (input.campaignId ?? env.GROWSURF_CAMPAIGN_ID ?? "REPLACE_WITH_CAMPAIGN_ID");
   const lines: string[] = [];
   lines.push("## GrowSurf Universal Code wrapper (docs-style)");
   lines.push("");
@@ -585,12 +606,11 @@ const renderEmbeddableElementSnippet = (input: z.infer<typeof embeddableElementS
 
 const main = async () => {
   const env = getEnv();
-  const growsurf = new GrowSurfClient({ apiKey: env.GROWSURF_API_KEY, campaignId: env.GROWSURF_CAMPAIGN_ID });
 
   const server = new Server(
     {
       name: "growsurf-mcp",
-      version: "0.1.0",
+      version: "0.2.0",
     },
     {
       capabilities: {
@@ -615,6 +635,7 @@ const main = async () => {
 
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     if (request.params.uri === "growsurf://campaign") {
+      const growsurf = requireGrowSurfClient(env);
       const result = await growsurf.getCampaign();
       return {
         contents: [
@@ -643,6 +664,63 @@ const main = async () => {
               referralTrigger: { type: "string", enum: ["signup", "signup_plus_qualifying_action"], default: "signup_plus_qualifying_action" },
               singlePageApp: { type: "boolean", default: false },
               webhookSecurity: { type: "string", enum: ["token_in_url", "none"], default: "token_in_url" },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_mobile_sdk_guide",
+          description:
+            "Generate native iOS/Android SDK 0.2.0 guidance, including attribution, mobileShareUrl sharing, trackShare, and the native GrowSurf Window.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              platform: { type: "string", enum: ["ios", "android", "both"], default: "both" },
+              attributionProvider: {
+                type: "string",
+                enum: ["all", "direct_link", "google_play", "branch", "adjust", "appsflyer", "singular", "none"],
+                default: "all",
+              },
+              participantState: {
+                type: "string",
+                enum: ["new_participant", "existing_signed_in_user", "both"],
+                default: "both",
+              },
+              serverVerifiedQualifyingAction: { type: "boolean", default: true },
+              includeInstallSnippets: { type: "boolean", default: false },
+              campaignId: { type: "string" },
+              mobilePublicKey: { type: "string" },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_api_library_snippets",
+          description:
+            "Generate official REST API library snippets for TypeScript, Python, PHP, Ruby, and Java, including Create Mobile Participant Token.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              language: {
+                type: "string",
+                enum: ["typescript", "python", "php", "ruby", "java", "all"],
+                default: "all",
+              },
+              workflow: {
+                type: "string",
+                enum: [
+                  "setup",
+                  "campaign_lookup",
+                  "add_participant",
+                  "trigger_referral",
+                  "record_transaction",
+                  "mobile_participant_token",
+                  "all",
+                ],
+                default: "all",
+              },
+              campaignId: { type: "string" },
+              participantIdOrEmail: { type: "string" },
             },
             additionalProperties: false,
           },
@@ -712,6 +790,19 @@ const main = async () => {
             },
             required: ["currency", "grossAmount"],
             anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_create_mobile_participant_token",
+          description:
+            "Create a participant-scoped mobile SDK token for an existing participant via GrowSurf REST.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participantIdOrEmail: { type: "string" },
+            },
+            required: ["participantIdOrEmail"],
             additionalProperties: false,
           },
         },
@@ -816,11 +907,23 @@ const main = async () => {
           const text = renderIntegrationGuide(input, env);
           return { content: [{ type: "text", text }] };
         }
+        case "growsurf_mobile_sdk_guide": {
+          const input = mobileSdkGuideInputSchema.parse(request.params.arguments ?? {});
+          const text = renderMobileSdkGuide(input, { campaignId: env.GROWSURF_CAMPAIGN_ID });
+          return { content: [{ type: "text", text }] };
+        }
+        case "growsurf_api_library_snippets": {
+          const input = apiLibrarySnippetsInputSchema.parse(request.params.arguments ?? {});
+          const text = renderApiLibrarySnippets(input, { campaignId: env.GROWSURF_CAMPAIGN_ID });
+          return { content: [{ type: "text", text }] };
+        }
         case "growsurf_get_campaign": {
+          const growsurf = requireGrowSurfClient(env);
           const result = await growsurf.getCampaign();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_add_participant": {
+          const growsurf = requireGrowSurfClient(env);
           const input = addParticipantSchema.parse(request.params.arguments ?? {});
           if (input.metadata && Object.prototype.hasOwnProperty.call(input.metadata, "gdprAgreements")) {
             return {
@@ -838,6 +941,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_trigger_referral": {
+          const growsurf = requireGrowSurfClient(env);
           const input = triggerReferralSchema.parse(request.params.arguments ?? {});
           const result = input.participantId
             ? await growsurf.triggerReferralByParticipantId(input.participantId)
@@ -845,6 +949,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_record_sale": {
+          const growsurf = requireGrowSurfClient(env);
           const input = recordSaleSchema.parse(request.params.arguments ?? {});
           const sale = omitUndefined({
             currency: input.currency,
@@ -866,6 +971,12 @@ const main = async () => {
           const result = input.participantId
             ? await growsurf.recordSaleByParticipantId(input.participantId, sale)
             : await growsurf.recordSaleByParticipantEmail(input.participantEmail!, sale);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_create_mobile_participant_token": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = createMobileParticipantTokenSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.createMobileParticipantToken(input.participantIdOrEmail);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_participant_auth_hash": {
@@ -922,4 +1033,3 @@ main().catch((err) => {
   console.error(err);
   process.exitCode = 1;
 });
-
