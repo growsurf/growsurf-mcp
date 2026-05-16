@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const MOBILE_SDK_GUIDANCE_VERSION = "0.2.0";
+const IOS_DISTRIBUTION_URL = "https://github.com/growsurf/growsurf-ios-sdk-distribution.git";
 
 const codeBlock = (language: string, code: string): string => ["```" + language, code, "```"].join("\n");
 
@@ -16,7 +17,7 @@ export const mobileSdkGuideInputSchema = z.object({
     .default("all"),
   participantState: z.enum(["new_participant", "existing_signed_in_user", "both"]).default("both"),
   serverVerifiedQualifyingAction: z.boolean().default(true),
-  includeInstallSnippets: z.boolean().default(false),
+  includeInstallSnippets: z.boolean().default(true),
   campaignId: z.string().min(1).optional(),
   mobilePublicKey: z.string().min(1).optional(),
 });
@@ -152,10 +153,31 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
 
   if (input.includeInstallSnippets) {
     sections.push(
-      [
-        `Install snippets are intentionally omitted until public iOS SDK ${MOBILE_SDK_GUIDANCE_VERSION} artifacts are released.`,
-        "Use the published GrowSurf iOS SDK release notes or your private/internal artifact coordinates before copying install commands.",
-      ].join("\n"),
+      "Install via Swift Package Manager or the tag-pinned public podspec:",
+      codeBlock(
+        "swift",
+        [
+          "dependencies: [",
+          `    .package(url: "${IOS_DISTRIBUTION_URL}", from: "${MOBILE_SDK_GUIDANCE_VERSION}"),`,
+          "],",
+          "targets: [",
+          "    .target(",
+          '        name: "YourApp",',
+          "        dependencies: [",
+          '            .product(name: "GrowSurfSDK", package: "growsurf-ios-sdk-distribution"),',
+          "        ]",
+          "    ),",
+          "]",
+        ].join("\n"),
+      ),
+      codeBlock(
+        "ruby",
+        [
+          `growsurf_podspec = 'https://raw.githubusercontent.com/growsurf/growsurf-ios-sdk-distribution/v${MOBILE_SDK_GUIDANCE_VERSION}/GrowSurfSDK.podspec'`,
+          "",
+          "pod 'GrowSurfSDK', :podspec => growsurf_podspec",
+        ].join("\n"),
+      ),
     );
   }
 
@@ -229,10 +251,20 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
 
   if (input.includeInstallSnippets) {
     sections.push(
-      [
-        `Install snippets are intentionally omitted until public Android SDK ${MOBILE_SDK_GUIDANCE_VERSION} artifacts are released.`,
-        "Use the published GrowSurf Android SDK release notes or your private/internal artifact coordinates before copying install commands.",
-      ].join("\n"),
+      "Install from Maven Central:",
+      codeBlock(
+        "kotlin",
+        [
+          "repositories {",
+          "    mavenCentral()",
+          "}",
+          "",
+          "dependencies {",
+          `    implementation("com.growsurf:growsurf-android-sdk:${MOBILE_SDK_GUIDANCE_VERSION}")`,
+          "}",
+        ].join("\n"),
+      ),
+      "If you use Branch, Adjust, or AppsFlyer, add the matching adapter artifact at the same version.",
     );
   }
 
@@ -305,7 +337,7 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
   const sections: string[] = [
     "## GrowSurf native mobile SDK guide",
     "",
-    `- Use SDK version \`${MOBILE_SDK_GUIDANCE_VERSION}\` once its public mobile artifacts are available.`,
+    `- Use SDK version \`${MOBILE_SDK_GUIDANCE_VERSION}\`.`,
     "- Native apps use a public Mobile SDK key, not the secret REST API key.",
     "- The recommended mobile referral portal is the native GrowSurf Window opened from your own app UI.",
     "- For signed-in users, mint a participant-scoped mobile token on your backend and pass it to the SDK.",

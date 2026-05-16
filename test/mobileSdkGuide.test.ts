@@ -26,7 +26,7 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("abc123");
   });
 
-  it("does not emit unavailable public SDK 0.2.0 install coordinates", () => {
+  it("emits released public SDK 0.2.0 install coordinates", () => {
     const text = renderMobileSdkGuide(
       {
         platform: "both",
@@ -38,20 +38,18 @@ describe("renderMobileSdkGuide", () => {
       { campaignId: "abc123" },
     );
 
-    expect(text).toContain("Install snippets are intentionally omitted");
-    expect(text).not.toContain("growsurf-ios-sdk-distribution");
-    expect(text).not.toContain("GrowSurfSDK.podspec");
-    expect(text).not.toContain("com.growsurf:growsurf-android-sdk:0.2.0");
+    expect(text).toContain("growsurf-ios-sdk-distribution");
+    expect(text).toContain("/v0.2.0/GrowSurfSDK.podspec");
+    expect(text).toContain("com.growsurf:growsurf-android-sdk:0.2.0");
   });
 
-  it("does not include install snippets by default", () => {
+  it("includes install snippets by default", () => {
     const input = mobileSdkGuideInputSchema.parse({});
     const text = renderMobileSdkGuide(input, { campaignId: "abc123" });
 
-    expect(input.includeInstallSnippets).toBe(false);
-    expect(text).not.toContain("Install snippets are intentionally omitted");
-    expect(text).not.toContain("growsurf-ios-sdk-distribution");
-    expect(text).not.toContain("com.growsurf:growsurf-android-sdk");
+    expect(input.includeInstallSnippets).toBe(true);
+    expect(text).toContain("growsurf-ios-sdk-distribution");
+    expect(text).toContain("com.growsurf:growsurf-android-sdk");
   });
 
   it("renders selected provider callbacks instead of hard-coded Branch callbacks", () => {

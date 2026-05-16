@@ -687,7 +687,7 @@ const main = async () => {
                 default: "both",
               },
               serverVerifiedQualifyingAction: { type: "boolean", default: true },
-              includeInstallSnippets: { type: "boolean", default: false },
+              includeInstallSnippets: { type: "boolean", default: true },
               campaignId: { type: "string" },
               mobilePublicKey: { type: "string" },
             },
