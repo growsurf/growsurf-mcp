@@ -174,7 +174,7 @@ node dist/index.js
   Step-by-step guidance for implementing a GrowSurf referral or affiliate program.
 
 - `growsurf_mobile_sdk_guide`
-  Native iOS/Android SDK guidance for attribution, `mobileShareUrl`, `trackShare`, and the native GrowSurf Window.
+  Native iOS/Android SDK guidance for attribution, `shareUrl`, `trackShare`, and the native GrowSurf Window.
 
 - `growsurf_api_library_snippets`
   Official REST API library snippets for TypeScript, Python, PHP, Ruby, and Java.

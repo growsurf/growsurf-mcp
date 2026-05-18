@@ -19,7 +19,8 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("GrowSurf.configure");
     expect(text).toContain("GrowSurfSdk.configure");
     expect(text).toContain("presentGrowSurfWindow");
-    expect(text).toContain("mobileShareUrl");
+    expect(text).toContain("shareUrl");
+    expect(text).not.toContain("mobileShareUrl");
     expect(text).toContain("iosNativeShare");
     expect(text).toContain("androidNativeShare");
     expect(text).toContain("pk_mobile_test");
