@@ -16,6 +16,17 @@ export type GrowSurfRequestError = {
   [key: string]: unknown;
 };
 
+export type GrowSurfParticipantInput = {
+  email: string;
+  referredBy?: string;
+  referralStatus?: "CREDIT_PENDING" | "CREDIT_AWARDED" | "CREDIT_EXPIRED";
+  firstName?: string;
+  lastName?: string;
+  ipAddress?: string;
+  fingerprint?: string;
+  metadata?: Record<string, unknown>;
+};
+
 const DEFAULT_BASE_URL = "https://api.growsurf.com/v2";
 
 const normalizeBaseUrl = (baseUrl: string) => baseUrl.replace(/\/+$/, "");
@@ -75,16 +86,7 @@ export class GrowSurfClient {
     return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}`);
   }
 
-  async addParticipant(input: {
-    email: string;
-    referredBy?: string;
-    referralStatus?: "CREDIT_PENDING" | "CREDIT_AWARDED" | "CREDIT_EXPIRED";
-    firstName?: string;
-    lastName?: string;
-    ipAddress?: string;
-    fingerprint?: string;
-    metadata?: Record<string, unknown>;
-  }): Promise<unknown> {
+  async addParticipant(input: GrowSurfParticipantInput): Promise<unknown> {
     return this.requestJson("POST", `/campaign/${encodeURIComponent(this.campaignId)}/participant`, input);
   }
 
@@ -109,10 +111,11 @@ export class GrowSurfClient {
     );
   }
 
-  async createMobileParticipantToken(participantIdOrEmail: string): Promise<unknown> {
+  async createMobileParticipantToken(input: GrowSurfParticipantInput): Promise<unknown> {
     return this.requestJson(
       "POST",
-      `/campaign/${encodeURIComponent(this.campaignId)}/participant/${encodeURIComponent(participantIdOrEmail)}/mobile-token`,
+      `/campaign/${encodeURIComponent(this.campaignId)}/mobile-participant-token`,
+      input,
     );
   }
 
