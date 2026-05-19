@@ -52,30 +52,30 @@ const providerDisplayName = (provider: ProviderCallback) =>
 
 const iosAttributionText = (provider: AttributionProvider) => {
   if (provider === "none") return "Skip attribution handling only if this app never accepts referred installs.";
-  if (provider === "direct_link") return "Use `handleDeepLink(_:)` for installed-app links that already contain `grsf`, `ref`, or `referredBy`.";
+  if (provider === "direct_link") return "Use `handleDeepLink(_:)` for installed-app links that already contain `grsf`, `ref`, or `referredBy`, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`.";
   if (provider === "google_play") {
     return "Google Play Install Referrer is Android-only. Skip iOS attribution handling unless you also support direct links or a provider callback on iOS.";
   }
   if (provider === "all") {
-    return "Use `handleDeepLink(_:)` for installed-app links and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before participant creation.";
+    return "Use `handleDeepLink(_:)` for installed-app links and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before participant creation. If GrowSurf-hosted referral links are enabled, configure the campaign's iOS attribution URL so iOS clicks route through the provider with `grsf` attached.";
   }
   const callbackProvider = providerCallbackFor(provider);
   if (callbackProvider) {
-    return `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(_:provider:)\` before participant creation.`;
+    return `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(_:provider:)\` before participant creation. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, or a GrowSurf-hosted share URL.`;
   }
   return "";
 };
 
 const androidAttributionText = (provider: AttributionProvider) => {
   if (provider === "none") return "Skip attribution handling only if this app never accepts referred installs.";
-  if (provider === "direct_link") return "Use `handleDeepLink(uri)` for installed-app links that already contain `grsf`, `ref`, or `referredBy`.";
+  if (provider === "direct_link") return "Use `handleDeepLink(uri)` for installed-app links that already contain `grsf`, `ref`, or `referredBy`, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`.";
   if (provider === "google_play") return "Call `handleDeferredDeepLink()` before participant creation so GrowSurf can read the Google Play Install Referrer payload.";
   if (provider === "all") {
-    return "Use `handleDeepLink(uri)` for installed-app links, `handleDeferredDeepLink()` for Google Play installs, and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before participant creation.";
+    return "Use `handleDeepLink(uri)` for installed-app links, `handleDeferredDeepLink()` for Google Play installs, and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before participant creation. Provider payloads may contain `grsf`, `ref`, `referredBy`, or a GrowSurf-hosted share URL.";
   }
   const callbackProvider = providerCallbackFor(provider);
   if (callbackProvider) {
-    return `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(parameters, provider = "${callbackProvider}")\` before participant creation.`;
+    return `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(parameters, provider = "${callbackProvider}")\` before participant creation. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, or a GrowSurf-hosted share URL.`;
   }
   return "";
 };

@@ -20,6 +20,7 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("GrowSurfSdk.configure");
     expect(text).toContain("presentGrowSurfWindow");
     expect(text).toContain("shareUrl");
+    expect(text).toContain("GrowSurf-hosted share URL");
     expect(text).not.toContain("mobileShareUrl");
     expect(text).toContain("iosNativeShare");
     expect(text).toContain("androidNativeShare");
@@ -101,6 +102,7 @@ describe("renderMobileSdkGuide", () => {
     );
 
     expect(text).toContain("handleDeepLink");
+    expect(text).toContain("https://grow.surf/share/:campaignId/:participantId");
     expect(text).not.toContain("handleAttributionParameters");
     expect(text).not.toContain("handleDeferredDeepLink");
   });
