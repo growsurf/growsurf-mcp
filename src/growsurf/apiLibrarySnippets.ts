@@ -14,6 +14,8 @@ export const apiLibrarySnippetsInputSchema = z.object({
     ])
     .default("all"),
   campaignId: z.string().min(1).optional(),
+  email: z.string().min(3).optional(),
+  referredBy: z.string().min(1).optional(),
   participantIdOrEmail: z.string().min(1).optional(),
 });
 
@@ -39,7 +41,13 @@ const shouldRenderLanguage = (input: ApiLibrarySnippetsInput, language: Language
 const shouldRenderWorkflow = (input: ApiLibrarySnippetsInput, workflow: Workflow) =>
   input.workflow === "all" || input.workflow === workflow;
 
-const renderTypeScript = (input: ApiLibrarySnippetsInput, campaignId: string, participant: string) => {
+const renderTypeScript = (
+  input: ApiLibrarySnippetsInput,
+  campaignId: string,
+  participant: string,
+  mobileEmail: string,
+  referredBy: string,
+) => {
   const sections: string[] = ["### TypeScript (`growsurf-typescript` 0.2.0+)"];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
@@ -104,11 +112,26 @@ const renderTypeScript = (input: ApiLibrarySnippetsInput, campaignId: string, pa
       codeBlock(
         "ts",
         [
-          `const token = await client.campaign.participant.createMobileToken(${JSON.stringify(participant)}, {`,
-          `  id: ${JSON.stringify(campaignId)},`,
-          "});",
+          "const response = await fetch(",
+          `  "https://api.growsurf.com/v2/campaign/${campaignId}/mobile-participant-token",`,
+          "  {",
+          "    method: \"POST\",",
+          "    headers: {",
+          "      Authorization: `Bearer ${process.env.GROWSURF_API_KEY}`,",
+          "      \"Content-Type\": \"application/json\",",
+          "    },",
+          "    body: JSON.stringify({",
+          `      email: ${JSON.stringify(mobileEmail)},`,
+          "      firstName: \"Gavin\",",
+          "      lastName: \"Belson\",",
+          `      referredBy: ${JSON.stringify(referredBy)},`,
+          "    }),",
+          "  },",
+          ");",
+          "if (!response.ok) throw new Error(await response.text());",
+          "const token = await response.json();",
           "",
-          "console.log(token.participantToken, token.expiresIn);",
+          "console.log(token.participantToken, token.expiresIn, token.isNew);",
         ].join("\n"),
       ),
     );
@@ -116,7 +139,13 @@ const renderTypeScript = (input: ApiLibrarySnippetsInput, campaignId: string, pa
   return sections.join("\n\n");
 };
 
-const renderPython = (input: ApiLibrarySnippetsInput, campaignId: string, participant: string) => {
+const renderPython = (
+  input: ApiLibrarySnippetsInput,
+  campaignId: string,
+  participant: string,
+  mobileEmail: string,
+  referredBy: string,
+) => {
   const sections: string[] = ["### Python (`growsurf-python` 0.2.0+)"];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
@@ -174,8 +203,24 @@ const renderPython = (input: ApiLibrarySnippetsInput, campaignId: string, partic
       codeBlock(
         "python",
         [
-          `token = client.campaign.participant.create_mobile_token(${JSON.stringify(participant)}, id=${JSON.stringify(campaignId)})`,
-          "print(token.participant_token, token.expires_in)",
+          "import os",
+          "import requests",
+          "",
+          `response = requests.post("https://api.growsurf.com/v2/campaign/${campaignId}/mobile-participant-token",`,
+          "    headers={",
+          "        \"Authorization\": f\"Bearer {os.environ['GROWSURF_API_KEY']}\",",
+          "        \"Content-Type\": \"application/json\",",
+          "    },",
+          "    json={",
+          `        "email": ${JSON.stringify(mobileEmail)},`,
+          "        \"firstName\": \"Gavin\",",
+          "        \"lastName\": \"Belson\",",
+          `        "referredBy": ${JSON.stringify(referredBy)},`,
+          "    },",
+          ")",
+          "response.raise_for_status()",
+          "token = response.json()",
+          "print(token[\"participantToken\"], token[\"expiresIn\"], token[\"isNew\"])",
         ].join("\n"),
       ),
     );
@@ -183,7 +228,13 @@ const renderPython = (input: ApiLibrarySnippetsInput, campaignId: string, partic
   return sections.join("\n\n");
 };
 
-const renderPhp = (input: ApiLibrarySnippetsInput, campaignId: string, participant: string) => {
+const renderPhp = (
+  input: ApiLibrarySnippetsInput,
+  campaignId: string,
+  participant: string,
+  mobileEmail: string,
+  referredBy: string,
+) => {
   const sections: string[] = ["### PHP (`growsurf/growsurf-php` 0.3.0+)"];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
@@ -243,7 +294,26 @@ const renderPhp = (input: ApiLibrarySnippetsInput, campaignId: string, participa
       codeBlock(
         "php",
         [
-          `$token = $client->campaign->participant->createMobileToken(${JSON.stringify(participant)}, ${JSON.stringify(campaignId)});`,
+          "$response = file_get_contents(",
+          `    'https://api.growsurf.com/v2/campaign/${campaignId}/mobile-participant-token',`,
+          "    false,",
+          "    stream_context_create([",
+          "        'http' => [",
+          "            'method' => 'POST',",
+          "            'header' => [",
+          "                'Authorization: Bearer ' . getenv('GROWSURF_API_KEY'),",
+          "                'Content-Type: application/json',",
+          "            ],",
+          "            'content' => json_encode([",
+          `                'email' => ${JSON.stringify(mobileEmail)},`,
+          "                'firstName' => 'Gavin',",
+          "                'lastName' => 'Belson',",
+          `                'referredBy' => ${JSON.stringify(referredBy)},`,
+          "            ]),",
+          "        ],",
+          "    ])",
+          ");",
+          "$token = json_decode($response);",
           "echo $token->participantToken;",
         ].join("\n"),
       ),
@@ -252,7 +322,13 @@ const renderPhp = (input: ApiLibrarySnippetsInput, campaignId: string, participa
   return sections.join("\n\n");
 };
 
-const renderRuby = (input: ApiLibrarySnippetsInput, campaignId: string, participant: string) => {
+const renderRuby = (
+  input: ApiLibrarySnippetsInput,
+  campaignId: string,
+  participant: string,
+  mobileEmail: string,
+  referredBy: string,
+) => {
   const sections: string[] = ["### Ruby (`growsurf-ruby` 0.2.0+)"];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
@@ -307,8 +383,24 @@ const renderRuby = (input: ApiLibrarySnippetsInput, campaignId: string, particip
       codeBlock(
         "ruby",
         [
-          `token = growsurf.campaign.participant.create_mobile_token(${JSON.stringify(participant)}, id: ${JSON.stringify(campaignId)})`,
-          "puts token.participant_token",
+          "require \"json\"",
+          "require \"net/http\"",
+          "",
+          `uri = URI("https://api.growsurf.com/v2/campaign/${campaignId}/mobile-participant-token")`,
+          "request = Net::HTTP::Post.new(uri)",
+          "request[\"Authorization\"] = \"Bearer #{ENV.fetch(\"GROWSURF_API_KEY\")}\"",
+          "request[\"Content-Type\"] = \"application/json\"",
+          "request.body = {",
+          `  email: ${JSON.stringify(mobileEmail)},`,
+          "  firstName: \"Gavin\",",
+          "  lastName: \"Belson\",",
+          `  referredBy: ${JSON.stringify(referredBy)}`,
+          "}.to_json",
+          "",
+          "response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(request) }",
+          "raise response.body unless response.is_a?(Net::HTTPSuccess)",
+          "token = JSON.parse(response.body)",
+          "puts token[\"participantToken\"]",
         ].join("\n"),
       ),
     );
@@ -316,7 +408,13 @@ const renderRuby = (input: ApiLibrarySnippetsInput, campaignId: string, particip
   return sections.join("\n\n");
 };
 
-const renderJava = (input: ApiLibrarySnippetsInput, campaignId: string, participant: string) => {
+const renderJava = (
+  input: ApiLibrarySnippetsInput,
+  campaignId: string,
+  participant: string,
+  mobileEmail: string,
+  referredBy: string,
+) => {
   const sections: string[] = ["### Java (`com.growsurf.api:growsurf-java` 0.3.0+)"];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
@@ -394,14 +492,24 @@ const renderJava = (input: ApiLibrarySnippetsInput, campaignId: string, particip
       codeBlock(
         "java",
         [
-          "import com.growsurf.api.models.campaign.participant.ParticipantCreateMobileTokenParams;",
+          "import java.net.URI;",
+          "import java.net.http.HttpClient;",
+          "import java.net.http.HttpRequest;",
+          "import java.net.http.HttpResponse;",
           "",
-          "var token = client.campaign().participant().createMobileToken(",
-          `    ${JSON.stringify(participant)},`,
-          `    ParticipantCreateMobileTokenParams.builder().id(${JSON.stringify(campaignId)}).build()`,
-          ");",
+          "var body = \"\"\"",
+          "    {\"email\":\"%s\",\"firstName\":\"Gavin\",\"lastName\":\"Belson\",\"referredBy\":\"%s\"}",
+          `    \"\"\".formatted(${JSON.stringify(mobileEmail)}, ${JSON.stringify(referredBy)});`,
           "",
-          "System.out.println(token.participantToken());",
+          "var request = HttpRequest.newBuilder()",
+          `    .uri(URI.create("https://api.growsurf.com/v2/campaign/${campaignId}/mobile-participant-token"))`,
+          "    .header(\"Authorization\", \"Bearer \" + System.getenv(\"GROWSURF_API_KEY\"))",
+          "    .header(\"Content-Type\", \"application/json\")",
+          "    .POST(HttpRequest.BodyPublishers.ofString(body))",
+          "    .build();",
+          "",
+          "var response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());",
+          "System.out.println(response.body());",
         ].join("\n"),
       ),
     );
@@ -412,20 +520,22 @@ const renderJava = (input: ApiLibrarySnippetsInput, campaignId: string, particip
 export const renderApiLibrarySnippets = (input: ApiLibrarySnippetsInput, context: ApiLibrarySnippetsContext = {}) => {
   const campaignId = placeholder(input.campaignId ?? context.campaignId, "YOUR_CAMPAIGN_ID");
   const participant = placeholder(input.participantIdOrEmail, "participant@example.com");
+  const mobileEmail = placeholder(input.email, "participant@example.com");
+  const referredBy = placeholder(input.referredBy, "referrer_id");
   const sections: string[] = [
     "## GrowSurf REST API library snippets",
     "",
     "- These official libraries are for server-side REST API integrations.",
     "- Do not ship your REST API key in native mobile apps.",
-    "- The generated libraries include `Create Mobile Participant Token` for existing signed-in mobile users.",
+    "- Use the raw REST call for `Create Mobile Participant Token` until the REST API libraries are regenerated from the updated OpenAPI spec.",
     "",
   ];
 
-  if (shouldRenderLanguage(input, "typescript")) sections.push(renderTypeScript(input, campaignId, participant));
-  if (shouldRenderLanguage(input, "python")) sections.push(renderPython(input, campaignId, participant));
-  if (shouldRenderLanguage(input, "php")) sections.push(renderPhp(input, campaignId, participant));
-  if (shouldRenderLanguage(input, "ruby")) sections.push(renderRuby(input, campaignId, participant));
-  if (shouldRenderLanguage(input, "java")) sections.push(renderJava(input, campaignId, participant));
+  if (shouldRenderLanguage(input, "typescript")) sections.push(renderTypeScript(input, campaignId, participant, mobileEmail, referredBy));
+  if (shouldRenderLanguage(input, "python")) sections.push(renderPython(input, campaignId, participant, mobileEmail, referredBy));
+  if (shouldRenderLanguage(input, "php")) sections.push(renderPhp(input, campaignId, participant, mobileEmail, referredBy));
+  if (shouldRenderLanguage(input, "ruby")) sections.push(renderRuby(input, campaignId, participant, mobileEmail, referredBy));
+  if (shouldRenderLanguage(input, "java")) sections.push(renderJava(input, campaignId, participant, mobileEmail, referredBy));
 
   return sections.join("\n");
 };

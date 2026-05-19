@@ -205,7 +205,7 @@ node dist/index.js
   Record affiliate sales or transactions (for affiliate programs only).
 
 - `growsurf_create_mobile_participant_token`
-  Create a participant-scoped mobile SDK token for an existing signed-in user.
+  Create or fetch a participant, then create a participant-scoped mobile SDK token for a signed-in mobile user.
 
 ### Helpers
 

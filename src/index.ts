@@ -276,9 +276,7 @@ const recordSaleSchema = z
     message: "Provide participantId or participantEmail.",
   });
 
-const createMobileParticipantTokenSchema = z.object({
-  participantIdOrEmail: z.string().min(1),
-});
+const createMobileParticipantTokenSchema = addParticipantSchema;
 
 const participantAuthHashSchema = z.object({
   email: z.string().min(3),
@@ -697,7 +695,7 @@ const main = async () => {
         {
           name: "growsurf_api_library_snippets",
           description:
-            "Generate official REST API library snippets for TypeScript, Python, PHP, Ruby, and Java, including Create Mobile Participant Token.",
+            "Generate REST API integration snippets for TypeScript, Python, PHP, Ruby, and Java, including a raw REST Create Mobile Participant Token fallback.",
           inputSchema: {
             type: "object",
             properties: {
@@ -720,6 +718,8 @@ const main = async () => {
                 default: "all",
               },
               campaignId: { type: "string" },
+              email: { type: "string" },
+              referredBy: { type: "string" },
               participantIdOrEmail: { type: "string" },
             },
             additionalProperties: false,
@@ -796,13 +796,20 @@ const main = async () => {
         {
           name: "growsurf_create_mobile_participant_token",
           description:
-            "Create a participant-scoped mobile SDK token for an existing participant via GrowSurf REST.",
+            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST.",
           inputSchema: {
             type: "object",
             properties: {
-              participantIdOrEmail: { type: "string" },
+              email: { type: "string" },
+              firstName: { type: "string" },
+              lastName: { type: "string" },
+              referredBy: { type: "string" },
+              referralStatus: { type: "string", enum: ["CREDIT_PENDING", "CREDIT_AWARDED", "CREDIT_EXPIRED"] },
+              ipAddress: { type: "string" },
+              fingerprint: { type: "string" },
+              metadata: { type: "object", additionalProperties: true },
             },
-            required: ["participantIdOrEmail"],
+            required: ["email"],
             additionalProperties: false,
           },
         },
@@ -976,7 +983,21 @@ const main = async () => {
         case "growsurf_create_mobile_participant_token": {
           const growsurf = requireGrowSurfClient(env);
           const input = createMobileParticipantTokenSchema.parse(request.params.arguments ?? {});
-          const result = await growsurf.createMobileParticipantToken(input.participantIdOrEmail);
+          if (input.metadata && Object.prototype.hasOwnProperty.call(input.metadata, "gdprAgreements")) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text:
+                    "Invalid metadata: 'gdprAgreements' is a restricted key. Pass GDPR agreements using the dedicated field (JS SDK) or remove it from metadata (REST).",
+                },
+              ],
+              isError: true,
+            };
+          }
+          const result = await growsurf.createMobileParticipantToken(
+            omitUndefined(input) as Parameters<GrowSurfClient["createMobileParticipantToken"]>[0],
+          );
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_participant_auth_hash": {

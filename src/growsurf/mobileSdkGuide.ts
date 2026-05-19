@@ -357,7 +357,8 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
     [
       "### Backend handoff",
       "",
-      "- Use the REST API or official REST API libraries to call `Create Mobile Participant Token` for existing signed-in users.",
+      "- Use the REST API or official REST API libraries to call `Create Mobile Participant Token` with the same participant fields as Add Participant.",
+      "- For signed-in referred users, read the SDK's pending attribution in the app and send its `referredBy` value to your backend before minting the token; server-to-server REST calls cannot access app-local attribution automatically.",
       "- Pass the returned `participantToken` to `.existingParticipantToken(...)` on iOS or `GrowSurfWindowIdentity.ExistingParticipantToken(...)` on Android.",
       "- Share tracking types used by the native SDK are `copyRefLink`, `iosNativeShare`, and `androidNativeShare`.",
     ].join("\n"),
