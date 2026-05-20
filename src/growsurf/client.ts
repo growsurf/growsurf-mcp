@@ -24,6 +24,7 @@ export type GrowSurfParticipantInput = {
   lastName?: string;
   ipAddress?: string;
   fingerprint?: string;
+  mobileInstanceId?: string;
   metadata?: Record<string, unknown>;
 };
 

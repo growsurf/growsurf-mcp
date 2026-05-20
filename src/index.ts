@@ -240,6 +240,7 @@ const addParticipantSchema = z.object({
   referralStatus: z.enum(["CREDIT_PENDING", "CREDIT_AWARDED", "CREDIT_EXPIRED"]).optional(),
   ipAddress: z.string().min(1).optional(),
   fingerprint: z.string().min(1).optional(),
+  mobileInstanceId: z.string().min(1).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -743,6 +744,7 @@ const main = async () => {
               referralStatus: { type: "string", enum: ["CREDIT_PENDING", "CREDIT_AWARDED", "CREDIT_EXPIRED"] },
               ipAddress: { type: "string" },
               fingerprint: { type: "string" },
+              mobileInstanceId: { type: "string" },
               metadata: { type: "object", additionalProperties: true },
             },
             required: ["email"],
@@ -807,6 +809,7 @@ const main = async () => {
               referralStatus: { type: "string", enum: ["CREDIT_PENDING", "CREDIT_AWARDED", "CREDIT_EXPIRED"] },
               ipAddress: { type: "string" },
               fingerprint: { type: "string" },
+              mobileInstanceId: { type: "string" },
               metadata: { type: "object", additionalProperties: true },
             },
             required: ["email"],

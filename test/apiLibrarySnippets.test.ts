@@ -25,6 +25,7 @@ describe("renderApiLibrarySnippets", () => {
     expect(text).toContain("person@example.com");
     expect(text).toContain("referredBy");
     expect(text).toContain("referrer_id");
+    expect(text).toContain("mobileInstanceId");
     expect(text).toContain("abc123");
   });
 
