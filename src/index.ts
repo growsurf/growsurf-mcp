@@ -127,7 +127,7 @@ const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInputSchem
         "### 3) Referral program flow",
         "",
         "- **On signup**: add the participant.",
-        "  - Client-side option: `growsurf.addParticipant({ email, firstName, lastName, ...metadata })`.",
+        "  - Client-side option: `growsurf.addReferredParticipant({ email, firstName, lastName, ...metadata })` for referral-only signup tracking, or `growsurf.addParticipant(...)` when every signup should join GrowSurf.",
         "  - Server-side option: call GrowSurf REST **Add Participant** and pass `referredBy` when you have it.",
         "",
         "- **If your referral trigger is “Sign up + Qualifying Action”**:",
@@ -172,6 +172,7 @@ const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInputSchem
         "- Works with Stripe, Chargebee, or Recurly — GrowSurf auto-creates a coupon/promotion code on the connected platform.",
         "- For custom integrations (no Stripe/Chargebee/Recurly), use the JS SDK:",
         "  - `growsurf.validateReferrer()` — returns `Promise<boolean>`, confirms the referrer is valid without exposing participant data.",
+        "  - `growsurf.addReferredParticipant()` — validates the referrer and adds a participant only when the referral is valid.",
         "  - `growsurf.getUpfrontDiscount(integrationType?)` — returns `{ integration, promotionCode, couponId }` or `null`.",
         "",
         "MCP tools you'll likely use:",
@@ -356,9 +357,9 @@ const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>, env: 
   lines.push("    // 1) On signup/login, create or fetch the participant (generates shareUrl).");
   lines.push("    // await growsurf.addParticipant({ email: user.email, firstName: user.firstName, lastName: user.lastName });");
   lines.push("");
-  lines.push("    // 2) Optional: if you want to only add referred users, check referrer id first.");
-  lines.push("    // const referrerId = growsurf.getReferrerId(); // null if not referred");
-  lines.push("    // if (referrerId) await growsurf.addParticipant({ email: user.email, referredBy: referrerId });");
+  lines.push("    // 2) Referral-only signup tracking: adds only when a valid referrer exists.");
+  lines.push("    // const result = await growsurf.addReferredParticipant({ email: user.email, firstName: user.firstName, lastName: user.lastName });");
+  lines.push("    // if (result.added) console.log(result.participant.shareUrl);");
   lines.push("");
   if (input.programType === "referral" || input.programType === "both") {
     lines.push("    // 3) Referral programs only: trigger referral credit when qualifying action occurs (if configured).");

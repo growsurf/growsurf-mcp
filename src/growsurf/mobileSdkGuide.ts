@@ -57,11 +57,11 @@ const iosAttributionText = (provider: AttributionProvider) => {
     return "Google Play Install Referrer is Android-only. Skip iOS attribution handling unless you also support direct links or a provider callback on iOS.";
   }
   if (provider === "all") {
-    return "Use `handleDeepLink(_:)` for installed-app links and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before participant creation. If GrowSurf-hosted referral links are enabled, configure the campaign's iOS attribution URL so iOS clicks route through the provider with `grsf` attached.";
+    return "Use `handleDeepLink(_:)` for installed-app links and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before calling `addReferredParticipant()`. If GrowSurf-hosted referral links are enabled, configure the campaign's iOS attribution URL so iOS clicks route through the provider with `grsf` attached.";
   }
   const callbackProvider = providerCallbackFor(provider);
   if (callbackProvider) {
-    return `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(_:provider:)\` before participant creation. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, or a GrowSurf-hosted share URL.`;
+    return `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(_:provider:)\` before calling \`addReferredParticipant()\`. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, or a GrowSurf-hosted share URL.`;
   }
   return "";
 };
@@ -69,13 +69,13 @@ const iosAttributionText = (provider: AttributionProvider) => {
 const androidAttributionText = (provider: AttributionProvider) => {
   if (provider === "none") return "Skip attribution handling only if this app never accepts referred installs.";
   if (provider === "direct_link") return "Use `handleDeepLink(uri)` for installed-app links that already contain `grsf`, `ref`, or `referredBy`, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`.";
-  if (provider === "google_play") return "Call `handleDeferredDeepLink()` before participant creation so GrowSurf can read the Google Play Install Referrer payload.";
+  if (provider === "google_play") return "Call `handleDeferredDeepLink()` before referral-only signup tracking, or let `addReferredParticipant()` check Google Play Install Referrer once when no pending attribution exists.";
   if (provider === "all") {
-    return "Use `handleDeepLink(uri)` for installed-app links, `handleDeferredDeepLink()` for Google Play installs, and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before participant creation. Provider payloads may contain `grsf`, `ref`, `referredBy`, or a GrowSurf-hosted share URL.";
+    return "Use `handleDeepLink(uri)` for installed-app links, `handleDeferredDeepLink()` for Google Play installs, and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before calling `addReferredParticipant()`. Provider payloads may contain `grsf`, `ref`, `referredBy`, or a GrowSurf-hosted share URL.";
   }
   const callbackProvider = providerCallbackFor(provider);
   if (callbackProvider) {
-    return `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(parameters, provider = "${callbackProvider}")\` before participant creation. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, or a GrowSurf-hosted share URL.`;
+    return `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(parameters, provider = "${callbackProvider}")\` before calling \`addReferredParticipant()\`. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, or a GrowSurf-hosted share URL.`;
   }
   return "";
 };
@@ -201,15 +201,16 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
 
   if (input.participantState === "new_participant" || input.participantState === "both") {
     sections.push(
-      "For new users, create the participant after attribution has been captured:",
+      "For referral-only signup tracking, add the participant only after GrowSurf validates a referrer:",
       codeBlock(
         "swift",
         [
-          "let created = try await growsurf.createParticipant(",
+          "let result = try await growsurf.addReferredParticipant(",
           "    .init(email: \"person@example.com\", firstName: \"Ada\", lastName: \"Lovelace\")",
           ")",
           "",
-          "if let participant = created.participant,",
+          "if result.added,",
+          "   let participant = result.participant,",
           "   let shareUrl = participant.shareUrl {",
           "    try await growsurf.trackShare(participantId: participant.id, type: \"iosNativeShare\")",
           "    // Present your native share sheet with shareUrl.",
@@ -220,7 +221,7 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
   }
 
   sections.push(
-    "Recommended sharing path: present the native GrowSurf Window from your own app button or menu.",
+    "Recommended sharing path: present the native GrowSurf Window from your own app button or menu. Use a backend-minted token for signed-in users, or `result.participantToken` from a just-created SDK participant if opening the window immediately. The SDK already stores returned participant tokens; keep one yourself only when you need this explicit window handoff.",
     codeBlock(
       "swift",
       [
@@ -289,18 +290,20 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
 
   if (input.participantState === "new_participant" || input.participantState === "both") {
     sections.push(
-      "For new users, create the participant after attribution has been captured:",
+      "For referral-only signup tracking, add the participant only after GrowSurf validates a referrer:",
       codeBlock(
         "kotlin",
         [
-          "val created = growsurf.createParticipant(",
+          "val result = growsurf.addReferredParticipant(",
           "    GrowSurfParticipantInput(email = \"person@example.com\", firstName = \"Ada\", lastName = \"Lovelace\")",
           ")",
           "",
-          "created.participant?.let { participant ->",
-          "    participant.shareUrl?.let { shareUrl ->",
-          "        growsurf.trackShare(participantId = participant.id, type = \"androidNativeShare\")",
-          "        // Present your native share sheet with shareUrl.",
+          "if (result.added) {",
+          "    result.participant?.let { participant ->",
+          "        participant.shareUrl?.let { shareUrl ->",
+          "            growsurf.trackShare(participantId = participant.id, type = \"androidNativeShare\")",
+          "            // Present your native share sheet with shareUrl.",
+          "        }",
           "    }",
           "}",
         ].join("\n"),
@@ -309,7 +312,7 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
   }
 
   sections.push(
-    "Recommended sharing path: present the native GrowSurf Window from your own app button or menu.",
+    "Recommended sharing path: present the native GrowSurf Window from your own app button or menu. Use a backend-minted token for signed-in users, or `result.participantToken` from a just-created SDK participant if opening the window immediately. The SDK already stores returned participant tokens; keep one yourself only when you need this explicit window handoff.",
     codeBlock(
       "kotlin",
       [
@@ -341,6 +344,9 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
     "- Native apps use a public Mobile SDK key, not the secret REST API key.",
     "- The recommended mobile referral portal is the native GrowSurf Window opened from your own app UI.",
     "- For signed-in users, mint a participant-scoped mobile token on your backend and pass it to the SDK.",
+    "- Use `validateReferrer()` when you only need to check referral attribution. Use `recordAttribution()` only when you intentionally want to record an impression.",
+    "- Use `addReferredParticipant()` for referral-only signup tracking. Use `createParticipant()` only when the app intentionally adds every signup to GrowSurf.",
+    "- When `addReferredParticipant()` or `createParticipant()` returns a `participantToken`, the SDK stores it automatically.",
   ];
 
   if (input.serverVerifiedQualifyingAction) {

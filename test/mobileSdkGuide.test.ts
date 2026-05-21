@@ -18,6 +18,9 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("SDK version `0.2.0`");
     expect(text).toContain("GrowSurf.configure");
     expect(text).toContain("GrowSurfSdk.configure");
+    expect(text).toContain("addReferredParticipant");
+    expect(text).toContain("validateReferrer()");
+    expect(text).toContain("the SDK stores it automatically");
     expect(text).toContain("presentGrowSurfWindow");
     expect(text).toContain("shareUrl");
     expect(text).toContain("GrowSurf-hosted share URL");
@@ -105,5 +108,23 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("https://grow.surf/share/:campaignId/:participantId");
     expect(text).not.toContain("handleAttributionParameters");
     expect(text).not.toContain("handleDeferredDeepLink");
+  });
+
+  it("recommends addReferredParticipant for new mobile signups", () => {
+    const text = renderMobileSdkGuide(
+      {
+        platform: "both",
+        attributionProvider: "all",
+        participantState: "new_participant",
+        serverVerifiedQualifyingAction: true,
+        includeInstallSnippets: false,
+      },
+      { campaignId: "abc123" },
+    );
+
+    expect(text).toContain("referral-only signup tracking");
+    expect(text).toContain("let result = try await growsurf.addReferredParticipant");
+    expect(text).toContain("val result = growsurf.addReferredParticipant");
+    expect(text).toContain("Use `createParticipant()` only when the app intentionally adds every signup to GrowSurf.");
   });
 });
