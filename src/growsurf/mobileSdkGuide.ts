@@ -345,8 +345,8 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
     "- The recommended mobile referral portal is the native GrowSurf Window opened from your own app UI.",
     "- For signed-in users, mint a participant-scoped mobile token on your backend and pass it to the SDK.",
     "- Use `validateReferrer()` when you only need to check referral attribution. Use `recordAttribution()` only when you intentionally want to record an impression.",
-    "- Use `addReferredParticipant()` for referral-only signup tracking. Use `createParticipant()` only when the app intentionally adds every signup to GrowSurf.",
-    "- When `addReferredParticipant()` or `createParticipant()` returns a `participantToken`, the SDK stores it automatically.",
+    "- Use `addReferredParticipant()` for referral-only signup tracking.",
+    "- When `addReferredParticipant()` or `addParticipant()` returns a `participantToken`, the SDK stores it automatically.",
   ];
 
   if (input.serverVerifiedQualifyingAction) {
