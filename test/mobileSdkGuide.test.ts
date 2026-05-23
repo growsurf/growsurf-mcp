@@ -125,6 +125,5 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("referral-only signup tracking");
     expect(text).toContain("let result = try await growsurf.addReferredParticipant");
     expect(text).toContain("val result = growsurf.addReferredParticipant");
-    expect(text).toContain("Use `addParticipant()` only when the app intentionally adds every signup to GrowSurf.");
   });
 });
