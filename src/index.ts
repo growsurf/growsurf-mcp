@@ -301,7 +301,7 @@ const clientSnippetsSchema = z.object({
 });
 
 const embeddableElementSchema = z.object({
-  element: z.enum(["form", "invite", "rewards", "referral_status", "affiliate_summary", "commissions", "payouts"]),
+  element: z.enum(["form", "invite", "rewards", "referral_status", "referral_summary", "affiliate_summary", "commissions", "payouts"]),
   withAuthAttributes: z.boolean().default(false),
   participant: z
     .object({
@@ -584,6 +584,7 @@ const renderEmbeddableElementSnippet = (input: z.infer<typeof embeddableElementS
     invite: { title: "Embedded Invite", attr: "data-grsf-block-invite", note: "Lets signed-in participants send bulk email invites." },
     rewards: { title: "Embedded Rewards", attr: "data-grsf-block-rewards", note: "Shows participant rewards (signed-in participants)." },
     referral_status: { title: "Embedded Referral Status", attr: "data-grsf-block-referral-status", note: "Shows referral status (signed-in participants)." },
+    referral_summary: { title: "Embedded Referral Summary", attr: "data-grsf-block-referral-summary", note: "Shows referral summary stats (referral programs; signed-in participants; opt-in via Campaign Editor)." },
     affiliate_summary: { title: "Embedded Affiliate Summary", attr: "data-grsf-block-affiliate-summary", note: "Shows affiliate summary stats (affiliate programs; signed-in participants)." },
     commissions: { title: "Embedded Commissions", attr: "data-grsf-block-commissions", note: "Shows commission list (affiliate programs; signed-in participants)." },
     payouts: { title: "Embedded Payouts", attr: "data-grsf-block-payouts", note: "Shows payout list (affiliate programs; signed-in participants)." },
@@ -870,7 +871,7 @@ const main = async () => {
             properties: {
               element: {
                 type: "string",
-                enum: ["form", "invite", "rewards", "referral_status", "affiliate_summary", "commissions", "payouts"]
+                enum: ["form", "invite", "rewards", "referral_status", "referral_summary", "affiliate_summary", "commissions", "payouts"]
               },
               withAuthAttributes: { type: "boolean", default: false },
               participant: {
