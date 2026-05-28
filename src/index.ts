@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createRequire } from "module";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -8,6 +9,8 @@ import {
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+
+const { version: PACKAGE_VERSION } = createRequire(import.meta.url)("../package.json") as { version: string };
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { GrowSurfClient, type GrowSurfRequestError } from "./growsurf/client.js";
 import { mobileSdkGuideInputSchema, renderMobileSdkGuide } from "./growsurf/mobileSdkGuide.js";
@@ -220,7 +223,7 @@ const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInputSchem
       "### 7) What this MCP server does / does not do",
       "",
       "- It **calls GrowSurf REST** for happy-path server-side actions (campaign, add participant, trigger referral, record sale).",
-      "- It **guides implementation** for web, backend, and native iOS/Android SDK 0.2.0 paths.",
+      "- It **guides implementation** for web, backend, and native iOS/Android SDK 0.2.1 paths.",
       "- For native mobile apps, use `growsurf_mobile_sdk_guide` for Mobile SDK, attribution, `trackShare`, and native GrowSurf Window examples.",
       "- It **helps compute participant-auth hashes** and create participant-scoped mobile SDK tokens.",
       "- For broader production REST API coverage, use `growsurf_api_library_snippets` and the official GrowSurf API Libraries: https://docs.growsurf.com/developer-tools/rest-api/api-libraries",
@@ -611,7 +614,7 @@ const main = async () => {
   const server = new Server(
     {
       name: "growsurf-mcp",
-      version: "0.2.0",
+      version: PACKAGE_VERSION,
     },
     {
       capabilities: {
@@ -672,7 +675,7 @@ const main = async () => {
         {
           name: "growsurf_mobile_sdk_guide",
           description:
-            "Generate native iOS/Android SDK 0.2.0 guidance, including attribution, shareUrl sharing, trackShare, and the native GrowSurf Window.",
+            "Generate native iOS/Android SDK 0.2.1 guidance, including attribution, shareUrl sharing, trackShare, and the native GrowSurf Window.",
           inputSchema: {
             type: "object",
             properties: {
