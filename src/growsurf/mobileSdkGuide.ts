@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const MOBILE_SDK_GUIDANCE_VERSION = "0.2.1";
+const MOBILE_SDK_GUIDANCE_VERSION = "0.3.0";
 const IOS_DISTRIBUTION_URL = "https://github.com/growsurf/growsurf-ios-sdk-distribution.git";
 
 const codeBlock = (language: string, code: string): string => ["```" + language, code, "```"].join("\n");
@@ -210,11 +210,8 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
           ")",
           "",
           "if result.added,",
-          "   let participant = result.participant,",
-          "   let shareUrl = participant.shareUrl {",
-          "    try await growsurf.trackShare(participantId: participant.id, type: \"iosNativeShare\")",
-          "    // Present your native share sheet with shareUrl.",
-          "}",
+          "   let participant = result.participant",
+          ",
         ].join("\n"),
       ),
     );
@@ -300,10 +297,7 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
           "",
           "if (result.added) {",
           "    result.participant?.let { participant ->",
-          "        participant.shareUrl?.let { shareUrl ->",
-          "            growsurf.trackShare(participantId = participant.id, type = \"androidNativeShare\")",
-          "            // Present your native share sheet with shareUrl.",
-          "        }",
+          "         // Do something with participant",
           "    }",
           "}",
         ].join("\n"),
