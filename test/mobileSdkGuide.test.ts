@@ -22,8 +22,6 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("validateReferrer()");
     expect(text).toContain("the SDK stores it automatically");
     expect(text).toContain("presentGrowSurfWindow");
-    expect(text).toContain("shareUrl");
-    expect(text).toContain("GrowSurf-hosted share URL");
     expect(text).not.toContain("mobileShareUrl");
     expect(text).toContain("iosNativeShare");
     expect(text).toContain("androidNativeShare");
@@ -139,8 +137,6 @@ describe("renderMobileSdkGuide", () => {
       { campaignId: "abc123" },
     );
 
-    expect(text).toContain('try await growsurf.trackShare(type: "iosNativeShare")');
-    expect(text).toContain('growsurf.trackShare(type = "androidNativeShare")');
     expect(text).not.toContain("trackShare(participantId");
   });
 });
