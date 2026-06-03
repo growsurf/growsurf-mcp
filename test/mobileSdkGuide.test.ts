@@ -125,6 +125,38 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("val result = growsurf.addReferredParticipant");
   });
 
+  it("renders per-provider iOS deferred guidance (LinkMe / UDL / Clipboard-Based DDL)", () => {
+    const adjust = renderMobileSdkGuide(
+      { platform: "ios", attributionProvider: "adjust", participantState: "both", serverVerifiedQualifyingAction: true, includeInstallSnippets: false },
+      { campaignId: "abc123" },
+    );
+    expect(adjust).toContain("LinkMe");
+
+    const appsflyer = renderMobileSdkGuide(
+      { platform: "ios", attributionProvider: "appsflyer", participantState: "both", serverVerifiedQualifyingAction: true, includeInstallSnippets: false },
+      { campaignId: "abc123" },
+    );
+    expect(appsflyer).toContain("Unified Deep Linking");
+    expect(appsflyer).toContain("deep_link_value");
+
+    const singular = renderMobileSdkGuide(
+      { platform: "ios", attributionProvider: "singular", participantState: "both", serverVerifiedQualifyingAction: true, includeInstallSnippets: false },
+      { campaignId: "abc123" },
+    );
+    expect(singular).toContain("Clipboard-Based DDL");
+    expect(singular).toContain("clipboardAttribution");
+  });
+
+  it("explains that Android deferred uses the Play Install Referrer, not the iOS clipboard mechanisms", () => {
+    const android = renderMobileSdkGuide(
+      { platform: "android", attributionProvider: "all", participantState: "both", serverVerifiedQualifyingAction: true, includeInstallSnippets: false },
+      { campaignId: "abc123" },
+    );
+    expect(android).toContain("Google Play Install Referrer");
+    expect(android).toContain("are NOT needed on Android");
+    expect(android).not.toContain("checkPasteboardOnInstall");
+  });
+
   it("emits trackShare samples without a participantId (SDK derives it from the JWT)", () => {
     const text = renderMobileSdkGuide(
       {
