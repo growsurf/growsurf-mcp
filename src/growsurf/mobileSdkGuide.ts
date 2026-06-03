@@ -57,11 +57,15 @@ const iosAttributionText = (provider: AttributionProvider) => {
     return "Google Play Install Referrer is Android-only. Skip iOS attribution handling unless you also support direct links or a provider callback on iOS.";
   }
   if (provider === "all") {
-    return "Use `handleDeepLink(_:)` for installed-app links and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before calling `addReferredParticipant()`. If GrowSurf-hosted referral links are enabled, configure the campaign's iOS attribution URL so iOS clicks route through the provider with `grsf` attached.";
+    return "Use `handleDeepLink(_:)` for installed-app links and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before calling `addReferredParticipant()`. If GrowSurf-hosted referral links are enabled, configure the campaign's iOS attribution URL so iOS clicks route through the provider with `grsf` attached. For Branch DEFERRED (no-app-installed) referrals on iOS, also enable Branch NativeLink (dashboard) and call `Branch.getInstance().checkPasteboardOnInstall()` before `initSession()` — iOS 14+ requires NativeLink's clipboard token for deferred matching.";
   }
   const callbackProvider = providerCallbackFor(provider);
   if (callbackProvider) {
-    return `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(_:provider:)\` before calling \`addReferredParticipant()\`. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, or a GrowSurf-hosted share URL.`;
+    const base = `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(_:provider:)\` before calling \`addReferredParticipant()\`. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, or a GrowSurf-hosted share URL.`;
+    if (callbackProvider === "branch") {
+      return `${base} For Branch DEFERRED (no-app-installed) referrals on iOS you must use Branch NativeLink, because iOS 14+ removed the device matching Branch previously used for deferred installs: (1) enable NativeLink in the Branch dashboard (Configuration → Enable NativeLink) with a link that is NOT web-only (the iOS redirect must be allowed to open the app), and (2) call \`Branch.getInstance().checkPasteboardOnInstall()\` BEFORE \`initSession()\` so the SDK reads the NativeLink clipboard token on first launch (iOS 16+ shows a one-time "Pasted from …" prompt). Without NativeLink, an iOS user who installs from a referral link opens the app with no referral data. The installed-app flow does not need this.`;
+    }
+    return base;
   }
   return "";
 };
