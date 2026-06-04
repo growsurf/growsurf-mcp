@@ -147,6 +147,25 @@ describe("renderMobileSdkGuide", () => {
     expect(singular).toContain("clipboardAttribution");
   });
 
+  it("notes iOS deferred is best-effort and recommends a manual-code fallback for deferred-bearing providers", () => {
+    for (const provider of ["all", "branch", "adjust", "appsflyer", "singular"] as const) {
+      const text = renderMobileSdkGuide(
+        { platform: "ios", attributionProvider: provider, participantState: "both", serverVerifiedQualifyingAction: true, includeInstallSnippets: false },
+        { campaignId: "abc123" },
+      );
+      expect(text).toContain("best-effort");
+      expect(text).toContain("manual referral-code entry");
+    }
+  });
+
+  it("does not attach the deferred best-effort caveat to direct-link-only or none configs", () => {
+    const directLink = renderMobileSdkGuide(
+      { platform: "ios", attributionProvider: "direct_link", participantState: "both", serverVerifiedQualifyingAction: true, includeInstallSnippets: false },
+      { campaignId: "abc123" },
+    );
+    expect(directLink).not.toContain("best-effort");
+  });
+
   it("explains that Android deferred uses the Play Install Referrer, not the iOS clipboard mechanisms", () => {
     const android = renderMobileSdkGuide(
       { platform: "android", attributionProvider: "all", participantState: "both", serverVerifiedQualifyingAction: true, includeInstallSnippets: false },

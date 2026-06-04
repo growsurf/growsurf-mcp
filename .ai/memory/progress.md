@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-06-04 - Mobile SDK guide: iOS deferred "best-effort + manual-code fallback" caveat
+
+- Added a shared `IOS_DEFERRED_BEST_EFFORT` constant in `src/growsurf/mobileSdkGuide.ts` and appended it to the **deferred-bearing** iOS branches of `iosAttributionText` only (the `all` branch + each provider callback branch: branch/adjust/appsflyer/singular). NOT added to `none`/`direct_link`/`google_play`. The caveat states iOS deferred is best-effort even when configured — clipboard providers (Branch/Adjust/Singular) miss if the user declines the iOS paste prompt or overwrites the clipboard; AppsFlyer (server-side UDL) misses outside its ~15-min window; in-app/non-Safari browsers break the click — so pair with a **manual referral-code fallback**. Android's Play Install Referrer is deterministic.
+- This syncs the MCP guidance with the `growsurf-docs` reframe (2026-06-04): deferred/cold-install is the **primary** referral path on mobile (not optional — an earlier "optional/advanced" framing was rejected), and iOS is best-effort. Docs carry the same framing line + per-provider "iOS deferred (cold install) is best-effort" troubleshooting tips.
+- Tests: added two `it(...)` cases to `test/mobileSdkGuide.test.ts` — the caveat ("best-effort" + "manual referral-code entry") renders for all deferred-bearing providers (`all`/branch/adjust/appsflyer/singular) and is absent for `direct_link`. `npm run typecheck` clean; `npm run test` = 18 passed. No SDK version change.
+
 ## 2026-06-03 - Mobile SDK guide: per-provider deferred deep-linking guidance (iOS + Android)
 
 - Added per-provider **iOS deferred** guidance to `src/growsurf/mobileSdkGuide.ts` `iosAttributionText` (Branch NativeLink note already existed; added the iOS-16 `BranchPasteControl` mention). New per-provider branches: **Adjust LinkMe** (optional clipboard — `ADJConfig.enableLinkMe()` v5 / `setLinkMeEnabled(true)` v4 + `adj_linkme=1`/`linkme=1`), **AppsFlyer** (NO clipboard — server-side Unified Deep Linking via `deepLinkDelegate`/`didResolveDeepLink`, ~15-min lookback, `grsf` in `deep_link_value`/`deep_link_sub1-10`), **Singular Clipboard-Based DDL** (optional, enterprise — `SingularConfig.clipboardAttribution=true` + WebSDK via CSM). The `all` iOS branch now notes deferred is provider-specific/not interchangeable.
