@@ -1,6 +1,6 @@
 {
   "name": "@growsurfteam/growsurf-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Model Context Protocol (MCP) server for integrating GrowSurf referral + affiliate programs.",
   "publishConfig": {
     "access": "public"
@@ -25,6 +25,12 @@
   "type": "module",
   "bin": {
     "growsurf-mcp": "./dist/index.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./install-kit": "./dist/growsurf/installKit.js",
+    "./secret-deny-list": "./dist/growsurf/secretDenyList.js",
+    "./growsurf": "./dist/growsurf/index.js"
   },
   "files": [
     "dist",
