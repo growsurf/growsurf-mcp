@@ -91,16 +91,32 @@ export class GrowSurfClient {
     return this.requestJson("POST", `/campaign/${encodeURIComponent(this.campaignId)}/participant`, input);
   }
 
-  async triggerReferralByParticipantId(participantId: string): Promise<unknown> {
+  async triggerReferralByParticipantId(participantId: string, delayInDays?: number): Promise<unknown> {
     return this.requestJson(
       "POST",
+      `/campaign/${encodeURIComponent(this.campaignId)}/participant/${encodeURIComponent(participantId)}/ref`,
+      delayInDays === undefined ? undefined : { delayInDays },
+    );
+  }
+
+  async triggerReferralByParticipantEmail(participantEmail: string, delayInDays?: number): Promise<unknown> {
+    return this.requestJson(
+      "POST",
+      `/campaign/${encodeURIComponent(this.campaignId)}/participant/${encodeURIComponent(participantEmail)}/ref`,
+      delayInDays === undefined ? undefined : { delayInDays },
+    );
+  }
+
+  async cancelDelayedReferralByParticipantId(participantId: string): Promise<unknown> {
+    return this.requestJson(
+      "DELETE",
       `/campaign/${encodeURIComponent(this.campaignId)}/participant/${encodeURIComponent(participantId)}/ref`,
     );
   }
 
-  async triggerReferralByParticipantEmail(participantEmail: string): Promise<unknown> {
+  async cancelDelayedReferralByParticipantEmail(participantEmail: string): Promise<unknown> {
     return this.requestJson(
-      "POST",
+      "DELETE",
       `/campaign/${encodeURIComponent(this.campaignId)}/participant/${encodeURIComponent(participantEmail)}/ref`,
     );
   }
@@ -128,6 +144,22 @@ export class GrowSurfClient {
     return this.recordSale(`/participant/${encodeURIComponent(participantEmail)}`, sale);
   }
 
+  async refundTransactionByParticipantId(participantId: string, amendment: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson(
+      "POST",
+      `/campaign/${encodeURIComponent(this.campaignId)}/participant/${encodeURIComponent(participantId)}/transaction/refund`,
+      amendment,
+    );
+  }
+
+  async refundTransactionByParticipantEmail(participantEmail: string, amendment: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson(
+      "POST",
+      `/campaign/${encodeURIComponent(this.campaignId)}/participant/${encodeURIComponent(participantEmail)}/transaction/refund`,
+      amendment,
+    );
+  }
+
   private async recordSale(participantPath: string, sale: Record<string, unknown>): Promise<unknown> {
     // Docs show ".../transaction" while some examples use ".../sales".
     // Prefer the documented endpoint and fall back to the legacy path if needed.
@@ -143,7 +175,7 @@ export class GrowSurfClient {
     }
   }
 
-  private async requestJson(method: "GET" | "POST", path: string, body?: unknown): Promise<unknown> {
+  private async requestJson(method: "GET" | "POST" | "DELETE", path: string, body?: unknown): Promise<unknown> {
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,

@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-06-28 - REST: delayed referral trigger + cancel delayed referral
+
+- GrowSurf REST `POST /v2/campaign/:id/participant/:participantId/ref` now accepts an optional body `{ delayInDays: 1-90 }` to hold referral credit for N days before awarding (refund-window use case), and a new `DELETE` on the same path cancels a pending delayed trigger (returns `{ success, message }`). Synced the MCP server's representation of this endpoint.
+- `src/growsurf/client.ts`: `triggerReferralByParticipantId/Email` gained an optional `delayInDays` arg that is sent as the POST body only when present (otherwise no body, preserving the existing bare-POST behavior). Added `cancelDelayedReferralByParticipantId/Email` (DELETE on `/ref`). Widened the private `requestJson` method-type union to include `"DELETE"`.
+- `src/index.ts`: added optional `delayInDays` (zod `int().min(1).max(90)`, JSON Schema `integer` 1-90) to `triggerReferralSchema` + the `growsurf_trigger_referral` tool input/description, and threaded it into the handler. Added a new `growsurf_cancel_delayed_referral` tool (own `cancelDelayedReferralSchema`, listing, and handler case) mirroring the trigger tool's participantId/participantEmail anyOf shape.
+- `README.md`: updated the capabilities overview + the `growsurf_trigger_referral` tool entry, and documented the new `growsurf_cancel_delayed_referral` tool.
+- `test/client.test.ts`: added 3 regression tests (bare POST when no delay; `delayInDays` body + JSON content-type; DELETE with no body returning `{ success, message }`).
+- Deliberately did NOT touch the per-language generated-library snippets in `src/growsurf/apiLibrarySnippets.ts`: those mirror the official `growsurf-{typescript,python,php,ruby,java}` packages at pinned versions, and the file's own convention is to defer to raw REST when a capability isn't in the generated libraries yet ("until the REST API libraries are regenerated from the updated OpenAPI spec"). Adding `delayInDays`/`cancelDelayedReferral` there would assert unverified third-party method/param signatures. Revisit once those libraries are regenerated from the updated spec.
+- Verified: `npm run typecheck`, `npm run build`, `npm run lint` clean; `npm run test` = 21 passed (client suite 1 → 4).
+
 ## 2026-06-04 - Mobile SDK guide: iOS deferred "best-effort + manual-code fallback" caveat
 
 - Added a shared `IOS_DEFERRED_BEST_EFFORT` constant in `src/growsurf/mobileSdkGuide.ts` and appended it to the **deferred-bearing** iOS branches of `iosAttributionText` only (the `all` branch + each provider callback branch: branch/adjust/appsflyer/singular). NOT added to `none`/`direct_link`/`google_play`. The caveat states iOS deferred is best-effort even when configured — clipboard providers (Branch/Adjust/Singular) miss if the user declines the iOS paste prompt or overwrites the clipboard; AppsFlyer (server-side UDL) misses outside its ~15-min window; in-app/non-Safari browsers break the click — so pair with a **manual referral-code fallback**. Android's Play Install Referrer is deterministic.

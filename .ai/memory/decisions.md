@@ -1,5 +1,9 @@
 # Decisions
 
+## 2026-06-28 - Delayed referral trigger + cancel are exposed at the REST-client/MCP-tool layer, not in the generated-library snippets
+
+The new `delayInDays` (1-90) body option on `POST .../ref` and the new `DELETE .../ref` cancel endpoint were added where this server actually owns and can verify the representation: the raw REST client (`src/growsurf/client.ts`) and the MCP tools/schemas (`src/index.ts`, plus README). They were intentionally NOT added to the per-language snippets in `src/growsurf/apiLibrarySnippets.ts`, which demonstrate the official `growsurf-{typescript,python,php,ruby,java}` packages at pinned versions. That file's established pattern is to fall back to raw REST when a capability is not yet in the generated libraries ("until the REST API libraries are regenerated from the updated OpenAPI spec"); asserting `delayInDays`/`cancelDelayedReferral` library method+param signatures we cannot verify would be inventing structure and risks documenting non-existent methods in a published package. Re-add to the snippets once the libraries are regenerated from the updated spec.
+
 ## 2026-05-29 - Mobile SDK guide documents the no-participantId API at 0.3.0
 
 The mobile SDK guide now documents the Mobile SDK 0.3.0 public API, which drops the redundant `participantId` argument from every participant-scoped method (identity is derived from the participant JWT). `MOBILE_SDK_GUIDANCE_VERSION` is bumped to `0.3.0` in lockstep with the iOS/Android SDK releases, and the version mentions in `src/index.ts` track it.

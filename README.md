@@ -29,7 +29,8 @@ This MCP server is NOT for:
 - **Happy‑Path REST API Wrappers**:
   - Get campaign
   - Add participant
-  - Trigger referral credit (for referral programs)
+  - Trigger referral credit (for referral programs), with optional delayed award (1-90 days)
+  - Cancel a pending delayed referral trigger (for referral programs)
   - Record affiliate sale/transaction (for affiliate programs)
   - Create mobile participant tokens for signed-in native app users
 - **Official API Library Snippets**:
@@ -199,10 +200,16 @@ node dist/index.js
   Add a participant (or referred participant) during signup.
 
 - `growsurf_trigger_referral`
-  Trigger referral (for referral programs only).
+  Trigger referral (for referral programs only). Optionally pass `delayInDays` (1-90) to hold the credit for N days before awarding it (e.g. to cover a refund window).
+
+- `growsurf_cancel_delayed_referral`
+  Cancel a pending delayed referral trigger before the delay elapses (e.g. on refund/cancellation).
 
 - `growsurf_record_sale`
   Record affiliate sales or transactions (for affiliate programs only).
+
+- `growsurf_refund_transaction`
+  Record an amendment (refund, partial refund, or chargeback) against a recorded transaction; reverses or adjusts the referrer's commission (for affiliate programs only). The inverse of `growsurf_record_sale`.
 
 - `growsurf_create_mobile_participant_token`
   Create or fetch a participant, then create a participant-scoped mobile SDK token for a signed-in mobile user.

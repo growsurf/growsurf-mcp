@@ -252,6 +252,16 @@ const triggerReferralSchema = z
   .object({
     participantId: z.string().min(1).optional(),
     participantEmail: z.string().min(3).optional(),
+    delayInDays: z.number().int().min(1).max(90).optional(),
+  })
+  .refine((v) => Boolean(v.participantId) || Boolean(v.participantEmail), {
+    message: "Provide participantId or participantEmail.",
+  });
+
+const cancelDelayedReferralSchema = z
+  .object({
+    participantId: z.string().min(1).optional(),
+    participantEmail: z.string().min(3).optional(),
   })
   .refine((v) => Boolean(v.participantId) || Boolean(v.participantEmail), {
     message: "Provide participantId or participantEmail.",
@@ -280,6 +290,40 @@ const recordSaleSchema = z
   .refine((v) => Boolean(v.participantId) || Boolean(v.participantEmail), {
     message: "Provide participantId or participantEmail.",
   });
+
+const refundTransactionSchema = z
+  .object({
+    participantId: z.string().min(1).optional(),
+    participantEmail: z.string().min(3).optional(),
+    amendmentType: z.enum(["REFUND", "CHARGEBACK"]).optional(),
+    amountRefunded: z.number().int().nonnegative().optional(),
+    amount: z.number().int().positive().optional(),
+    refundId: z.string().min(1).optional(),
+    refundStatus: z.string().min(1).optional(),
+    refundAmount: z.number().int().nonnegative().optional(),
+    currency: z.string().min(3).optional(),
+    invoiceId: z.string().min(1).optional(),
+    chargeId: z.string().min(1).optional(),
+    paymentIntentId: z.string().min(1).optional(),
+    transactionId: z.string().min(1).optional(),
+    externalId: z.string().min(1).optional(),
+    orderId: z.string().min(1).optional(),
+    paymentId: z.string().min(1).optional(),
+    description: z.string().max(500).optional(),
+  })
+  .refine((v) => Boolean(v.participantId) || Boolean(v.participantEmail), {
+    message: "Provide participantId or participantEmail.",
+  })
+  .refine(
+    (v) =>
+      Boolean(
+        v.externalId || v.transactionId || v.orderId || v.paymentId || v.invoiceId || v.paymentIntentId || v.chargeId,
+      ),
+    {
+      message:
+        "Provide at least one transaction identifier (externalId, transactionId, orderId, paymentId, invoiceId, paymentIntentId, or chargeId).",
+    },
+  );
 
 const createMobileParticipantTokenSchema = addParticipantSchema;
 
@@ -759,7 +803,22 @@ const main = async () => {
         {
           name: "growsurf_trigger_referral",
           description:
-            "Trigger referral credit for a referred participant (use when your trigger is Sign up + Qualifying Action).",
+            "Trigger referral credit for a referred participant (use when your trigger is Sign up + Qualifying Action). Optionally pass delayInDays (1-90) to hold the credit for N days before awarding it (e.g. to cover a refund window).",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participantId: { type: "string" },
+              participantEmail: { type: "string" },
+              delayInDays: { type: "integer", minimum: 1, maximum: 90 },
+            },
+            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_cancel_delayed_referral",
+          description:
+            "Cancel a pending delayed referral trigger for a participant before the delay elapses (e.g. on refund/cancellation). Returns { success, message }.",
           inputSchema: {
             type: "object",
             properties: {
@@ -796,6 +855,35 @@ const main = async () => {
               description: { type: "string" },
             },
             required: ["currency", "grossAmount"],
+            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_refund_transaction",
+          description:
+            "Record an amendment (refund, partial refund, or chargeback) against a previously recorded affiliate transaction; reverses or adjusts the referrer's commission. The inverse of growsurf_record_sale. Identify the original transaction with the same identifier you sent when recording it (omit amountRefunded for a full refund). Already-paid commissions are not clawed back (recorded for tax only).",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participantId: { type: "string" },
+              participantEmail: { type: "string" },
+              amendmentType: { type: "string", enum: ["REFUND", "CHARGEBACK"] },
+              amountRefunded: { type: "integer" },
+              amount: { type: "integer" },
+              refundId: { type: "string" },
+              refundStatus: { type: "string" },
+              refundAmount: { type: "integer" },
+              currency: { type: "string" },
+              invoiceId: { type: "string" },
+              chargeId: { type: "string" },
+              paymentIntentId: { type: "string" },
+              transactionId: { type: "string" },
+              externalId: { type: "string" },
+              orderId: { type: "string" },
+              paymentId: { type: "string" },
+              description: { type: "string" },
+            },
             anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
             additionalProperties: false,
           },
@@ -959,8 +1047,16 @@ const main = async () => {
           const growsurf = requireGrowSurfClient(env);
           const input = triggerReferralSchema.parse(request.params.arguments ?? {});
           const result = input.participantId
-            ? await growsurf.triggerReferralByParticipantId(input.participantId)
-            : await growsurf.triggerReferralByParticipantEmail(input.participantEmail!);
+            ? await growsurf.triggerReferralByParticipantId(input.participantId, input.delayInDays)
+            : await growsurf.triggerReferralByParticipantEmail(input.participantEmail!, input.delayInDays);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_cancel_delayed_referral": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = cancelDelayedReferralSchema.parse(request.params.arguments ?? {});
+          const result = input.participantId
+            ? await growsurf.cancelDelayedReferralByParticipantId(input.participantId)
+            : await growsurf.cancelDelayedReferralByParticipantEmail(input.participantEmail!);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_record_sale": {
@@ -986,6 +1082,31 @@ const main = async () => {
           const result = input.participantId
             ? await growsurf.recordSaleByParticipantId(input.participantId, sale)
             : await growsurf.recordSaleByParticipantEmail(input.participantEmail!, sale);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_refund_transaction": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = refundTransactionSchema.parse(request.params.arguments ?? {});
+          const amendment = omitUndefined({
+            amendmentType: input.amendmentType,
+            amountRefunded: input.amountRefunded,
+            amount: input.amount,
+            refundId: input.refundId,
+            refundStatus: input.refundStatus,
+            refundAmount: input.refundAmount,
+            currency: input.currency,
+            invoiceId: input.invoiceId,
+            chargeId: input.chargeId,
+            paymentIntentId: input.paymentIntentId,
+            transactionId: input.transactionId,
+            externalId: input.externalId,
+            orderId: input.orderId,
+            paymentId: input.paymentId,
+            description: input.description,
+          }) as Record<string, unknown>;
+          const result = input.participantId
+            ? await growsurf.refundTransactionByParticipantId(input.participantId, amendment)
+            : await growsurf.refundTransactionByParticipantEmail(input.participantEmail!, amendment);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_create_mobile_participant_token": {
