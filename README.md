@@ -28,6 +28,8 @@ This MCP server is NOT for:
   - Webhooks
 - **Happy‑Path REST API Wrappers**:
   - Get campaign
+  - Create, update, and clone programs (campaigns)
+  - List, create, update, and delete program rewards (reward templates)
   - Add participant
   - Trigger referral credit (for referral programs), with optional delayed award (1-90 days)
   - Cancel a pending delayed referral trigger (for referral programs)
@@ -195,6 +197,27 @@ node dist/index.js
 
 - `growsurf_get_campaign`
   Fetch campaign configuration.
+
+- `growsurf_create_campaign`
+  Create a new program (campaign) with type-appropriate defaults and optional inline rewards (only needs `GROWSURF_API_KEY`, not `GROWSURF_CAMPAIGN_ID`).
+
+- `growsurf_update_campaign`
+  Update the program's configuration and/or status (only the fields you send are changed).
+
+- `growsurf_clone_campaign`
+  Clone the program into a new `DRAFT` program (integrations and credentials are not copied).
+
+- `growsurf_list_campaign_rewards`
+  List the program's configured rewards (reward templates).
+
+- `growsurf_create_campaign_reward`
+  Create a program reward (reward template).
+
+- `growsurf_update_campaign_reward`
+  Update a program reward (reward template) by its reward key.
+
+- `growsurf_delete_campaign_reward`
+  Delete a program reward (reward template) by its reward key.
 
 - `growsurf_add_participant`
   Add a participant (or referred participant) during signup.

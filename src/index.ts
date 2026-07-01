@@ -62,6 +62,14 @@ const requireGrowSurfClient = (env: Env): GrowSurfClient => {
   return new GrowSurfClient({ apiKey: env.GROWSURF_API_KEY, campaignId: env.GROWSURF_CAMPAIGN_ID });
 };
 
+// Creating a campaign (POST /campaigns) has no campaign id, so it only needs the API key.
+const requireGrowSurfApiKey = (env: Env): GrowSurfClient => {
+  if (!env.GROWSURF_API_KEY) {
+    throw new Error("Missing GrowSurf REST credentials. Set GROWSURF_API_KEY to use this tool.");
+  }
+  return new GrowSurfClient({ apiKey: env.GROWSURF_API_KEY, campaignId: env.GROWSURF_CAMPAIGN_ID ?? "" });
+};
+
 const safeJson = (value: unknown): string => JSON.stringify(value, null, 2);
 
 const toToolErrorText = (err: unknown): string => {
@@ -169,6 +177,72 @@ const refundTransactionSchema = z
         "Provide at least one transaction identifier (externalId, transactionId, orderId, paymentId, invoiceId, paymentIntentId, or chargeId).",
     },
   );
+
+const createCampaignSchema = z.object({
+  type: z.enum(["REFERRAL", "AFFILIATE"]),
+  name: z.string().min(1).optional(),
+  companyName: z.string().min(1).optional(),
+  companyLogoImageUrl: z.string().min(1).optional(),
+  currencyISO: z.string().min(3).max(3).optional(),
+  goal: z.string().min(1).optional(),
+  options: z.record(z.string(), z.unknown()).optional(),
+  rewards: z.array(z.record(z.string(), z.unknown())).optional(),
+});
+
+const updateCampaignSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    companyName: z.string().min(1).optional(),
+    companyLogoImageUrl: z.string().min(1).optional(),
+    currencyISO: z.string().min(3).max(3).optional(),
+    goal: z.string().min(1).optional(),
+    status: z.enum(["DRAFT", "PENDING", "IN_PROGRESS", "COMPLETE", "CANCELLED"]).optional(),
+    design: z.record(z.string(), z.unknown()).optional(),
+    emails: z.record(z.string(), z.unknown()).optional(),
+    options: z.record(z.string(), z.unknown()).optional(),
+    notifications: z.record(z.string(), z.unknown()).optional(),
+    installation: z.record(z.string(), z.unknown()).optional(),
+  })
+  .refine((v) => Object.values(v).some((x) => x !== undefined), {
+    message: "Provide at least one field to update.",
+  });
+
+// Writable fields shared by the create and update program-reward tools.
+const rewardWritableFields = {
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+  referralDescription: z.string().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
+  isActive: z.boolean().optional(),
+  isVisible: z.boolean().optional(),
+  isUnlimited: z.boolean().optional(),
+  referredRewardUpfront: z.boolean().optional(),
+  limit: z.number().int().min(0).optional(),
+  conversionsRequired: z.number().int().min(1).optional(),
+  numberOfWinners: z.number().int().min(0).optional(),
+  order: z.number().int().optional(),
+  limitDuration: z.enum(["IN_TOTAL", "PER_MONTH", "PER_YEAR"]).optional(),
+  nextMilestonePrefix: z.string().nullable().optional(),
+  nextMilestoneSuffix: z.string().nullable().optional(),
+  couponCode: z.string().nullable().optional(),
+  referralCouponCode: z.string().nullable().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  commissionStructure: z.record(z.string(), z.unknown()).optional(),
+};
+
+const createCampaignRewardSchema = z.object({
+  type: z.enum(["SINGLE_SIDED", "DOUBLE_SIDED", "MILESTONE", "LEADERBOARD", "AFFILIATE"]),
+  ...rewardWritableFields,
+});
+
+const updateCampaignRewardSchema = z.object({
+  rewardId: z.string().min(1),
+  ...rewardWritableFields,
+});
+
+const deleteCampaignRewardSchema = z.object({
+  rewardId: z.string().min(1),
+});
 
 const createMobileParticipantTokenSchema = addParticipantSchema;
 
@@ -315,6 +389,136 @@ const main = async () => {
           name: "growsurf_get_campaign",
           description: "Fetch your GrowSurf campaign (program) details via REST.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_create_campaign",
+          description:
+            "Create a new GrowSurf program (campaign) pre-populated with type-appropriate defaults, optionally with inline rewards. Only `type` is required; the program is created in DRAFT status owned by your API key's account. Does NOT require GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["REFERRAL", "AFFILIATE"] },
+              name: { type: "string" },
+              companyName: { type: "string" },
+              companyLogoImageUrl: { type: "string" },
+              currencyISO: { type: "string" },
+              goal: { type: "string" },
+              options: { type: "object", additionalProperties: true },
+              rewards: { type: "array", items: { type: "object", additionalProperties: true } },
+            },
+            required: ["type"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_update_campaign",
+          description:
+            "Update your GrowSurf program (campaign) configuration and/or status. Only the fields you send are changed. `type` and `urlId` are immutable. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              companyName: { type: "string" },
+              companyLogoImageUrl: { type: "string" },
+              currencyISO: { type: "string" },
+              goal: { type: "string" },
+              status: { type: "string", enum: ["DRAFT", "PENDING", "IN_PROGRESS", "COMPLETE", "CANCELLED"] },
+              design: { type: "object", additionalProperties: true },
+              emails: { type: "object", additionalProperties: true },
+              options: { type: "object", additionalProperties: true },
+              notifications: { type: "object", additionalProperties: true },
+              installation: { type: "object", additionalProperties: true },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_clone_campaign",
+          description:
+            "Clone your GrowSurf program (campaign) into a new DRAFT program. Integrations and credentials are not copied; active rewards are cloned. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_list_campaign_rewards",
+          description: "List your GrowSurf program's configured rewards (reward templates). Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_create_campaign_reward",
+          description:
+            "Create a new program reward (reward template) on your GrowSurf program. `type` must be compatible with the program type (affiliate programs support only AFFILIATE rewards; referral programs support the other types). Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["SINGLE_SIDED", "DOUBLE_SIDED", "MILESTONE", "LEADERBOARD", "AFFILIATE"] },
+              title: { type: "string" },
+              description: { type: "string" },
+              referralDescription: { type: "string" },
+              imageUrl: { type: "string" },
+              isActive: { type: "boolean" },
+              isVisible: { type: "boolean" },
+              isUnlimited: { type: "boolean" },
+              referredRewardUpfront: { type: "boolean" },
+              limit: { type: "integer", minimum: 0 },
+              conversionsRequired: { type: "integer", minimum: 1 },
+              numberOfWinners: { type: "integer", minimum: 0 },
+              order: { type: "integer" },
+              limitDuration: { type: "string", enum: ["IN_TOTAL", "PER_MONTH", "PER_YEAR"] },
+              nextMilestonePrefix: { type: "string" },
+              nextMilestoneSuffix: { type: "string" },
+              couponCode: { type: "string" },
+              referralCouponCode: { type: "string" },
+              metadata: { type: "object", additionalProperties: true },
+              commissionStructure: { type: "object", additionalProperties: true },
+            },
+            required: ["type"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_update_campaign_reward",
+          description:
+            "Update an existing program reward (reward template) on your GrowSurf program. `rewardId` is the reward key (e.g. crew_...). The reward `type` is immutable. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              rewardId: { type: "string" },
+              title: { type: "string" },
+              description: { type: "string" },
+              referralDescription: { type: "string" },
+              imageUrl: { type: "string" },
+              isActive: { type: "boolean" },
+              isVisible: { type: "boolean" },
+              isUnlimited: { type: "boolean" },
+              referredRewardUpfront: { type: "boolean" },
+              limit: { type: "integer", minimum: 0 },
+              conversionsRequired: { type: "integer", minimum: 1 },
+              numberOfWinners: { type: "integer", minimum: 0 },
+              order: { type: "integer" },
+              limitDuration: { type: "string", enum: ["IN_TOTAL", "PER_MONTH", "PER_YEAR"] },
+              nextMilestonePrefix: { type: "string" },
+              nextMilestoneSuffix: { type: "string" },
+              couponCode: { type: "string" },
+              referralCouponCode: { type: "string" },
+              metadata: { type: "object", additionalProperties: true },
+              commissionStructure: { type: "object", additionalProperties: true },
+            },
+            required: ["rewardId"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_delete_campaign_reward",
+          description:
+            "Delete a program reward (reward template) from your GrowSurf program. The reward is deactivated, removed from the program's reward set, and any connected upfront-discount coupons are cleaned up. `rewardId` is the reward key. Returns { id, success }. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              rewardId: { type: "string" },
+            },
+            required: ["rewardId"],
+            additionalProperties: false,
+          },
         },
         {
           name: "growsurf_add_participant",
@@ -559,6 +763,93 @@ const main = async () => {
         case "growsurf_get_campaign": {
           const growsurf = requireGrowSurfClient(env);
           const result = await growsurf.getCampaign();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_create_campaign": {
+          const growsurf = requireGrowSurfApiKey(env);
+          const input = createCampaignSchema.parse(request.params.arguments ?? {});
+          const body = omitUndefined({
+            type: input.type,
+            name: input.name,
+            companyName: input.companyName,
+            companyLogoImageUrl: input.companyLogoImageUrl,
+            currencyISO: input.currencyISO,
+            goal: input.goal,
+            options: input.options,
+            rewards: input.rewards,
+          }) as Record<string, unknown>;
+          const result = await growsurf.createCampaign(body);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_update_campaign": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = updateCampaignSchema.parse(request.params.arguments ?? {});
+          const fields = omitUndefined({
+            name: input.name,
+            companyName: input.companyName,
+            companyLogoImageUrl: input.companyLogoImageUrl,
+            currencyISO: input.currencyISO,
+            goal: input.goal,
+            status: input.status,
+            design: input.design,
+            emails: input.emails,
+            options: input.options,
+            notifications: input.notifications,
+            installation: input.installation,
+          }) as Record<string, unknown>;
+          const result = await growsurf.updateCampaign(fields);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_clone_campaign": {
+          const growsurf = requireGrowSurfClient(env);
+          const result = await growsurf.cloneCampaign();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_list_campaign_rewards": {
+          const growsurf = requireGrowSurfClient(env);
+          const result = await growsurf.listCampaignRewards();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_create_campaign_reward": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = createCampaignRewardSchema.parse(request.params.arguments ?? {});
+          const reward = omitUndefined({
+            type: input.type,
+            title: input.title,
+            description: input.description,
+            referralDescription: input.referralDescription,
+            imageUrl: input.imageUrl,
+            isActive: input.isActive,
+            isVisible: input.isVisible,
+            isUnlimited: input.isUnlimited,
+            referredRewardUpfront: input.referredRewardUpfront,
+            limit: input.limit,
+            conversionsRequired: input.conversionsRequired,
+            numberOfWinners: input.numberOfWinners,
+            order: input.order,
+            limitDuration: input.limitDuration,
+            nextMilestonePrefix: input.nextMilestonePrefix,
+            nextMilestoneSuffix: input.nextMilestoneSuffix,
+            couponCode: input.couponCode,
+            referralCouponCode: input.referralCouponCode,
+            metadata: input.metadata,
+            commissionStructure: input.commissionStructure,
+          }) as Record<string, unknown>;
+          const result = await growsurf.createCampaignReward(reward);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_update_campaign_reward": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = updateCampaignRewardSchema.parse(request.params.arguments ?? {});
+          const { rewardId, ...rest } = input;
+          const fields = omitUndefined(rest) as Record<string, unknown>;
+          const result = await growsurf.updateCampaignReward(rewardId, fields);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_delete_campaign_reward": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = deleteCampaignRewardSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.deleteCampaignReward(input.rewardId);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_add_participant": {

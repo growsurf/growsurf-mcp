@@ -160,6 +160,41 @@ export class GrowSurfClient {
     );
   }
 
+  async createCampaign(body: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("POST", `/campaigns`, body);
+  }
+
+  async updateCampaign(fields: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("PATCH", `/campaign/${encodeURIComponent(this.campaignId)}`, fields);
+  }
+
+  async cloneCampaign(): Promise<unknown> {
+    return this.requestJson("POST", `/campaign/${encodeURIComponent(this.campaignId)}/clone`);
+  }
+
+  async listCampaignRewards(): Promise<unknown> {
+    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/rewards`);
+  }
+
+  async createCampaignReward(reward: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("POST", `/campaign/${encodeURIComponent(this.campaignId)}/rewards`, reward);
+  }
+
+  async updateCampaignReward(rewardId: string, fields: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson(
+      "PATCH",
+      `/campaign/${encodeURIComponent(this.campaignId)}/rewards/${encodeURIComponent(rewardId)}`,
+      fields,
+    );
+  }
+
+  async deleteCampaignReward(rewardId: string): Promise<unknown> {
+    return this.requestJson(
+      "DELETE",
+      `/campaign/${encodeURIComponent(this.campaignId)}/rewards/${encodeURIComponent(rewardId)}`,
+    );
+  }
+
   private async recordSale(participantPath: string, sale: Record<string, unknown>): Promise<unknown> {
     // Docs show ".../transaction" while some examples use ".../sales".
     // Prefer the documented endpoint and fall back to the legacy path if needed.
@@ -175,7 +210,11 @@ export class GrowSurfClient {
     }
   }
 
-  private async requestJson(method: "GET" | "POST" | "DELETE", path: string, body?: unknown): Promise<unknown> {
+  private async requestJson(
+    method: "GET" | "POST" | "PATCH" | "DELETE",
+    path: string,
+    body?: unknown,
+  ): Promise<unknown> {
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,

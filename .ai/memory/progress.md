@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-07-01 - REST: campaign create/update/clone + program-reward CRUD
+
+- Synced the MCP server to the 7 new public REST v2 endpoints shipped in growsurf-api (canonical `growsurf-api/openapi/rest-v2.yaml`): `POST /campaigns`, `PATCH /campaign/{id}`, `POST /campaign/{id}/clone`, and program-reward (reward-template) CRUD on the plural path `GET|POST /campaign/{id}/rewards` + `PATCH|DELETE /campaign/{id}/rewards/{rewardId}`. Part of the cross-repo finalize step of `growsurf-api/.ai/plans/2026-07-01-rest-campaign-reward-crud-api.md`.
+- `src/growsurf/client.ts`: widened the private `requestJson` method union to add `"PATCH"` (was `GET|POST|DELETE`). Added 7 methods: `createCampaign(body)` (POST `/campaigns` — no campaign-id segment), `updateCampaign(fields)` (PATCH `/campaign/{id}`), `cloneCampaign()` (POST `.../clone`, no body), `listCampaignRewards()`, `createCampaignReward(reward)`, `updateCampaignReward(rewardId, fields)`, `deleteCampaignReward(rewardId)`.
+- `src/index.ts`: added a `requireGrowSurfApiKey(env)` helper (create-campaign has no id, so it only needs `GROWSURF_API_KEY`; constructs the client with an empty-string campaignId placeholder that `createCampaign` never reads). Added zod schemas (`createCampaignSchema`, `updateCampaignSchema` with an at-least-one-field refine, a shared `rewardWritableFields` object spread into `createCampaignRewardSchema`/`updateCampaignRewardSchema`, `deleteCampaignRewardSchema`), 7 tool definitions, and 7 `CallTool` switch cases. `growsurf_create_campaign` uses `requireGrowSurfApiKey`; the other 6 use `requireGrowSurfClient` and thread `this.campaignId`.
+- `README.md`: added the campaign/reward-management capabilities to "What you get" and 7 tool entries under "API & Tracking".
+- `test/client.test.ts`: added 7 regression tests (create → POST `/campaigns` with body + no id segment; update → PATCH with body; clone → POST no body; list rewards → GET plural path; create/update reward → POST/PATCH plural path with body; delete reward → DELETE no body returning `{ id, success }`).
+- Deliberately did NOT touch `src/growsurf/apiLibrarySnippets.ts` (per the 2026-06-28 decision — those mirror the official pinned per-language packages; re-add once regenerated). The hand-maintained `growsurf-stainless` SDKs are updated separately as their own repos.
+- Verified: `npm run typecheck`, `npm run lint`, `npm run build` clean; `npm run test` = 49 passed (7 files; client suite 4 → 11).
+- Released as **v0.5.0** (minor bump 0.4.1 → 0.5.0 for the 7 new campaign/reward tools); committed + tag `v0.5.0`, pushed to `dev` and `main`.
+
 ## 2026-06-29 - Library refactor: install-kit renderers + secret deny-list extracted (v0.4.0)
 
 - Extracted the four install-kit renderers out of `src/index.ts` into a reusable, separately-importable module so a sibling CommonJS app (growsurf-api) can render an install kit without depending on MCP internals. This is the "growsurf-mcp library refactor" step of `growsurf-api/.ai/plans/2026-06-29-github-integration-no-ai.md`.
