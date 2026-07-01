@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const MOBILE_SDK_GUIDANCE_VERSION = "0.3.2";
+const MOBILE_SDK_GUIDANCE_VERSION = "0.3.3";
 const IOS_DISTRIBUTION_URL = "https://github.com/growsurf/growsurf-ios-sdk-distribution.git";
 
 const codeBlock = (language: string, code: string): string => ["```" + language, code, "```"].join("\n");

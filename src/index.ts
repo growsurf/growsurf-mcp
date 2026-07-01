@@ -255,7 +255,7 @@ const main = async () => {
         {
           name: "growsurf_mobile_sdk_guide",
           description:
-            "Generate native iOS/Android SDK 0.3.2 guidance, including attribution, shareUrl sharing, trackShare, and the native GrowSurf Window.",
+            "Generate native iOS/Android SDK 0.3.3 guidance, including attribution, shareUrl sharing, trackShare, and the native GrowSurf Window.",
           inputSchema: {
             type: "object",
             properties: {
