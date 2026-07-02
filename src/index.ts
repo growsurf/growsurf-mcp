@@ -207,7 +207,7 @@ const updateCampaignSchema = z
     message: "Provide at least one field to update.",
   });
 
-// Writable fields shared by the create and update program-reward tools.
+// Writable fields shared by the create and update campaign-reward tools.
 const rewardWritableFields = {
   title: z.string().min(1).optional(),
   description: z.string().optional(),
@@ -446,7 +446,7 @@ const main = async () => {
         {
           name: "growsurf_create_campaign_reward",
           description:
-            "Create a new program reward (reward template) on your GrowSurf program. `type` must be compatible with the program type (affiliate programs support only AFFILIATE rewards; referral programs support the other types). Uses GROWSURF_CAMPAIGN_ID.",
+            "Create a new campaign reward (reward template) on your GrowSurf program. `type` must be compatible with the program type (affiliate programs support only AFFILIATE rewards; referral programs support the other types). Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -478,7 +478,7 @@ const main = async () => {
         {
           name: "growsurf_update_campaign_reward",
           description:
-            "Update an existing program reward (reward template) on your GrowSurf program. `rewardId` is the reward key (e.g. crew_...). The reward `type` is immutable. Uses GROWSURF_CAMPAIGN_ID.",
+            "Update an existing campaign reward (reward template) on your GrowSurf program. `rewardId` is the reward key (e.g. crew_...). The reward `type` is immutable. Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -510,7 +510,7 @@ const main = async () => {
         {
           name: "growsurf_delete_campaign_reward",
           description:
-            "Delete a program reward (reward template) from your GrowSurf program. The reward is deactivated, removed from the program's reward set, and any connected upfront-discount coupons are cleaned up. `rewardId` is the reward key. Returns { id, success }. Uses GROWSURF_CAMPAIGN_ID.",
+            "Delete a campaign reward (reward template) from your GrowSurf program. The reward is deactivated, removed from the program's reward set, and any connected upfront-discount coupons are cleaned up. `rewardId` is the reward key. Returns { id, success }. Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {

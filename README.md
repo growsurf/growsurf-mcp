@@ -29,7 +29,7 @@ This MCP server is NOT for:
 - **Happy‑Path REST API Wrappers**:
   - Get campaign
   - Create, update, and clone programs (campaigns)
-  - List, create, update, and delete program rewards (reward templates)
+  - List, create, update, and delete campaign rewards (reward templates)
   - Add participant
   - Trigger referral credit (for referral programs), with optional delayed award (1-90 days)
   - Cancel a pending delayed referral trigger (for referral programs)
@@ -211,13 +211,13 @@ node dist/index.js
   List the program's configured rewards (reward templates).
 
 - `growsurf_create_campaign_reward`
-  Create a program reward (reward template).
+  Create a campaign reward (reward template).
 
 - `growsurf_update_campaign_reward`
-  Update a program reward (reward template) by its reward key.
+  Update a campaign reward (reward template) by its reward key.
 
 - `growsurf_delete_campaign_reward`
-  Delete a program reward (reward template) by its reward key.
+  Delete a campaign reward (reward template) by its reward key.
 
 - `growsurf_add_participant`
   Add a participant (or referred participant) during signup.
