@@ -1,5 +1,26 @@
 # Progress
 
+## 2026-07-03 - Campaign-reward tools: add `value`/`referredValue` tax valuations
+
+- Synced the campaign-reward create/update tools to the growsurf-api contract additions (`rest-v2.yaml` schemas `RewardWritableFields`/`Reward`/`RewardTaxValuation`): writable `value` and `referredValue` objects (`{ fairMarketValueUSD: number|null (min 0), isTaxReportable: boolean|null }`; `null` = clear / smart default). Reward responses now also echo `referralCouponCode`/`value`/`referredValue` — no MCP change needed for that since responses are untyped `safeJson` passthrough and no tool description enumerates response fields.
+- `src/index.ts`: shared `rewardTaxValuationSchema` zod object spread into `rewardWritableFields` as `value`/`referredValue`; both tools' JSON `inputSchema.properties` gained the two objects with field descriptions (used `type: ["number","null"]` / `["boolean","null"]` on the sub-fields — a deviation from the plain-`string` convention for nullable scalars elsewhere, because sending `null` is semantically load-bearing here); create handler passes `value`/`referredValue` into `createCampaignReward` (update handler already spreads `...rest`). `referralCouponCode` audit: already present in zod + both JSON schemas + create handler — no gap.
+- `test/client.test.ts`: extended the create-reward test body with `referralCouponCode` + `value` + `referredValue` (incl. a `null` fairMarketValueUSD) and the update-reward test with `referralCouponCode: null` + `value` with `isTaxReportable: null`, asserting exact JSON body passthrough.
+- Verified: `npm run typecheck` clean, `npm run test` = 57 passed (7 files), `npm run lint` clean, `npm run build` clean; live stdio `tools/list` against the rebuilt `dist/index.js` shows both tools advertising `value`/`referredValue`/`referralCouponCode` with the nullable sub-field types and descriptions. No git/publish commands run.
+
+## 2026-07-03 - Remove `goal` from REST campaign create/update tools
+
+- Dropped the `goal` request field from `growsurf_create_campaign` and `growsurf_update_campaign`, matching a growsurf-api contract change (Kevin): `goal` is no longer accepted on `POST /campaigns` / `PATCH /campaign/{id}`. It stays an internal/dashboard property surfaced on growsurf-website powered-by pages (via the dashboard/mobile serializer) and was never on the public REST response — so this is request-side-only.
+- `src/index.ts`: removed `goal` from the zod `createCampaignSchema` + `updateCampaignSchema`, both tools' JSON `inputSchema.properties`, both handler body/fields maps, and the update tool description's field list. No `goal` remains in `src/` (the `PARTICIPANT_REACHED_A_GOAL` webhook constant in `webhooks.ts` is unrelated and untouched).
+- Verified: `npm run typecheck` clean, `npm run test` = 57 passed, `npm run build` clean, rebuilt `dist/index.js` grep-clean of `goal`. No git/publish commands run.
+- Part of a same-day cross-repo batch: growsurf-api (openapi + write-service field-lists + validation + tests; full suite 3302 green) and all 5 Stainless SDKs.
+
+## 2026-07-03 - Fix: campaign-update `status` enum drifted from API contract
+
+- The `growsurf_update_campaign` tool advertised `status` with all five lifecycle values (`DRAFT`, `PENDING`, `IN_PROGRESS`, `COMPLETE`, `CANCELLED`), but growsurf-api's `PATCH /campaign/{id}` validates `status` against `UPDATABLE_CAMPAIGN_STATUSES` — the deduped *targets* of `ALLOWED_STATUS_TRANSITIONS` (rest-campaign-write.service), which resolves to exactly `[IN_PROGRESS, COMPLETE]`. `body('status').isIn(...)` (validation.js) rejects the other three with a 400 before the service runs, so the schema was inviting the model to send values the API always refuses.
+- `src/index.ts`: narrowed both the zod `updateCampaignSchema.status` (with a block comment citing the API source of truth) and the `growsurf_update_campaign` JSON `inputSchema.status` to `["IN_PROGRESS", "COMPLETE"]`; added a field `description` (IN_PROGRESS = publish/resume, COMPLETE = end) and folded the same clarification into the tool description. Only occurrences of the five-value set in `src/` — no read/list-by-status filter exists here, so nothing legitimately needed the full set.
+- Scope check: no test asserted the five-value set (the one update test sends `IN_PROGRESS`, still valid); no README refs; `create` already omits `status` (server creates DRAFT). `dist/` is gitignored/regenerated.
+- Verified: `npm run typecheck` clean, `npm run test` = 57 passed (7 files), `npm run build` clean (rebuilt `dist/index.js` emits the two-value enum at both sites). No git/publish commands run.
+
 ## 2026-07-01 - REST: campaign create/update/clone + campaign-reward CRUD
 
 - Synced the MCP server to the 7 new public REST v2 endpoints shipped in growsurf-api (canonical `growsurf-api/openapi/rest-v2.yaml`): `POST /campaigns`, `PATCH /campaign/{id}`, `POST /campaign/{id}/clone`, and campaign-reward (reward-template) CRUD on the plural path `GET|POST /campaign/{id}/rewards` + `PATCH|DELETE /campaign/{id}/rewards/{rewardId}`. Part of the cross-repo finalize step of `growsurf-api/.ai/plans/2026-07-01-rest-campaign-reward-crud-api.md`.

@@ -178,34 +178,51 @@ const refundTransactionSchema = z
     },
   );
 
+// Create = type + identity + inline rewards only. Editor-tab config (options, design,
+// emails, installation) is NOT accepted here; configure it via the config sub-resource
+// tools after the program is created.
 const createCampaignSchema = z.object({
   type: z.enum(["REFERRAL", "AFFILIATE"]),
   name: z.string().min(1).optional(),
   companyName: z.string().min(1).optional(),
   companyLogoImageUrl: z.string().min(1).optional(),
   currencyISO: z.string().min(3).max(3).optional(),
-  goal: z.string().min(1).optional(),
-  options: z.record(z.string(), z.unknown()).optional(),
   rewards: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
+// Update = identity/lifecycle only. Editor-tab config (design, emails, options,
+// notifications, installation) is edited via the dedicated config sub-resource tools,
+// not here — the API rejects those fields on this endpoint.
 const updateCampaignSchema = z
   .object({
     name: z.string().min(1).optional(),
     companyName: z.string().min(1).optional(),
     companyLogoImageUrl: z.string().min(1).optional(),
-    currencyISO: z.string().min(3).max(3).optional(),
-    goal: z.string().min(1).optional(),
-    status: z.enum(["DRAFT", "PENDING", "IN_PROGRESS", "COMPLETE", "CANCELLED"]).optional(),
-    design: z.record(z.string(), z.unknown()).optional(),
-    emails: z.record(z.string(), z.unknown()).optional(),
-    options: z.record(z.string(), z.unknown()).optional(),
-    notifications: z.record(z.string(), z.unknown()).optional(),
-    installation: z.record(z.string(), z.unknown()).optional(),
+    // currencyISO is intentionally absent: currency is chosen once at creation and is immutable —
+    // the update endpoint rejects it with a 400. It is only settable via growsurf_create_campaign.
+    // Only IN_PROGRESS (publish/resume) and COMPLETE (end) are accepted as PATCH status
+    // targets. The API rejects DRAFT/PENDING/CANCELLED with a 400 (they would stamp
+    // deletedAt on a live campaign). Mirrors growsurf-api UPDATABLE_CAMPAIGN_STATUSES,
+    // derived from rest-campaign-write.service ALLOWED_STATUS_TRANSITIONS.
+    status: z.enum(["IN_PROGRESS", "COMPLETE"]).optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), {
     message: "Provide at least one field to update.",
   });
+
+// Permissive request body shared by the four campaign config sub-resource update tools.
+// PATCH is a partial merge, so every field is optional; see the GrowSurf REST API
+// reference for the full field-level schemas of each editor tab.
+const campaignConfigUpdateSchema = z.object({
+  fields: z.record(z.string(), z.unknown()),
+});
+
+// Tax valuation settings shared by the reward `value` and `referredValue` fields
+// (openapi RewardTaxValuation). `null` on either sub-field means "clear / use the smart default".
+const rewardTaxValuationSchema = z.object({
+  fairMarketValueUSD: z.number().min(0).nullable().optional(),
+  isTaxReportable: z.boolean().nullable().optional(),
+});
 
 // Writable fields shared by the create and update campaign-reward tools.
 const rewardWritableFields = {
@@ -228,6 +245,8 @@ const rewardWritableFields = {
   referralCouponCode: z.string().nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   commissionStructure: z.record(z.string(), z.unknown()).optional(),
+  value: rewardTaxValuationSchema.optional(),
+  referredValue: rewardTaxValuationSchema.optional(),
 };
 
 const createCampaignRewardSchema = z.object({
@@ -236,12 +255,12 @@ const createCampaignRewardSchema = z.object({
 });
 
 const updateCampaignRewardSchema = z.object({
-  rewardId: z.string().min(1),
+  campaignRewardId: z.string().min(1),
   ...rewardWritableFields,
 });
 
 const deleteCampaignRewardSchema = z.object({
-  rewardId: z.string().min(1),
+  campaignRewardId: z.string().min(1),
 });
 
 const createMobileParticipantTokenSchema = addParticipantSchema;
@@ -393,7 +412,7 @@ const main = async () => {
         {
           name: "growsurf_create_campaign",
           description:
-            "Create a new GrowSurf program (campaign) pre-populated with type-appropriate defaults, optionally with inline rewards. Only `type` is required; the program is created in DRAFT status owned by your API key's account. Does NOT require GROWSURF_CAMPAIGN_ID.",
+            "Create a new GrowSurf program (campaign) pre-populated with type-appropriate defaults, optionally with inline rewards. Only `type` is required; the program is created in DRAFT status owned by your API key's account. `currencyISO` sets the program's currency (defaults to USD) and is immutable after creation. Editor-tab config (design, emails, options, installation) is not accepted here — configure it after creation with the config sub-resource tools. Does NOT require GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -402,8 +421,6 @@ const main = async () => {
               companyName: { type: "string" },
               companyLogoImageUrl: { type: "string" },
               currencyISO: { type: "string" },
-              goal: { type: "string" },
-              options: { type: "object", additionalProperties: true },
               rewards: { type: "array", items: { type: "object", additionalProperties: true } },
             },
             required: ["type"],
@@ -413,21 +430,19 @@ const main = async () => {
         {
           name: "growsurf_update_campaign",
           description:
-            "Update your GrowSurf program (campaign) configuration and/or status. Only the fields you send are changed. `type` and `urlId` are immutable. Uses GROWSURF_CAMPAIGN_ID.",
+            "Update your GrowSurf program's (campaign's) identity and lifecycle: name, companyName, companyLogoImageUrl, and status (set IN_PROGRESS to publish/resume the program, COMPLETE to end it). Only the fields you send are changed. `type`, `urlId`, and `currencyISO` are immutable (currency is chosen once at program creation), so this tool does not accept them. Editor-tab config (design, emails, options, installation) is edited with the dedicated config sub-resource tools, not here. Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
               name: { type: "string" },
               companyName: { type: "string" },
               companyLogoImageUrl: { type: "string" },
-              currencyISO: { type: "string" },
-              goal: { type: "string" },
-              status: { type: "string", enum: ["DRAFT", "PENDING", "IN_PROGRESS", "COMPLETE", "CANCELLED"] },
-              design: { type: "object", additionalProperties: true },
-              emails: { type: "object", additionalProperties: true },
-              options: { type: "object", additionalProperties: true },
-              notifications: { type: "object", additionalProperties: true },
-              installation: { type: "object", additionalProperties: true },
+              status: {
+                type: "string",
+                enum: ["IN_PROGRESS", "COMPLETE"],
+                description:
+                  "Lifecycle transition. IN_PROGRESS publishes/resumes the program; COMPLETE ends it. These are the only accepted targets — DRAFT/PENDING/CANCELLED are rejected by the API.",
+              },
             },
             additionalProperties: false,
           },
@@ -440,13 +455,13 @@ const main = async () => {
         },
         {
           name: "growsurf_list_campaign_rewards",
-          description: "List your GrowSurf program's configured rewards (reward templates). Uses GROWSURF_CAMPAIGN_ID.",
+          description: "List your GrowSurf program's configured rewards (reward configs). Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_create_campaign_reward",
           description:
-            "Create a new campaign reward (reward template) on your GrowSurf program. `type` must be compatible with the program type (affiliate programs support only AFFILIATE rewards; referral programs support the other types). Uses GROWSURF_CAMPAIGN_ID.",
+            "Create a new campaign reward (reward config) on your GrowSurf program. `type` must be compatible with the program type (affiliate programs support only AFFILIATE rewards; referral programs support the other types). Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -470,6 +485,26 @@ const main = async () => {
               referralCouponCode: { type: "string" },
               metadata: { type: "object", additionalProperties: true },
               commissionStructure: { type: "object", additionalProperties: true },
+              value: {
+                type: "object",
+                description:
+                  "Tax valuation for the reward (the referrer's side of a double-sided reward). fairMarketValueUSD = manual fair-market value in USD (major units); isTaxReportable = whether it counts toward 1099 thresholds (null = smart default).",
+                properties: {
+                  fairMarketValueUSD: { type: ["number", "null"], minimum: 0 },
+                  isTaxReportable: { type: ["boolean", "null"] },
+                },
+                additionalProperties: false,
+              },
+              referredValue: {
+                type: "object",
+                description:
+                  "Tax valuation for the referred friend's side of a double-sided reward. Defaults to not tax-reportable (a purchase rebate).",
+                properties: {
+                  fairMarketValueUSD: { type: ["number", "null"], minimum: 0 },
+                  isTaxReportable: { type: ["boolean", "null"] },
+                },
+                additionalProperties: false,
+              },
             },
             required: ["type"],
             additionalProperties: false,
@@ -478,11 +513,11 @@ const main = async () => {
         {
           name: "growsurf_update_campaign_reward",
           description:
-            "Update an existing campaign reward (reward template) on your GrowSurf program. `rewardId` is the reward key (e.g. crew_...). The reward `type` is immutable. Uses GROWSURF_CAMPAIGN_ID.",
+            "Update an existing campaign reward (reward config) on your GrowSurf program. `campaignRewardId` is the reward key (e.g. crew_...). The reward `type` is immutable. Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
-              rewardId: { type: "string" },
+              campaignRewardId: { type: "string" },
               title: { type: "string" },
               description: { type: "string" },
               referralDescription: { type: "string" },
@@ -502,21 +537,117 @@ const main = async () => {
               referralCouponCode: { type: "string" },
               metadata: { type: "object", additionalProperties: true },
               commissionStructure: { type: "object", additionalProperties: true },
+              value: {
+                type: "object",
+                description:
+                  "Tax valuation for the reward (the referrer's side of a double-sided reward). fairMarketValueUSD = manual fair-market value in USD (major units); isTaxReportable = whether it counts toward 1099 thresholds (null = smart default).",
+                properties: {
+                  fairMarketValueUSD: { type: ["number", "null"], minimum: 0 },
+                  isTaxReportable: { type: ["boolean", "null"] },
+                },
+                additionalProperties: false,
+              },
+              referredValue: {
+                type: "object",
+                description:
+                  "Tax valuation for the referred friend's side of a double-sided reward. Defaults to not tax-reportable (a purchase rebate).",
+                properties: {
+                  fairMarketValueUSD: { type: ["number", "null"], minimum: 0 },
+                  isTaxReportable: { type: ["boolean", "null"] },
+                },
+                additionalProperties: false,
+              },
             },
-            required: ["rewardId"],
+            required: ["campaignRewardId"],
             additionalProperties: false,
           },
         },
         {
           name: "growsurf_delete_campaign_reward",
           description:
-            "Delete a campaign reward (reward template) from your GrowSurf program. The reward is deactivated, removed from the program's reward set, and any connected upfront-discount coupons are cleaned up. `rewardId` is the reward key. Returns { id, success }. Uses GROWSURF_CAMPAIGN_ID.",
+            "Delete a campaign reward (reward config) from your GrowSurf program. The reward is deactivated, removed from the program's reward set, and any connected upfront-discount coupons are cleaned up. `campaignRewardId` is the reward key. Returns { id, success }. Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
-              rewardId: { type: "string" },
+              campaignRewardId: { type: "string" },
             },
-            required: ["rewardId"],
+            required: ["campaignRewardId"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_get_campaign_design",
+          description:
+            "Fetch the Design tab configuration for your GrowSurf program (colors, fonts, sharing sections, and other appearance settings). Returns a large nested object; see the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_update_campaign_design",
+          description:
+            "Update the Design tab configuration for your GrowSurf program. This is a partial merge — pass only the nested fields you want to change under `fields`. See the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              fields: { type: "object", additionalProperties: true },
+            },
+            required: ["fields"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_get_campaign_emails",
+          description:
+            "Fetch the Emails tab configuration for your GrowSurf program (participant and admin email templates and settings). Returns a large nested object; see the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_update_campaign_emails",
+          description:
+            "Update the Emails tab configuration for your GrowSurf program. This is a partial merge — pass only the nested fields you want to change under `fields`. See the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              fields: { type: "object", additionalProperties: true },
+            },
+            required: ["fields"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_get_campaign_options",
+          description:
+            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, fraud/firewall settings, notifications, and other behavior options). Returns a large nested object; see the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_update_campaign_options",
+          description:
+            "Update the Options tab configuration for your GrowSurf program. This is a partial merge — pass only the nested fields you want to change under `fields`. See the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              fields: { type: "object", additionalProperties: true },
+            },
+            required: ["fields"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_get_campaign_installation",
+          description:
+            "Fetch the Installation tab configuration for your GrowSurf program (embed/installation and tracking setup). Returns a large nested object; see the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_update_campaign_installation",
+          description:
+            "Update the Installation tab configuration for your GrowSurf program. This is a partial merge — pass only the nested fields you want to change under `fields`. See the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              fields: { type: "object", additionalProperties: true },
+            },
+            required: ["fields"],
             additionalProperties: false,
           },
         },
@@ -774,8 +905,6 @@ const main = async () => {
             companyName: input.companyName,
             companyLogoImageUrl: input.companyLogoImageUrl,
             currencyISO: input.currencyISO,
-            goal: input.goal,
-            options: input.options,
             rewards: input.rewards,
           }) as Record<string, unknown>;
           const result = await growsurf.createCampaign(body);
@@ -788,14 +917,7 @@ const main = async () => {
             name: input.name,
             companyName: input.companyName,
             companyLogoImageUrl: input.companyLogoImageUrl,
-            currencyISO: input.currencyISO,
-            goal: input.goal,
             status: input.status,
-            design: input.design,
-            emails: input.emails,
-            options: input.options,
-            notifications: input.notifications,
-            installation: input.installation,
           }) as Record<string, unknown>;
           const result = await growsurf.updateCampaign(fields);
           return { content: [{ type: "text", text: safeJson(result) }] };
@@ -834,6 +956,8 @@ const main = async () => {
             referralCouponCode: input.referralCouponCode,
             metadata: input.metadata,
             commissionStructure: input.commissionStructure,
+            value: input.value,
+            referredValue: input.referredValue,
           }) as Record<string, unknown>;
           const result = await growsurf.createCampaignReward(reward);
           return { content: [{ type: "text", text: safeJson(result) }] };
@@ -841,15 +965,59 @@ const main = async () => {
         case "growsurf_update_campaign_reward": {
           const growsurf = requireGrowSurfClient(env);
           const input = updateCampaignRewardSchema.parse(request.params.arguments ?? {});
-          const { rewardId, ...rest } = input;
+          const { campaignRewardId, ...rest } = input;
           const fields = omitUndefined(rest) as Record<string, unknown>;
-          const result = await growsurf.updateCampaignReward(rewardId, fields);
+          const result = await growsurf.updateCampaignReward(campaignRewardId, fields);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_delete_campaign_reward": {
           const growsurf = requireGrowSurfClient(env);
           const input = deleteCampaignRewardSchema.parse(request.params.arguments ?? {});
-          const result = await growsurf.deleteCampaignReward(input.rewardId);
+          const result = await growsurf.deleteCampaignReward(input.campaignRewardId);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_get_campaign_design": {
+          const growsurf = requireGrowSurfClient(env);
+          const result = await growsurf.getCampaignDesign();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_update_campaign_design": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.updateCampaignDesign(input.fields);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_get_campaign_emails": {
+          const growsurf = requireGrowSurfClient(env);
+          const result = await growsurf.getCampaignEmails();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_update_campaign_emails": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.updateCampaignEmails(input.fields);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_get_campaign_options": {
+          const growsurf = requireGrowSurfClient(env);
+          const result = await growsurf.getCampaignOptions();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_update_campaign_options": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.updateCampaignOptions(input.fields);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_get_campaign_installation": {
+          const growsurf = requireGrowSurfClient(env);
+          const result = await growsurf.getCampaignInstallation();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_update_campaign_installation": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.updateCampaignInstallation(input.fields);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_add_participant": {

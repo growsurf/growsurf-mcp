@@ -173,26 +173,62 @@ export class GrowSurfClient {
   }
 
   async listCampaignRewards(): Promise<unknown> {
-    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/rewards`);
+    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/reward-configs`);
   }
 
   async createCampaignReward(reward: Record<string, unknown>): Promise<unknown> {
-    return this.requestJson("POST", `/campaign/${encodeURIComponent(this.campaignId)}/rewards`, reward);
+    return this.requestJson("POST", `/campaign/${encodeURIComponent(this.campaignId)}/reward-configs`, reward);
   }
 
-  async updateCampaignReward(rewardId: string, fields: Record<string, unknown>): Promise<unknown> {
+  async updateCampaignReward(campaignRewardId: string, fields: Record<string, unknown>): Promise<unknown> {
     return this.requestJson(
       "PATCH",
-      `/campaign/${encodeURIComponent(this.campaignId)}/rewards/${encodeURIComponent(rewardId)}`,
+      `/campaign/${encodeURIComponent(this.campaignId)}/reward-configs/${encodeURIComponent(campaignRewardId)}`,
       fields,
     );
   }
 
-  async deleteCampaignReward(rewardId: string): Promise<unknown> {
+  async deleteCampaignReward(campaignRewardId: string): Promise<unknown> {
     return this.requestJson(
       "DELETE",
-      `/campaign/${encodeURIComponent(this.campaignId)}/rewards/${encodeURIComponent(rewardId)}`,
+      `/campaign/${encodeURIComponent(this.campaignId)}/reward-configs/${encodeURIComponent(campaignRewardId)}`,
     );
+  }
+
+  // Campaign config sub-resources — one GET/PATCH pair per dashboard Program Editor tab
+  // (design, emails, options, installation). Bodies/responses are large nested objects;
+  // see the GrowSurf REST API reference for the full field-level schemas.
+
+  async getCampaignDesign(): Promise<unknown> {
+    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/design`);
+  }
+
+  async updateCampaignDesign(fields: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("PATCH", `/campaign/${encodeURIComponent(this.campaignId)}/design`, fields);
+  }
+
+  async getCampaignEmails(): Promise<unknown> {
+    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/emails`);
+  }
+
+  async updateCampaignEmails(fields: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("PATCH", `/campaign/${encodeURIComponent(this.campaignId)}/emails`, fields);
+  }
+
+  async getCampaignOptions(): Promise<unknown> {
+    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/options`);
+  }
+
+  async updateCampaignOptions(fields: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("PATCH", `/campaign/${encodeURIComponent(this.campaignId)}/options`, fields);
+  }
+
+  async getCampaignInstallation(): Promise<unknown> {
+    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/installation`);
+  }
+
+  async updateCampaignInstallation(fields: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("PATCH", `/campaign/${encodeURIComponent(this.campaignId)}/installation`, fields);
   }
 
   private async recordSale(participantPath: string, sale: Record<string, unknown>): Promise<unknown> {

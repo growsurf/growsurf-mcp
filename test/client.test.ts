@@ -158,7 +158,7 @@ describe("GrowSurfClient", () => {
     expect(init.body).toBeUndefined();
   });
 
-  it("lists campaign rewards with a GET on the plural rewards path", async () => {
+  it("lists campaign rewards with a GET on the reward-configs path", async () => {
     const fetchMock = mockJson({ rewards: [] });
     globalThis.fetch = fetchMock as typeof fetch;
 
@@ -166,39 +166,59 @@ describe("GrowSurfClient", () => {
     await client.listCampaignRewards();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.growsurf.com/v2/campaign/abc123/rewards",
+      "https://api.growsurf.com/v2/campaign/abc123/reward-configs",
       expect.objectContaining({ method: "GET" }),
     );
   });
 
-  it("creates a campaign reward with a POST on the plural rewards path", async () => {
+  it("creates a campaign reward with a POST on the reward-configs path", async () => {
     const fetchMock = mockJson({ id: "crew_1", type: "SINGLE_SIDED" });
     globalThis.fetch = fetchMock as typeof fetch;
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
-    await client.createCampaignReward({ type: "SINGLE_SIDED", title: "Reward" });
+    await client.createCampaignReward({
+      type: "SINGLE_SIDED",
+      title: "Reward",
+      referralCouponCode: "FRIEND10",
+      value: { fairMarketValueUSD: 25, isTaxReportable: true },
+      referredValue: { fairMarketValueUSD: null, isTaxReportable: false },
+    });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.growsurf.com/v2/campaign/abc123/rewards",
+      "https://api.growsurf.com/v2/campaign/abc123/reward-configs",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ type: "SINGLE_SIDED", title: "Reward" }),
+        body: JSON.stringify({
+          type: "SINGLE_SIDED",
+          title: "Reward",
+          referralCouponCode: "FRIEND10",
+          value: { fairMarketValueUSD: 25, isTaxReportable: true },
+          referredValue: { fairMarketValueUSD: null, isTaxReportable: false },
+        }),
       }),
     );
   });
 
-  it("updates a campaign reward with a PATCH on the plural rewards path", async () => {
+  it("updates a campaign reward with a PATCH on the reward-configs path", async () => {
     const fetchMock = mockJson({ id: "crew_1" });
     globalThis.fetch = fetchMock as typeof fetch;
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
-    await client.updateCampaignReward("crew_1", { isActive: false });
+    await client.updateCampaignReward("crew_1", {
+      isActive: false,
+      referralCouponCode: null,
+      value: { fairMarketValueUSD: 10, isTaxReportable: null },
+    });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.growsurf.com/v2/campaign/abc123/rewards/crew_1",
+      "https://api.growsurf.com/v2/campaign/abc123/reward-configs/crew_1",
       expect.objectContaining({
         method: "PATCH",
-        body: JSON.stringify({ isActive: false }),
+        body: JSON.stringify({
+          isActive: false,
+          referralCouponCode: null,
+          value: { fairMarketValueUSD: 10, isTaxReportable: null },
+        }),
       }),
     );
   });
@@ -212,10 +232,56 @@ describe("GrowSurfClient", () => {
 
     expect(result).toEqual({ id: "crew_1", success: true });
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.growsurf.com/v2/campaign/abc123/rewards/crew_1",
+      "https://api.growsurf.com/v2/campaign/abc123/reward-configs/crew_1",
       expect.objectContaining({ method: "DELETE" }),
     );
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.body).toBeUndefined();
   });
+
+  for (const resource of ["design", "emails", "options", "installation"] as const) {
+    const capitalized = resource.charAt(0).toUpperCase() + resource.slice(1);
+    const getMethod = `getCampaign${capitalized}` as
+      | "getCampaignDesign"
+      | "getCampaignEmails"
+      | "getCampaignOptions"
+      | "getCampaignInstallation";
+    const updateMethod = `updateCampaign${capitalized}` as
+      | "updateCampaignDesign"
+      | "updateCampaignEmails"
+      | "updateCampaignOptions"
+      | "updateCampaignInstallation";
+
+    it(`gets the ${resource} config with a GET on the ${resource} sub-resource path`, async () => {
+      const fetchMock = mockJson({ [resource]: {} });
+      globalThis.fetch = fetchMock as typeof fetch;
+
+      const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+      await client[getMethod]();
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `https://api.growsurf.com/v2/campaign/abc123/${resource}`,
+        expect.objectContaining({ method: "GET" }),
+      );
+      const init = fetchMock.mock.calls[0][1] as RequestInit;
+      expect(init.body).toBeUndefined();
+    });
+
+    it(`updates the ${resource} config with a PATCH and a partial body`, async () => {
+      const fetchMock = mockJson({ [resource]: {} });
+      globalThis.fetch = fetchMock as typeof fetch;
+
+      const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+      await client[updateMethod]({ nested: { changed: true } });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `https://api.growsurf.com/v2/campaign/abc123/${resource}`,
+        expect.objectContaining({
+          method: "PATCH",
+          headers: expect.objectContaining({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ nested: { changed: true } }),
+        }),
+      );
+    });
+  }
 });
