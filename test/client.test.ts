@@ -205,7 +205,6 @@ describe("GrowSurfClient", () => {
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
     await client.updateCampaignReward("crew_1", {
-      isActive: false,
       referralCouponCode: null,
       value: { fairMarketValueUSD: 10, isTaxReportable: null },
     });
@@ -215,7 +214,6 @@ describe("GrowSurfClient", () => {
       expect.objectContaining({
         method: "PATCH",
         body: JSON.stringify({
-          isActive: false,
           referralCouponCode: null,
           value: { fairMarketValueUSD: 10, isTaxReportable: null },
         }),
