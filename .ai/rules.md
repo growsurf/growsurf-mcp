@@ -5,7 +5,7 @@
 ## Session Start Rules
 
 - Always read `.ai/CONTEXT.md` and this file before making changes.
-- Read `.ai/memory/progress.md` when it exists to understand current MCP/package state.
+- Read `.ai/memory/progress.md` **on demand** — pull it when the task needs recent MCP/package history, not routinely at session start (it is a large, unbounded dated log; `.ai/CONTEXT.md` carries the durable current-state facts).
 - Check installed skills before non-trivial work, especially MCP, TypeScript, API docs, SDK guidance, and testing tasks.
 - Treat `/Users/kevinyun/Coding/growsurf` as a multi-repo parent. Keep MCP-owned changes inside this repo unless a sibling repo explicitly owns the surface being updated.
 

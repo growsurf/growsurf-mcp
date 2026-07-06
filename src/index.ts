@@ -120,6 +120,24 @@ const cancelDelayedReferralSchema = z
     message: "Provide participantId or participantEmail.",
   });
 
+// Shared by the record-sale and refund schemas: at least one of these transaction identifiers must be
+// present so the request can be matched to (or distinguished from) an existing commission.
+const hasTransactionIdentifier = (v: {
+  externalId?: string | undefined;
+  transactionId?: string | undefined;
+  orderId?: string | undefined;
+  paymentId?: string | undefined;
+  invoiceId?: string | undefined;
+  paymentIntentId?: string | undefined;
+  chargeId?: string | undefined;
+}) =>
+  Boolean(
+    v.externalId || v.transactionId || v.orderId || v.paymentId || v.invoiceId || v.paymentIntentId || v.chargeId,
+  );
+
+const TRANSACTION_IDENTIFIER_HINT =
+  "at least one transaction identifier (externalId, transactionId, orderId, paymentId, invoiceId, paymentIntentId, or chargeId)";
+
 const recordSaleSchema = z
   .object({
     participantId: z.string().min(1).optional(),
@@ -142,6 +160,11 @@ const recordSaleSchema = z
   })
   .refine((v) => Boolean(v.participantId) || Boolean(v.participantEmail), {
     message: "Provide participantId or participantEmail.",
+  })
+  // At least one transaction identifier is required so a resent sale is de-duplicated instead of
+  // creating a second commission (symmetric with the refund endpoint).
+  .refine(hasTransactionIdentifier, {
+    message: `Provide ${TRANSACTION_IDENTIFIER_HINT} so the sale can be de-duplicated.`,
   });
 
 const refundTransactionSchema = z
@@ -167,16 +190,9 @@ const refundTransactionSchema = z
   .refine((v) => Boolean(v.participantId) || Boolean(v.participantEmail), {
     message: "Provide participantId or participantEmail.",
   })
-  .refine(
-    (v) =>
-      Boolean(
-        v.externalId || v.transactionId || v.orderId || v.paymentId || v.invoiceId || v.paymentIntentId || v.chargeId,
-      ),
-    {
-      message:
-        "Provide at least one transaction identifier (externalId, transactionId, orderId, paymentId, invoiceId, paymentIntentId, or chargeId).",
-    },
-  );
+  .refine(hasTransactionIdentifier, {
+    message: `Provide ${TRANSACTION_IDENTIFIER_HINT}.`,
+  });
 
 // Create = type + identity + inline rewards only. Editor-tab config (options, design,
 // emails, installation) is NOT accepted here; configure it via the config sub-resource
@@ -700,7 +716,7 @@ const main = async () => {
         {
           name: "growsurf_record_sale",
           description:
-            "Record a sale/transaction for an affiliate program (commissions generate asynchronously; use webhooks).",
+            "Record a sale/transaction for an affiliate program (commissions generate asynchronously; use webhooks). Requires at least one transaction identifier (externalId, transactionId, orderId, paymentId, invoiceId, paymentIntentId, or chargeId) so repeated calls are de-duplicated instead of double-paying the referrer; reuse the same one when refunding.",
           inputSchema: {
             type: "object",
             properties: {
