@@ -383,6 +383,10 @@ const testWebhookSchema = z.object({
 
 const getCampaignAnalyticsSchema = z.object({
   interval: z.enum(["day", "week", "month", "total"]).optional(),
+  // Comma-separated opt-in enrichments (previousPeriod, statusCounts, rates). Modeled as a free
+  // string like the openapi `include` param — the API validates the individual tokens, and new
+  // enrichments can be added server-side without a schema bump here.
+  include: z.string().optional(),
   days: z.number().int().min(1).max(1825).optional(),
   startDate: z.number().int().optional(),
   endDate: z.number().int().optional(),
@@ -414,7 +418,17 @@ const emailParticipantSchema = z
   });
 
 const getParticipantAnalyticsSchema = z
-  .object({ ...participantIdentityFields })
+  .object({
+    ...participantIdentityFields,
+    // include=series adds a per-period `series` of this participant's own activity. `interval`,
+    // `days`, `startDate`, and `endDate` mirror the campaign-analytics window params (interval has
+    // no "total" here — the series is only produced when include=series).
+    include: z.enum(["series"]).optional(),
+    interval: z.enum(["day", "week", "month"]).optional(),
+    days: z.number().int().min(1).max(1825).optional(),
+    startDate: z.number().int().optional(),
+    endDate: z.number().int().optional(),
+  })
   .refine(hasParticipantIdentity, { message: PARTICIPANT_IDENTITY_HINT });
 
 const getParticipantActivityLogsSchema = z
@@ -835,7 +849,7 @@ const main = async () => {
         {
           name: "growsurf_create_account",
           description:
-            "Create a brand-new GrowSurf account and return an API key. This is the ONLY tool that does NOT require GROWSURF_API_KEY to be configured — the endpoint is unauthenticated and returns a fresh key in `apiKey`. The account is always created passwordless; GrowSurf emails a set-password link. A verification email is also sent — the account's email address must be verified before the returned key works with the other tools (until then they return a `403` `EMAIL_NOT_VERIFIED_ERROR`; use `growsurf_resend_verification_email` to resend). Some actions (such as emailing participants) additionally require the GrowSurf team to verify the account first. Disposable email addresses are not accepted.",
+            "Create a brand-new GrowSurf account and return an API key. This is the ONLY tool that does NOT require GROWSURF_API_KEY to be configured — the endpoint is unauthenticated and returns a fresh key in `apiKey`. New accounts start on a short Business plan trial (no card required) so the API is fully usable right away; when the trial ends the account moves to the FREE plan. The account is always created passwordless; GrowSurf emails a set-password link. A verification email is also sent — the account's email address must be verified before the returned key works with the other tools (until then they return a `403` `EMAIL_NOT_VERIFIED_ERROR`; use `growsurf_resend_verification_email` to resend). Some actions (such as emailing participants) additionally require the GrowSurf team to verify the account first. Disposable email addresses are not accepted.",
           inputSchema: {
             type: "object",
             properties: {
@@ -886,7 +900,7 @@ const main = async () => {
         {
           name: "growsurf_rotate_api_key",
           description:
-            "Generate a new GrowSurf API key and immediately revoke the current one. The key used to make this request stops working as soon as the response returns — update every integration (including GROWSURF_API_KEY in this MCP server's config) with the new key from `apiKey`. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+            "Generate a new GrowSurf API key and immediately revoke the current one. The key used to make this request stops working as soon as the response returns — update every integration (including GROWSURF_API_KEY in this MCP server's config) with the new key from `apiKey`. The account owner is notified by email whenever the key is rotated. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -898,13 +912,13 @@ const main = async () => {
         {
           name: "growsurf_resend_verification_email",
           description:
-            "Resend the email-verification email to the account's email address. Returns a 400 if the email is already verified. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+            "Resend the email-verification email to the account's email address. A 200 with status SENT is only returned when an email was actually dispatched. Returns a 400 if the email is already verified, or a 429 if a verification email was sent too recently — wait a moment, then retry. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_get_campaign_analytics",
           description:
-            "Fetch analytics for your GrowSurf program — participants, referrals, impressions, per-channel shares, plus affiliate revenue/commissions for affiliate programs. Pass `interval` (day, week, or month) to also receive a `series` array of per-period totals for trend detection (defaults to `total`, no series). Scope the timeframe with `days` (last N days, default 365, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). Uses GROWSURF_CAMPAIGN_ID.",
+            "Fetch analytics for your GrowSurf program — participants, referrals, impressions, per-channel shares, plus affiliate revenue/commissions for affiliate programs. Pass `interval` (day, week, or month) to also receive a `series` array of per-period totals for trend detection (defaults to `total`, no series). Pass `include` (comma-separated: previousPeriod, statusCounts, rates) to enrich the response — previousPeriod adds totals for the equal-length window immediately before the requested one; statusCounts adds reward (and, for affiliate programs, affiliate/commission/payout) status breakdowns; rates adds derived referral rates. Scope the timeframe with `days` (last N days, default 365, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -912,6 +926,11 @@ const main = async () => {
                 type: "string",
                 enum: ["day", "week", "month", "total"],
                 description: "day/week/month adds a per-period `series`; total (default) returns totals only.",
+              },
+              include: {
+                type: "string",
+                description:
+                  "Comma-separated opt-in enrichments (keeps the default response lean): `previousPeriod` (totals for the equal-length prior window), `statusCounts` (reward and, for affiliate programs, affiliate/commission/payout status breakdowns), `rates` (derived referral rates).",
               },
               days: { type: "integer", minimum: 1, maximum: 1825 },
               startDate: { type: "integer", description: "Start of the timeframe, Unix timestamp in ms. Use with endDate instead of days." },
@@ -1043,7 +1062,7 @@ const main = async () => {
         {
           name: "growsurf_email_participant",
           description:
-            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured, sendable email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). Free-form emails go with the same compliance handling (company name, postal address, and unsubscribe link added automatically; unsubscribed participants suppressed). Sending requires the account to be verified by the GrowSurf team; the send is queued asynchronously. Uses GROWSURF_CAMPAIGN_ID.",
+            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured, sendable email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). Free-form emails go with the same compliance handling (company name, postal address, and unsubscribe link added automatically; unsubscribed participants suppressed). Sending requires the account to be verified by the GrowSurf team, plus a verified custom email domain on the program (set up in Campaign Editor > 3. Emails > Email Settings) — emails always send from your domain, never a GrowSurf address; returns 400 until one is verified. The send is queued asynchronously. Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1064,12 +1083,25 @@ const main = async () => {
         {
           name: "growsurf_get_participant_analytics",
           description:
-            "Fetch all-time analytics for a single participant (by GrowSurf participant ID or email): engagement counters, leaderboard ranks, and per-channel share counts, plus affiliate money metrics (referral revenue, commissions, paid out, upcoming payout) for affiliate programs. Useful for segmenting and re-engaging participants. Uses GROWSURF_CAMPAIGN_ID.",
+            "Fetch all-time analytics for a single participant (by GrowSurf participant ID or email): engagement counters, leaderboard ranks, and per-channel share counts, plus affiliate money metrics (referral revenue, commissions, paid out, upcoming payout) for affiliate programs. Pass `include=series` to also receive a `series` array of this participant's own activity per period; bucket it with `interval` (day, week, or month; default day) and scope the timeframe with `days` (last N days, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). Useful for segmenting and re-engaging participants. Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
               participantId: { type: "string" },
               participantEmail: { type: "string" },
+              include: {
+                type: "string",
+                enum: ["series"],
+                description: "Set to `series` to also return this participant's own activity per period.",
+              },
+              interval: {
+                type: "string",
+                enum: ["day", "week", "month"],
+                description: "Bucket size for the `series` (only used with include=series). Defaults to day.",
+              },
+              days: { type: "integer", minimum: 1, maximum: 1825 },
+              startDate: { type: "integer", description: "Start of the timeframe, Unix timestamp in ms. Use with endDate instead of days." },
+              endDate: { type: "integer", description: "End of the timeframe, Unix timestamp in ms." },
             },
             anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
             additionalProperties: false,
@@ -1492,10 +1524,11 @@ const main = async () => {
           const input = getCampaignAnalyticsSchema.parse(request.params.arguments ?? {});
           const query = omitUndefined({
             interval: input.interval,
+            include: input.include,
             days: input.days,
             startDate: input.startDate,
             endDate: input.endDate,
-          }) as { interval?: string; days?: number; startDate?: number; endDate?: number };
+          }) as { interval?: string; include?: string; days?: number; startDate?: number; endDate?: number };
           const result = await growsurf.getCampaignAnalytics(query);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
@@ -1597,9 +1630,16 @@ const main = async () => {
         case "growsurf_get_participant_analytics": {
           const growsurf = requireGrowSurfClient(env);
           const input = getParticipantAnalyticsSchema.parse(request.params.arguments ?? {});
+          const query = omitUndefined({
+            include: input.include,
+            interval: input.interval,
+            days: input.days,
+            startDate: input.startDate,
+            endDate: input.endDate,
+          }) as { include?: string; interval?: string; days?: number; startDate?: number; endDate?: number };
           const result = input.participantId
-            ? await growsurf.getParticipantAnalyticsById(input.participantId)
-            : await growsurf.getParticipantAnalyticsByEmail(input.participantEmail!);
+            ? await growsurf.getParticipantAnalyticsById(input.participantId, query)
+            : await growsurf.getParticipantAnalyticsByEmail(input.participantEmail!, query);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_get_participant_activity_logs": {

@@ -414,6 +414,19 @@ describe("GrowSurfClient", () => {
     );
   });
 
+  it("gets campaign analytics with the include enrichment query param", async () => {
+    const fetchMock = mockJson({ analytics: {}, previousPeriod: {}, statusCounts: {}, rates: {} });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+    await client.getCampaignAnalytics({ include: "statusCounts", days: 30 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.growsurf.com/v2/campaign/abc123/analytics?include=statusCounts&days=30",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
   it("gets campaign analytics with no query string when no params are passed", async () => {
     const fetchMock = mockJson({ analytics: {} });
     globalThis.fetch = fetchMock as typeof fetch;
@@ -576,6 +589,19 @@ describe("GrowSurfClient", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://api.growsurf.com/v2/campaign/abc123/participant/part_1/analytics",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("gets participant analytics with include/interval/days series query params", async () => {
+    const fetchMock = mockJson({ analytics: {}, series: [], startDate: 1, endDate: 2 });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+    await client.getParticipantAnalyticsById("part_1", { include: "series", interval: "week", days: 30 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.growsurf.com/v2/campaign/abc123/participant/part_1/analytics?include=series&interval=week&days=30",
       expect.objectContaining({ method: "GET" }),
     );
   });

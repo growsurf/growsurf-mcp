@@ -274,9 +274,10 @@ export class GrowSurfClient {
   }
 
   // Campaign analytics. Pass `interval` (day|week|month) to also receive a per-period `series`
-  // alongside the totals; scope the timeframe with `days` or an explicit startDate/endDate window.
+  // alongside the totals; pass `include` (comma-separated: previousPeriod, statusCounts, rates) to
+  // enrich the response; scope the timeframe with `days` or an explicit startDate/endDate window.
   async getCampaignAnalytics(
-    query: { interval?: string; days?: number; startDate?: number; endDate?: number } = {},
+    query: { interval?: string; include?: string; days?: number; startDate?: number; endDate?: number } = {},
   ): Promise<unknown> {
     return this.requestJson(
       "GET",
@@ -332,12 +333,20 @@ export class GrowSurfClient {
     return this.requestJson("POST", this.participantPath(participantEmail, "/email"), body);
   }
 
-  async getParticipantAnalyticsById(participantId: string): Promise<unknown> {
-    return this.requestJson("GET", this.participantPath(participantId, "/analytics"));
+  // Pass `include=series` to also receive a per-period `series` of this participant's own activity;
+  // bucket it with `interval` (day|week|month) and scope it with `days` or a startDate/endDate window.
+  async getParticipantAnalyticsById(
+    participantId: string,
+    query: { include?: string; interval?: string; days?: number; startDate?: number; endDate?: number } = {},
+  ): Promise<unknown> {
+    return this.requestJson("GET", this.participantPath(participantId, `/analytics${toQueryString(query)}`));
   }
 
-  async getParticipantAnalyticsByEmail(participantEmail: string): Promise<unknown> {
-    return this.requestJson("GET", this.participantPath(participantEmail, "/analytics"));
+  async getParticipantAnalyticsByEmail(
+    participantEmail: string,
+    query: { include?: string; interval?: string; days?: number; startDate?: number; endDate?: number } = {},
+  ): Promise<unknown> {
+    return this.requestJson("GET", this.participantPath(participantEmail, `/analytics${toQueryString(query)}`));
   }
 
   async listParticipantActivityLogsById(

@@ -29,7 +29,7 @@ This MCP server is NOT for:
 - **Happy‑Path REST API Wrappers**:
   - Create an account and get an API key (no API key required), plus get/update account, rotate API key, and request/resend verification
   - Get campaign
-  - Get campaign analytics (totals, plus an optional per-period time-series)
+  - Get campaign analytics (totals, plus an optional per-period time-series and optional previous-period, status-count, and rate enrichments)
   - Create, update, and clone programs (campaigns)
   - List, create, update, and delete campaign rewards (reward templates)
   - List, create, update, delete, and test program webhooks
@@ -224,7 +224,7 @@ node dist/index.js
   Fetch campaign configuration.
 
 - `growsurf_get_campaign_analytics`
-  Fetch program analytics (totals, plus an optional per-period `series` via `interval`).
+  Fetch program analytics (totals, plus an optional per-period `series` via `interval`, and optional `previousPeriod`/`statusCounts`/`rates` enrichments via `include`).
 
 - `growsurf_create_campaign`
   Create a new program (campaign) with type-appropriate defaults and optional inline rewards (only needs `GROWSURF_API_KEY`, not `GROWSURF_CAMPAIGN_ID`).
@@ -272,7 +272,7 @@ node dist/index.js
   Email a participant using a configured template or a free-form subject/body.
 
 - `growsurf_get_participant_analytics`
-  Fetch a single participant's analytics (engagement, ranks, shares, affiliate money metrics).
+  Fetch a single participant's analytics (engagement, ranks, shares, affiliate money metrics), plus an optional per-period `series` of their own activity via `include=series` (`interval`/`days`/`startDate`/`endDate`).
 
 - `growsurf_get_participant_activity_logs`
   List a participant's activity logs (offset/limit paginated).
