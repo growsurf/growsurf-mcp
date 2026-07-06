@@ -204,10 +204,10 @@ node dist/index.js
   Create a brand-new GrowSurf account and get an API key back. The **only** tool that does not require `GROWSURF_API_KEY` to be configured.
 
 - `growsurf_get_account`
-  Fetch the account that owns the API key (profile, usage, verification state).
+  Fetch the account that owns the API key (profile and GrowSurf-team verification state).
 
 - `growsurf_update_account`
-  Update your account profile and notification preferences.
+  Update your account profile (`firstName`, `lastName`, `company`).
 
 - `growsurf_rotate_api_key`
   Generate a new API key and immediately revoke the current one.

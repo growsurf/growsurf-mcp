@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-07-06 - Account surface TRIM: usage/notifications/companyType/role/heardFrom removed
+
+- Breaking propagation from `growsurf-api/openapi/rest-v2.yaml` (Kevin trimmed the public Account contract again): `Account` is now `{ id, email, firstName, lastName, company, verificationStatus, verificationRequestedAt, createdAt }` (required id/email/verificationStatus) — `companyType`, `role`, `heardFrom`, the whole `usage` object, and the whole `notifications` object are GONE, and `UpdateAccountRequest` is profile-only (`firstName`/`lastName`/`company`, all maxLength 255; unknown keys 400). The `AccountUsage`/`AccountNotifications` schemas were deleted from the yaml.
+- `src/index.ts`: deleted the `accountNotificationsSchema` zod object; `updateAccountSchema` trimmed to firstName/lastName/company (kept the at-least-one-field refine); `growsurf_update_account` tool JSON `inputSchema` trimmed to the 3 profile props and its description now says profile-only; `growsurf_get_account` description re-trimmed to "profile and GrowSurf-team verification state." (drops "usage, notifications" added earlier today); CallTool handler no longer forwards companyType/role/heardFrom/notifications. `create_account` untouched (already `{email,firstName,lastName,company}`). `src/growsurf/client.ts` needed no change (untyped `Record<string, unknown>` passthrough).
+- `README.md`: `growsurf_get_account` + `growsurf_update_account` blurbs updated to the trimmed wording. `test/client.test.ts`: updateAccount PATCH-body test now sends `{ firstName, company }` instead of a `notifications` object.
+- Note: the remaining `notifications` mentions in `src/index.ts` are campaign Options-tab config and the widget unread-notifications badge — unrelated to account, intentionally kept.
+- Verified: `npm run typecheck` clean, `npm run build` clean (dist rebuilt), `npm test` = **79 passed** (7 files). Live stdio `tools/list` against rebuilt dist: `growsurf_update_account` props = firstName/lastName/company only; both descriptions carry the trimmed wording; 46 tools total. Grep proof: zero `AccountUsage|AccountNotifications` repo-wide (excl node_modules), zero `companyType|heardFrom|notifications` in account surfaces (client.ts, client.test.ts, README, account tool/handler regions). No git/publish commands run; no version bump (left to Kevin).
+
 ## 2026-07-06 - Analytics enrichments: campaign `include` + participant `include=series`/`interval`/window
 
 - Additive propagation from `growsurf-api/openapi/rest-v2.yaml` (two GET ops gain optional query params; responses are untyped `safeJson` passthrough so no response typing needed — INPUT params + descriptions only). All new params are optional/nullable, so existing callers are unaffected.

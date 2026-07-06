@@ -297,15 +297,6 @@ const webhookNormalizeSchema = z.object({
 
 // ---- Account tools ----
 
-// Account-level email notification preferences (all optional booleans). Shared by updateAccount.
-const accountNotificationsSchema = z.object({
-  promotionalEmails: z.boolean().optional(),
-  emailUsageAlertEmails: z.boolean().optional(),
-  webhookUsageAlertEmails: z.boolean().optional(),
-  importCompleteEmails: z.boolean().optional(),
-  participantUsageAlertEmails: z.boolean().optional(),
-});
-
 const createAccountSchema = z.object({
   email: z.string().min(3),
   firstName: z.string().min(1).max(255).optional(),
@@ -318,10 +309,6 @@ const updateAccountSchema = z
     firstName: z.string().max(255).optional(),
     lastName: z.string().max(255).optional(),
     company: z.string().max(255).optional(),
-    companyType: z.string().max(255).optional(),
-    role: z.string().max(255).optional(),
-    heardFrom: z.string().max(255).optional(),
-    notifications: accountNotificationsSchema.optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), {
     message: "Provide at least one field to update.",
@@ -865,34 +852,19 @@ const main = async () => {
         {
           name: "growsurf_get_account",
           description:
-            "Fetch the GrowSurf account that owns the API key: profile, usage, notifications, and GrowSurf-team verification state. `verificationStatus` is VERIFIED once the team has verified the account — required before a program can email participants. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+            "Fetch the GrowSurf account that owns the API key: profile and GrowSurf-team verification state. `verificationStatus` is VERIFIED once the team has verified the account — required before a program can email participants. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_account",
           description:
-            "Update your own GrowSurf account profile and notification preferences. Only the fields you send are changed. The account `email` cannot be changed via the API and billing/subscription is not editable here — any unknown field is rejected with a 400. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+            "Update your own GrowSurf account profile (`firstName`, `lastName`, `company`). Only the fields you send are changed. The account `email` cannot be changed via the API and billing/subscription is not editable here — any unknown field is rejected with a 400. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
               firstName: { type: "string" },
               lastName: { type: "string" },
               company: { type: "string" },
-              companyType: { type: "string" },
-              role: { type: "string" },
-              heardFrom: { type: "string" },
-              notifications: {
-                type: "object",
-                description: "Account-level email notification preferences (all booleans).",
-                properties: {
-                  promotionalEmails: { type: "boolean" },
-                  emailUsageAlertEmails: { type: "boolean" },
-                  webhookUsageAlertEmails: { type: "boolean" },
-                  importCompleteEmails: { type: "boolean" },
-                  participantUsageAlertEmails: { type: "boolean" },
-                },
-                additionalProperties: false,
-              },
             },
             additionalProperties: false,
           },
@@ -1496,10 +1468,6 @@ const main = async () => {
             firstName: input.firstName,
             lastName: input.lastName,
             company: input.company,
-            companyType: input.companyType,
-            role: input.role,
-            heardFrom: input.heardFrom,
-            notifications: input.notifications,
           }) as Record<string, unknown>;
           const result = await growsurf.updateAccount(fields);
           return { content: [{ type: "text", text: safeJson(result) }] };

@@ -347,13 +347,13 @@ describe("GrowSurfClient", () => {
     globalThis.fetch = fetchMock as typeof fetch;
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
-    await client.updateAccount({ firstName: "Richard", notifications: { promotionalEmails: false } });
+    await client.updateAccount({ firstName: "Richard", company: "Pied Piper" });
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://api.growsurf.com/v2/account",
       expect.objectContaining({
         method: "PATCH",
-        body: JSON.stringify({ firstName: "Richard", notifications: { promotionalEmails: false } }),
+        body: JSON.stringify({ firstName: "Richard", company: "Pied Piper" }),
       }),
     );
   });
