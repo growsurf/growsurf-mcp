@@ -322,7 +322,6 @@ const updateAccountSchema = z
     role: z.string().max(255).optional(),
     heardFrom: z.string().max(255).optional(),
     notifications: accountNotificationsSchema.optional(),
-    disableAutoUpgrade: z.boolean().optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), {
     message: "Provide at least one field to update.",
@@ -836,7 +835,7 @@ const main = async () => {
         {
           name: "growsurf_create_account",
           description:
-            "Create a brand-new GrowSurf account and return an API key. This is the ONLY tool that does NOT require GROWSURF_API_KEY to be configured — the endpoint is unauthenticated and returns a fresh key in `apiKey`. New accounts start on the FREE plan. The account is always created passwordless; GrowSurf emails a set-password link. A verification email is also sent — the account's email address must be verified before the returned key works with the other tools (until then they return a `403` `EMAIL_NOT_VERIFIED_ERROR`; use `growsurf_resend_verification_email` to resend). Some actions (such as emailing participants) additionally require the GrowSurf team to verify the account first. Disposable email addresses are not accepted.",
+            "Create a brand-new GrowSurf account and return an API key. This is the ONLY tool that does NOT require GROWSURF_API_KEY to be configured — the endpoint is unauthenticated and returns a fresh key in `apiKey`. The account is always created passwordless; GrowSurf emails a set-password link. A verification email is also sent — the account's email address must be verified before the returned key works with the other tools (until then they return a `403` `EMAIL_NOT_VERIFIED_ERROR`; use `growsurf_resend_verification_email` to resend). Some actions (such as emailing participants) additionally require the GrowSurf team to verify the account first. Disposable email addresses are not accepted.",
           inputSchema: {
             type: "object",
             properties: {
@@ -852,7 +851,7 @@ const main = async () => {
         {
           name: "growsurf_get_account",
           description:
-            "Fetch the GrowSurf account that owns the API key: profile, plan and usage, email-verification state, and GrowSurf-team verification state. `verificationStatus` is VERIFIED once the team has verified the account — required before a program can email participants. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+            "Fetch the GrowSurf account that owns the API key: profile, usage, notifications, and GrowSurf-team verification state. `verificationStatus` is VERIFIED once the team has verified the account — required before a program can email participants. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -880,7 +879,6 @@ const main = async () => {
                 },
                 additionalProperties: false,
               },
-              disableAutoUpgrade: { type: "boolean" },
             },
             additionalProperties: false,
           },
@@ -1470,7 +1468,6 @@ const main = async () => {
             role: input.role,
             heardFrom: input.heardFrom,
             notifications: input.notifications,
-            disableAutoUpgrade: input.disableAutoUpgrade,
           }) as Record<string, unknown>;
           const result = await growsurf.updateAccount(fields);
           return { content: [{ type: "text", text: safeJson(result) }] };
