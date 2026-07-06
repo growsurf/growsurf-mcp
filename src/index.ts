@@ -63,12 +63,18 @@ const requireGrowSurfClient = (env: Env): GrowSurfClient => {
 };
 
 // Creating a campaign (POST /campaigns) has no campaign id, so it only needs the API key.
+// Account-level reads/writes (get/update account, rotate key, verification) are also key-only.
 const requireGrowSurfApiKey = (env: Env): GrowSurfClient => {
   if (!env.GROWSURF_API_KEY) {
     throw new Error("Missing GrowSurf REST credentials. Set GROWSURF_API_KEY to use this tool.");
   }
   return new GrowSurfClient({ apiKey: env.GROWSURF_API_KEY, campaignId: env.GROWSURF_CAMPAIGN_ID ?? "" });
 };
+
+// Creating an account (POST /accounts) is the one unauthenticated endpoint — it RETURNS a new API
+// key, so it must work even when no GROWSURF_API_KEY is configured (the keyless exception).
+const getKeylessGrowSurfClient = (env: Env): GrowSurfClient =>
+  new GrowSurfClient({ apiKey: env.GROWSURF_API_KEY, campaignId: env.GROWSURF_CAMPAIGN_ID ?? "" });
 
 const safeJson = (value: unknown): string => JSON.stringify(value, null, 2);
 
@@ -288,6 +294,169 @@ const participantAuthHashSchema = z.object({
 const webhookNormalizeSchema = z.object({
   payload: z.unknown(),
 });
+
+// ---- Account tools ----
+
+// Account-level email notification preferences (all optional booleans). Shared by updateAccount.
+const accountNotificationsSchema = z.object({
+  promotionalEmails: z.boolean().optional(),
+  emailUsageAlertEmails: z.boolean().optional(),
+  webhookUsageAlertEmails: z.boolean().optional(),
+  importCompleteEmails: z.boolean().optional(),
+  participantUsageAlertEmails: z.boolean().optional(),
+});
+
+const createAccountSchema = z.object({
+  email: z.string().min(3),
+  firstName: z.string().min(1).max(255).optional(),
+  lastName: z.string().min(1).max(255).optional(),
+  company: z.string().min(1).max(255).optional(),
+});
+
+const updateAccountSchema = z
+  .object({
+    firstName: z.string().max(255).optional(),
+    lastName: z.string().max(255).optional(),
+    company: z.string().max(255).optional(),
+    companyType: z.string().max(255).optional(),
+    role: z.string().max(255).optional(),
+    heardFrom: z.string().max(255).optional(),
+    notifications: accountNotificationsSchema.optional(),
+    disableAutoUpgrade: z.boolean().optional(),
+  })
+  .refine((v) => Object.values(v).some((x) => x !== undefined), {
+    message: "Provide at least one field to update.",
+  });
+
+// ---- Campaign webhook tools ----
+
+// Single source of truth for webhook event names — mirrors openapi WebhookEvent. `.options`
+// is reused as the JSON Schema `enum` so the zod and JSON schemas cannot drift.
+const webhookEventSchema = z.enum([
+  "PARTICIPANT_REACHED_A_GOAL",
+  "NEW_PARTICIPANT_ADDED",
+  "NEW_PARTICIPANT_ADDED_REFERRED",
+  "NEW_PARTICIPANT_ADDED_NON_REFERRED",
+  "CAMPAIGN_ENDED",
+  "PARTICIPANT_FRAUD_STATUS_UPDATED",
+  "PARTICIPANT_AFFILIATE_STATUS_UPDATED",
+  "NEW_COMMISSION_ADDED",
+  "COMMISSION_ADJUSTED",
+  "NEW_PAYOUT_ISSUED",
+  "AFFILIATE_BATCH_PAYOUT_COMPLETED",
+  "MONTHLY_PAYOUT_REMINDER",
+]);
+
+const WEBHOOK_EVENTS = [...webhookEventSchema.options];
+
+const createWebhookSchema = z.object({
+  payloadUrl: z.string().min(1),
+  events: z.array(webhookEventSchema).optional(),
+  secret: z.string().min(1).optional(),
+  isEnabled: z.boolean().optional(),
+});
+
+const updateWebhookSchema = z
+  .object({
+    webhookId: z.string().min(1),
+    payloadUrl: z.string().min(1).optional(),
+    events: z.array(webhookEventSchema).optional(),
+    secret: z.string().min(1).optional(),
+    isEnabled: z.boolean().optional(),
+  })
+  .refine(
+    (v) =>
+      v.payloadUrl !== undefined ||
+      v.events !== undefined ||
+      v.secret !== undefined ||
+      v.isEnabled !== undefined,
+    { message: "Provide at least one webhook field to update." },
+  );
+
+const deleteWebhookSchema = z.object({ webhookId: z.string().min(1) });
+
+const testWebhookSchema = z.object({
+  webhookId: z.string().min(1),
+  event: webhookEventSchema.optional(),
+});
+
+// ---- Campaign analytics tool ----
+
+const getCampaignAnalyticsSchema = z.object({
+  interval: z.enum(["day", "week", "month", "total"]).optional(),
+  days: z.number().int().min(1).max(1825).optional(),
+  startDate: z.number().int().optional(),
+  endDate: z.number().int().optional(),
+});
+
+// ---- Participant email / analytics / activity-log / update tools ----
+
+// The participant is addressed by GrowSurf participant ID OR email (identical path parameter),
+// mirroring the existing trigger/record participant tools. Shared identity fields + refine.
+const participantIdentityFields = {
+  participantId: z.string().min(1).optional(),
+  participantEmail: z.string().min(3).optional(),
+};
+const hasParticipantIdentity = (v: { participantId?: string | undefined; participantEmail?: string | undefined }) =>
+  Boolean(v.participantId) || Boolean(v.participantEmail);
+const PARTICIPANT_IDENTITY_HINT = "Provide participantId or participantEmail.";
+
+const emailParticipantSchema = z
+  .object({
+    ...participantIdentityFields,
+    emailType: z.string().min(1).optional(),
+    subject: z.string().max(255).optional(),
+    body: z.string().min(1).optional(),
+    preheader: z.string().optional(),
+  })
+  .refine(hasParticipantIdentity, { message: PARTICIPANT_IDENTITY_HINT })
+  .refine((v) => Boolean(v.emailType) || (Boolean(v.subject) && Boolean(v.body)), {
+    message: "Provide either emailType (template mode) or both subject and body (free-form mode).",
+  });
+
+const getParticipantAnalyticsSchema = z
+  .object({ ...participantIdentityFields })
+  .refine(hasParticipantIdentity, { message: PARTICIPANT_IDENTITY_HINT });
+
+const getParticipantActivityLogsSchema = z
+  .object({
+    ...participantIdentityFields,
+    limit: z.number().int().min(1).max(100).optional(),
+    offset: z.number().int().min(0).optional(),
+  })
+  .refine(hasParticipantIdentity, { message: PARTICIPANT_IDENTITY_HINT });
+
+const updateParticipantSchema = z
+  .object({
+    ...participantIdentityFields,
+    referredBy: z.string().max(100).optional(),
+    email: z.string().min(3).optional(),
+    firstName: z.string().max(255).optional(),
+    lastName: z.string().max(255).optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+    referralStatus: z.enum(["CREDIT_PENDING", "CREDIT_AWARDED", "CREDIT_EXPIRED"]).optional(),
+    vanityKeys: z.array(z.string().min(1).max(20).regex(/^[A-Za-z0-9_-]+$/)).max(5).optional(),
+    unsubscribed: z.boolean().optional(),
+    notes: z.string().max(500).optional(),
+    paypalEmail: z.string().min(3).optional(),
+  })
+  .refine(hasParticipantIdentity, { message: PARTICIPANT_IDENTITY_HINT })
+  .refine(
+    (v) =>
+      [
+        v.referredBy,
+        v.email,
+        v.firstName,
+        v.lastName,
+        v.metadata,
+        v.referralStatus,
+        v.vanityKeys,
+        v.unsubscribed,
+        v.notes,
+        v.paypalEmail,
+      ].some((x) => x !== undefined),
+    { message: "Provide at least one participant field to update." },
+  );
 
 const main = async () => {
   const env = getEnv();
@@ -665,6 +834,160 @@ const main = async () => {
           },
         },
         {
+          name: "growsurf_create_account",
+          description:
+            "Create a brand-new GrowSurf account and return an API key. This is the ONLY tool that does NOT require GROWSURF_API_KEY to be configured — the endpoint is unauthenticated and returns a fresh key in `apiKey`. New accounts start on the FREE plan. The account is always created passwordless; GrowSurf emails a set-password link. A verification email is also sent — the account's email address must be verified before the returned key works with the other tools (until then they return a `403` `EMAIL_NOT_VERIFIED_ERROR`; use `growsurf_resend_verification_email` to resend). Some actions (such as emailing participants) additionally require the GrowSurf team to verify the account first. Disposable email addresses are not accepted.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              email: { type: "string" },
+              firstName: { type: "string" },
+              lastName: { type: "string" },
+              company: { type: "string" },
+            },
+            required: ["email"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_get_account",
+          description:
+            "Fetch the GrowSurf account that owns the API key: profile, plan and usage, email-verification state, and GrowSurf-team verification state. `verificationStatus` is VERIFIED once the team has verified the account — required before a program can email participants. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_update_account",
+          description:
+            "Update your own GrowSurf account profile and notification preferences. Only the fields you send are changed. The account `email` cannot be changed via the API and billing/subscription is not editable here — any unknown field is rejected with a 400. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              firstName: { type: "string" },
+              lastName: { type: "string" },
+              company: { type: "string" },
+              companyType: { type: "string" },
+              role: { type: "string" },
+              heardFrom: { type: "string" },
+              notifications: {
+                type: "object",
+                description: "Account-level email notification preferences (all booleans).",
+                properties: {
+                  promotionalEmails: { type: "boolean" },
+                  emailUsageAlertEmails: { type: "boolean" },
+                  webhookUsageAlertEmails: { type: "boolean" },
+                  importCompleteEmails: { type: "boolean" },
+                  participantUsageAlertEmails: { type: "boolean" },
+                },
+                additionalProperties: false,
+              },
+              disableAutoUpgrade: { type: "boolean" },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_rotate_api_key",
+          description:
+            "Generate a new GrowSurf API key and immediately revoke the current one. The key used to make this request stops working as soon as the response returns — update every integration (including GROWSURF_API_KEY in this MCP server's config) with the new key from `apiKey`. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_request_account_verification",
+          description:
+            "Request GrowSurf-team verification of your account (required before a program can email its participants). Idempotent — calling it again while a request is pending does not create a duplicate. Returns the account with its updated `verificationStatus`. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_resend_verification_email",
+          description:
+            "Resend the email-verification email to the account's email address. Returns a 400 if the email is already verified. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_get_campaign_analytics",
+          description:
+            "Fetch analytics for your GrowSurf program — participants, referrals, impressions, per-channel shares, plus affiliate revenue/commissions for affiliate programs. Pass `interval` (day, week, or month) to also receive a `series` array of per-period totals for trend detection (defaults to `total`, no series). Scope the timeframe with `days` (last N days, default 365, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              interval: {
+                type: "string",
+                enum: ["day", "week", "month", "total"],
+                description: "day/week/month adds a per-period `series`; total (default) returns totals only.",
+              },
+              days: { type: "integer", minimum: 1, maximum: 1825 },
+              startDate: { type: "integer", description: "Start of the timeframe, Unix timestamp in ms. Use with endDate instead of days." },
+              endDate: { type: "integer", description: "End of the timeframe, Unix timestamp in ms." },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_list_campaign_webhooks",
+          description: "List your GrowSurf program's webhooks (secrets are never returned). Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_create_campaign_webhook",
+          description:
+            "Add a webhook to your GrowSurf program. `payloadUrl` is required. `events` selects which events to deliver (omit for the program default). `secret` is write-only — GrowSurf uses it to sign deliveries (the GrowSurf-Signature HMAC header) and never returns it. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              payloadUrl: { type: "string" },
+              events: { type: "array", items: { type: "string", enum: WEBHOOK_EVENTS } },
+              secret: { type: "string", description: "Write-only. Signs deliveries; never returned." },
+              isEnabled: { type: "boolean" },
+            },
+            required: ["payloadUrl"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_update_campaign_webhook",
+          description:
+            "Update a webhook on your GrowSurf program by id (`webhookId` is `primary` for the program's primary webhook). Only the fields you send are changed. `secret` is write-only and never returned. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              webhookId: { type: "string" },
+              payloadUrl: { type: "string" },
+              events: { type: "array", items: { type: "string", enum: WEBHOOK_EVENTS } },
+              secret: { type: "string", description: "Write-only." },
+              isEnabled: { type: "boolean" },
+            },
+            required: ["webhookId"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_delete_campaign_webhook",
+          description:
+            "Remove a webhook from your GrowSurf program by id. Returns { id, success }. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              webhookId: { type: "string" },
+            },
+            required: ["webhookId"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_test_campaign_webhook",
+          description:
+            "Send a live test event to a webhook on your GrowSurf program using its stored URL and secret. Optionally pass `event` to choose which event type to mock (defaults to a sample event). Returns the mock payload and the receiving endpoint's response. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              webhookId: { type: "string" },
+              event: { type: "string", enum: WEBHOOK_EVENTS },
+            },
+            required: ["webhookId"],
+            additionalProperties: false,
+          },
+        },
+        {
           name: "growsurf_add_participant",
           description: "Add or fetch an existing participant by email (GrowSurf REST).",
           inputSchema: {
@@ -681,6 +1004,92 @@ const main = async () => {
               metadata: { type: "object", additionalProperties: true },
             },
             required: ["email"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_update_participant",
+          description:
+            "Update a participant (by GrowSurf participant ID or email). Only the fields you send are changed; read-only fields (counters, origin, fraud state) are rejected with a 400. `notes` is freeform internal notes (never shown to participants); `paypalEmail` is the participant's PayPal address for affiliate payouts. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participantId: { type: "string" },
+              participantEmail: { type: "string" },
+              referredBy: { type: "string" },
+              email: { type: "string", description: "Change the participant's email address." },
+              firstName: { type: "string" },
+              lastName: { type: "string" },
+              metadata: { type: "object", additionalProperties: true },
+              referralStatus: { type: "string", enum: ["CREDIT_PENDING", "CREDIT_AWARDED", "CREDIT_EXPIRED"] },
+              vanityKeys: {
+                type: "array",
+                maxItems: 5,
+                items: { type: "string", minLength: 1, maxLength: 20, pattern: "^[A-Za-z0-9_-]+$" },
+              },
+              unsubscribed: { type: "boolean" },
+              notes: {
+                type: "string",
+                maxLength: 500,
+                description: "Freeform internal notes (internal only, never exposed to participants).",
+              },
+              paypalEmail: {
+                type: "string",
+                description: "The participant's PayPal email address, used for affiliate payouts.",
+              },
+            },
+            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_email_participant",
+          description:
+            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured, sendable email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). Free-form emails go with the same compliance handling (company name, postal address, and unsubscribe link added automatically; unsubscribed participants suppressed). Sending requires the account to be verified by the GrowSurf team; the send is queued asynchronously. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participantId: { type: "string" },
+              participantEmail: { type: "string" },
+              emailType: {
+                type: "string",
+                description: "A configured, sendable program email template. System/transactional types and the invite email cannot be sent here.",
+              },
+              subject: { type: "string", description: "Free-form subject. Supports interpolation variables like {{firstName}}." },
+              body: { type: "string", description: "Free-form HTML body. Supports interpolation variables." },
+              preheader: { type: "string" },
+            },
+            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_get_participant_analytics",
+          description:
+            "Fetch all-time analytics for a single participant (by GrowSurf participant ID or email): engagement counters, leaderboard ranks, and per-channel share counts, plus affiliate money metrics (referral revenue, commissions, paid out, upcoming payout) for affiliate programs. Useful for segmenting and re-engaging participants. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participantId: { type: "string" },
+              participantEmail: { type: "string" },
+            },
+            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_get_participant_activity_logs",
+          description:
+            "List a participant's activity logs (by GrowSurf participant ID or email), most recent first, offset/limit paginated. `limit` is 1-100 (default 20); `offset` skips logs. The response `offset` is the cursor for the next page (null when there are no more). Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participantId: { type: "string" },
+              participantEmail: { type: "string" },
+              limit: { type: "integer", minimum: 1, maximum: 100 },
+              offset: { type: "integer", minimum: 0 },
+            },
+            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
             additionalProperties: false,
           },
         },
@@ -1032,6 +1441,108 @@ const main = async () => {
           const result = await growsurf.updateCampaignInstallation(input.fields);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
+        case "growsurf_create_account": {
+          // Keyless exception: works without GROWSURF_API_KEY and returns a new key.
+          const growsurf = getKeylessGrowSurfClient(env);
+          const input = createAccountSchema.parse(request.params.arguments ?? {});
+          const body = omitUndefined({
+            email: input.email,
+            firstName: input.firstName,
+            lastName: input.lastName,
+            company: input.company,
+          }) as Record<string, unknown>;
+          const result = await growsurf.createAccount(body);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_get_account": {
+          const growsurf = requireGrowSurfApiKey(env);
+          const result = await growsurf.getAccount();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_update_account": {
+          const growsurf = requireGrowSurfApiKey(env);
+          const input = updateAccountSchema.parse(request.params.arguments ?? {});
+          const fields = omitUndefined({
+            firstName: input.firstName,
+            lastName: input.lastName,
+            company: input.company,
+            companyType: input.companyType,
+            role: input.role,
+            heardFrom: input.heardFrom,
+            notifications: input.notifications,
+            disableAutoUpgrade: input.disableAutoUpgrade,
+          }) as Record<string, unknown>;
+          const result = await growsurf.updateAccount(fields);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_rotate_api_key": {
+          const growsurf = requireGrowSurfApiKey(env);
+          const result = await growsurf.rotateApiKey();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_request_account_verification": {
+          const growsurf = requireGrowSurfApiKey(env);
+          const result = await growsurf.requestAccountVerification();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_resend_verification_email": {
+          const growsurf = requireGrowSurfApiKey(env);
+          const result = await growsurf.resendVerificationEmail();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_get_campaign_analytics": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = getCampaignAnalyticsSchema.parse(request.params.arguments ?? {});
+          const query = omitUndefined({
+            interval: input.interval,
+            days: input.days,
+            startDate: input.startDate,
+            endDate: input.endDate,
+          }) as { interval?: string; days?: number; startDate?: number; endDate?: number };
+          const result = await growsurf.getCampaignAnalytics(query);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_list_campaign_webhooks": {
+          const growsurf = requireGrowSurfClient(env);
+          const result = await growsurf.listWebhooks();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_create_campaign_webhook": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = createWebhookSchema.parse(request.params.arguments ?? {});
+          const webhook = omitUndefined({
+            payloadUrl: input.payloadUrl,
+            events: input.events,
+            secret: input.secret,
+            isEnabled: input.isEnabled,
+          }) as Record<string, unknown>;
+          const result = await growsurf.createWebhook(webhook);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_update_campaign_webhook": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = updateWebhookSchema.parse(request.params.arguments ?? {});
+          const { webhookId, ...rest } = input;
+          const fields = omitUndefined(rest) as Record<string, unknown>;
+          const result = await growsurf.updateWebhook(webhookId, fields);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_delete_campaign_webhook": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = deleteWebhookSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.deleteWebhook(input.webhookId);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_test_campaign_webhook": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = testWebhookSchema.parse(request.params.arguments ?? {});
+          const body = omitUndefined({ event: input.event }) as Record<string, unknown>;
+          const result = await growsurf.testWebhook(
+            input.webhookId,
+            Object.keys(body).length ? body : undefined,
+          );
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
         case "growsurf_add_participant": {
           const growsurf = requireGrowSurfClient(env);
           const input = addParticipantSchema.parse(request.params.arguments ?? {});
@@ -1048,6 +1559,62 @@ const main = async () => {
             };
           }
           const result = await growsurf.addParticipant(omitUndefined(input) as Parameters<GrowSurfClient["addParticipant"]>[0]);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_update_participant": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = updateParticipantSchema.parse(request.params.arguments ?? {});
+          if (input.metadata && Object.prototype.hasOwnProperty.call(input.metadata, "gdprAgreements")) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text:
+                    "Invalid metadata: 'gdprAgreements' is a restricted key. Pass GDPR agreements using the dedicated field (JS SDK) or remove it from metadata (REST).",
+                },
+              ],
+              isError: true,
+            };
+          }
+          const { participantId, participantEmail, ...rest } = input;
+          const fields = omitUndefined(rest) as Record<string, unknown>;
+          const result = participantId
+            ? await growsurf.updateParticipantById(participantId, fields)
+            : await growsurf.updateParticipantByEmail(participantEmail!, fields);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_email_participant": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = emailParticipantSchema.parse(request.params.arguments ?? {});
+          const body = omitUndefined({
+            emailType: input.emailType,
+            subject: input.subject,
+            body: input.body,
+            preheader: input.preheader,
+          }) as Record<string, unknown>;
+          const result = input.participantId
+            ? await growsurf.emailParticipantById(input.participantId, body)
+            : await growsurf.emailParticipantByEmail(input.participantEmail!, body);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_get_participant_analytics": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = getParticipantAnalyticsSchema.parse(request.params.arguments ?? {});
+          const result = input.participantId
+            ? await growsurf.getParticipantAnalyticsById(input.participantId)
+            : await growsurf.getParticipantAnalyticsByEmail(input.participantEmail!);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_get_participant_activity_logs": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = getParticipantActivityLogsSchema.parse(request.params.arguments ?? {});
+          const query = omitUndefined({ limit: input.limit, offset: input.offset }) as {
+            limit?: number;
+            offset?: number;
+          };
+          const result = input.participantId
+            ? await growsurf.listParticipantActivityLogsById(input.participantId, query)
+            : await growsurf.listParticipantActivityLogsByEmail(input.participantEmail!, query);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_trigger_referral": {

@@ -27,10 +27,14 @@ This MCP server is NOT for:
   - Affiliate sale / transaction tracking
   - Webhooks
 - **Happy‑Path REST API Wrappers**:
+  - Create an account and get an API key (no API key required), plus get/update account, rotate API key, and request/resend verification
   - Get campaign
+  - Get campaign analytics (totals, plus an optional per-period time-series)
   - Create, update, and clone programs (campaigns)
   - List, create, update, and delete campaign rewards (reward templates)
+  - List, create, update, delete, and test program webhooks
   - Add participant
+  - Update a participant, email a participant, and get a participant's analytics and activity logs
   - Trigger referral credit (for referral programs), with optional delayed award (1-90 days)
   - Cancel a pending delayed referral trigger (for referral programs)
   - Record affiliate sale/transaction (for affiliate programs)
@@ -51,6 +55,7 @@ This MCP server is NOT for:
 - Node.js 22+
 - A GrowSurf **API key** and **campaign (program) ID** for API-calling tools
 - Static guidance/snippet tools can run without credentials
+- Exception: `growsurf_create_account` needs **no** API key — it creates a new account and returns one. Account-level tools (`growsurf_get_account`, `growsurf_update_account`, `growsurf_rotate_api_key`, verification) need the API key but **not** a campaign ID
 
 ## Supported MCP Hosts
 
@@ -193,10 +198,33 @@ node dist/index.js
 - `growsurf_grsf_config_snippet`
   `<head>` snippet for configuring `window.grsfConfig` and participant auto-auth.
 
+### Account
+
+- `growsurf_create_account`
+  Create a brand-new GrowSurf account and get an API key back. The **only** tool that does not require `GROWSURF_API_KEY` to be configured.
+
+- `growsurf_get_account`
+  Fetch the account that owns the API key (profile, plan/usage, verification state).
+
+- `growsurf_update_account`
+  Update your account profile and notification preferences.
+
+- `growsurf_rotate_api_key`
+  Generate a new API key and immediately revoke the current one.
+
+- `growsurf_request_account_verification`
+  Request GrowSurf-team verification (required before a program can email participants).
+
+- `growsurf_resend_verification_email`
+  Resend the email-verification email to the account's address.
+
 ### API & Tracking
 
 - `growsurf_get_campaign`
   Fetch campaign configuration.
+
+- `growsurf_get_campaign_analytics`
+  Fetch program analytics (totals, plus an optional per-period `series` via `interval`).
 
 - `growsurf_create_campaign`
   Create a new program (campaign) with type-appropriate defaults and optional inline rewards (only needs `GROWSURF_API_KEY`, not `GROWSURF_CAMPAIGN_ID`).
@@ -219,8 +247,35 @@ node dist/index.js
 - `growsurf_delete_campaign_reward`
   Delete a campaign reward (reward template) by its reward key.
 
+- `growsurf_list_campaign_webhooks`
+  List the program's webhooks (secrets are never returned).
+
+- `growsurf_create_campaign_webhook`
+  Add a webhook to the program (with events and a write-only signing secret).
+
+- `growsurf_update_campaign_webhook`
+  Update a webhook by id (`primary` for the program's primary webhook).
+
+- `growsurf_delete_campaign_webhook`
+  Remove a webhook by id.
+
+- `growsurf_test_campaign_webhook`
+  Send a live test event to a webhook using its stored URL and secret.
+
 - `growsurf_add_participant`
   Add a participant (or referred participant) during signup.
+
+- `growsurf_update_participant`
+  Update a participant by ID or email (including `notes` and `paypalEmail`).
+
+- `growsurf_email_participant`
+  Email a participant using a configured template or a free-form subject/body.
+
+- `growsurf_get_participant_analytics`
+  Fetch a single participant's analytics (engagement, ranks, shares, affiliate money metrics).
+
+- `growsurf_get_participant_activity_logs`
+  List a participant's activity logs (offset/limit paginated).
 
 - `growsurf_trigger_referral`
   Trigger referral (for referral programs only). Optionally pass `delayInDays` (1-90) to hold the credit for N days before awarding it (e.g. to cover a refund window).

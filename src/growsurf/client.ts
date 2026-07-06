@@ -1,7 +1,9 @@
 import { setTimeout as delay } from "node:timers/promises";
 
 export type GrowSurfClientOptions = {
-  apiKey: string;
+  // Optional: the unauthenticated createAccount endpoint runs without a key, so the client can be
+  // constructed keyless. All other methods require a key (enforced by the caller before use).
+  apiKey?: string | undefined;
   campaignId: string;
   baseUrl?: string; // defaults to https://api.growsurf.com/v2
 };
@@ -31,6 +33,17 @@ export type GrowSurfParticipantInput = {
 const DEFAULT_BASE_URL = "https://api.growsurf.com/v2";
 
 const normalizeBaseUrl = (baseUrl: string) => baseUrl.replace(/\/+$/, "");
+
+// Builds a `?a=1&b=2` query suffix from a params object, skipping undefined values.
+// Returns "" when no params are present so callers can append it unconditionally.
+const toQueryString = (params: Record<string, string | number | undefined>): string => {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
+};
 
 const toError = async (response: Response): Promise<GrowSurfRequestError> => {
   const contentType = response.headers.get("content-type") ?? "";
@@ -74,7 +87,7 @@ export class GrowSurfClient {
   private readonly baseUrl: string;
 
   constructor(options: GrowSurfClientOptions) {
-    this.apiKey = options.apiKey;
+    this.apiKey = options.apiKey ?? "";
     this.campaignId = options.campaignId;
     this.baseUrl = normalizeBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
   }
@@ -231,6 +244,124 @@ export class GrowSurfClient {
     return this.requestJson("PATCH", `/campaign/${encodeURIComponent(this.campaignId)}/installation`, fields);
   }
 
+  // Account (account-level, not campaign-scoped). See the GrowSurf REST API reference for the
+  // full field-level schemas. Every method except createAccount authenticates with the API key.
+
+  // createAccount is the ONLY unauthenticated endpoint — it creates a new account and returns a
+  // fresh API key, so it is sent WITHOUT an Authorization header even when one is configured.
+  async createAccount(body: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("POST", `/accounts`, body, { auth: false });
+  }
+
+  async getAccount(): Promise<unknown> {
+    return this.requestJson("GET", `/account`);
+  }
+
+  async updateAccount(fields: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("PATCH", `/account`, fields);
+  }
+
+  async rotateApiKey(): Promise<unknown> {
+    return this.requestJson("POST", `/account/api-key`);
+  }
+
+  async requestAccountVerification(): Promise<unknown> {
+    return this.requestJson("POST", `/account/verification-request`);
+  }
+
+  async resendVerificationEmail(): Promise<unknown> {
+    return this.requestJson("POST", `/account/verification-email`);
+  }
+
+  // Campaign analytics. Pass `interval` (day|week|month) to also receive a per-period `series`
+  // alongside the totals; scope the timeframe with `days` or an explicit startDate/endDate window.
+  async getCampaignAnalytics(
+    query: { interval?: string; days?: number; startDate?: number; endDate?: number } = {},
+  ): Promise<unknown> {
+    return this.requestJson(
+      "GET",
+      `/campaign/${encodeURIComponent(this.campaignId)}/analytics${toQueryString(query)}`,
+    );
+  }
+
+  // Campaign webhooks — mirrors the campaign-reward CRUD shape. Secrets are write-only and never
+  // returned; the webhook id is `primary` for the program's primary webhook.
+  async listWebhooks(): Promise<unknown> {
+    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/webhooks`);
+  }
+
+  async createWebhook(webhook: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("POST", `/campaign/${encodeURIComponent(this.campaignId)}/webhooks`, webhook);
+  }
+
+  async updateWebhook(webhookId: string, fields: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson(
+      "PATCH",
+      `/campaign/${encodeURIComponent(this.campaignId)}/webhooks/${encodeURIComponent(webhookId)}`,
+      fields,
+    );
+  }
+
+  async deleteWebhook(webhookId: string): Promise<unknown> {
+    return this.requestJson(
+      "DELETE",
+      `/campaign/${encodeURIComponent(this.campaignId)}/webhooks/${encodeURIComponent(webhookId)}`,
+    );
+  }
+
+  async testWebhook(webhookId: string, body?: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson(
+      "POST",
+      `/campaign/${encodeURIComponent(this.campaignId)}/webhooks/${encodeURIComponent(webhookId)}/test`,
+      body,
+    );
+  }
+
+  // Participant sub-resources (email / analytics / activity-logs / update). Each is exposed as an
+  // ById / ByEmail pair mirroring the existing trigger/record participant methods; both resolve to
+  // the same `participantIdOrEmail` path parameter.
+  private participantPath(participantIdOrEmail: string, suffix = ""): string {
+    return `/campaign/${encodeURIComponent(this.campaignId)}/participant/${encodeURIComponent(participantIdOrEmail)}${suffix}`;
+  }
+
+  async emailParticipantById(participantId: string, body: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("POST", this.participantPath(participantId, "/email"), body);
+  }
+
+  async emailParticipantByEmail(participantEmail: string, body: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("POST", this.participantPath(participantEmail, "/email"), body);
+  }
+
+  async getParticipantAnalyticsById(participantId: string): Promise<unknown> {
+    return this.requestJson("GET", this.participantPath(participantId, "/analytics"));
+  }
+
+  async getParticipantAnalyticsByEmail(participantEmail: string): Promise<unknown> {
+    return this.requestJson("GET", this.participantPath(participantEmail, "/analytics"));
+  }
+
+  async listParticipantActivityLogsById(
+    participantId: string,
+    query: { limit?: number; offset?: number } = {},
+  ): Promise<unknown> {
+    return this.requestJson("GET", this.participantPath(participantId, `/activity-logs${toQueryString(query)}`));
+  }
+
+  async listParticipantActivityLogsByEmail(
+    participantEmail: string,
+    query: { limit?: number; offset?: number } = {},
+  ): Promise<unknown> {
+    return this.requestJson("GET", this.participantPath(participantEmail, `/activity-logs${toQueryString(query)}`));
+  }
+
+  async updateParticipantById(participantId: string, fields: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("POST", this.participantPath(participantId), fields);
+  }
+
+  async updateParticipantByEmail(participantEmail: string, fields: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("POST", this.participantPath(participantEmail), fields);
+  }
+
   private async recordSale(participantPath: string, sale: Record<string, unknown>): Promise<unknown> {
     // Docs show ".../transaction" while some examples use ".../sales".
     // Prefer the documented endpoint and fall back to the legacy path if needed.
@@ -250,12 +381,17 @@ export class GrowSurfClient {
     method: "GET" | "POST" | "PATCH" | "DELETE",
     path: string,
     body?: unknown,
+    options?: { auth?: boolean },
   ): Promise<unknown> {
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.apiKey}`,
       Accept: "application/json",
     };
+    // Attach the bearer token unless the endpoint is explicitly unauthenticated (createAccount).
+    // Guarding on this.apiKey lets a keyless client hit /accounts without sending an empty token.
+    if (options?.auth !== false && this.apiKey) {
+      headers.Authorization = `Bearer ${this.apiKey}`;
+    }
     const init: RequestInit = { method, headers };
 
     if (body !== undefined) {
