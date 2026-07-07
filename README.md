@@ -31,7 +31,7 @@ This MCP server is NOT for:
   - Get campaign
   - Get campaign analytics (totals, plus an optional per-period time-series and optional previous-period, status-count, and rate enrichments)
   - Create, update, and clone programs (campaigns)
-  - List, create, update, and delete campaign rewards (reward templates)
+  - List, create, update, and delete campaign rewards
   - List, create, update, delete, and test program webhooks
   - Add participant
   - Update a participant, email a participant, and get a participant's analytics and activity logs
@@ -236,16 +236,16 @@ node dist/index.js
   Clone the program into a new `DRAFT` program (integrations and credentials are not copied).
 
 - `growsurf_list_campaign_rewards`
-  List the program's configured rewards (reward templates).
+  List the program's configured rewards.
 
 - `growsurf_create_campaign_reward`
-  Create a campaign reward (reward template).
+  Create a campaign reward.
 
 - `growsurf_update_campaign_reward`
-  Update a campaign reward (reward template) by its reward key.
+  Update a campaign reward by its reward key.
 
 - `growsurf_delete_campaign_reward`
-  Delete a campaign reward (reward template) by its reward key.
+  Delete a campaign reward by its reward key.
 
 - `growsurf_list_campaign_webhooks`
   List the program's webhooks (secrets are never returned).

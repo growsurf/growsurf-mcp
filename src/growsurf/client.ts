@@ -21,7 +21,7 @@ export type GrowSurfRequestError = {
 export type GrowSurfParticipantInput = {
   email: string;
   referredBy?: string;
-  referralStatus?: "CREDIT_PENDING" | "CREDIT_AWARDED" | "CREDIT_EXPIRED";
+  referralStatus?: "CREDIT_PENDING" | "CREDIT_AWARDED";
   firstName?: string;
   lastName?: string;
   ipAddress?: string;

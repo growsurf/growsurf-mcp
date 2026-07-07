@@ -100,7 +100,7 @@ const addParticipantSchema = z.object({
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
   referredBy: z.string().min(1).optional(),
-  referralStatus: z.enum(["CREDIT_PENDING", "CREDIT_AWARDED", "CREDIT_EXPIRED"]).optional(),
+  referralStatus: z.enum(["CREDIT_PENDING", "CREDIT_AWARDED"]).optional(),
   ipAddress: z.string().min(1).optional(),
   fingerprint: z.string().min(1).optional(),
   mobileInstanceId: z.string().min(1).optional(),
@@ -157,6 +157,8 @@ const recordSaleSchema = z
     externalId: z.string().min(1).optional(),
     orderId: z.string().min(1).optional(),
     paymentId: z.string().min(1).optional(),
+    customerId: z.string().min(1).optional(),
+    subscriptionId: z.string().min(1).optional(),
     netAmount: z.number().int().positive().optional(),
     taxAmount: z.number().int().nonnegative().optional(),
     amountCashNet: z.number().int().positive().optional(),
@@ -321,16 +323,11 @@ const updateAccountSchema = z
 const webhookEventSchema = z.enum([
   "PARTICIPANT_REACHED_A_GOAL",
   "NEW_PARTICIPANT_ADDED",
-  "NEW_PARTICIPANT_ADDED_REFERRED",
-  "NEW_PARTICIPANT_ADDED_NON_REFERRED",
   "CAMPAIGN_ENDED",
   "PARTICIPANT_FRAUD_STATUS_UPDATED",
-  "PARTICIPANT_AFFILIATE_STATUS_UPDATED",
   "NEW_COMMISSION_ADDED",
   "COMMISSION_ADJUSTED",
   "NEW_PAYOUT_ISSUED",
-  "AFFILIATE_BATCH_PAYOUT_COMPLETED",
-  "MONTHLY_PAYOUT_REMINDER",
 ]);
 
 const WEBHOOK_EVENTS = [...webhookEventSchema.options];
@@ -813,7 +810,7 @@ const main = async () => {
         {
           name: "growsurf_get_campaign_options",
           description:
-            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, fraud/firewall settings, notifications, and other behavior options). Returns a large nested object; see the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, notifications, and other behavior options). Returns a large nested object; see the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -1001,7 +998,7 @@ const main = async () => {
               firstName: { type: "string" },
               lastName: { type: "string" },
               referredBy: { type: "string" },
-              referralStatus: { type: "string", enum: ["CREDIT_PENDING", "CREDIT_AWARDED", "CREDIT_EXPIRED"] },
+              referralStatus: { type: "string", enum: ["CREDIT_PENDING", "CREDIT_AWARDED"] },
               ipAddress: { type: "string" },
               fingerprint: { type: "string" },
               mobileInstanceId: { type: "string" },
@@ -1073,7 +1070,7 @@ const main = async () => {
         {
           name: "growsurf_email_participant",
           description:
-            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured, sendable email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). Free-form emails go with the same compliance handling (company name, postal address, and unsubscribe link added automatically; unsubscribed participants suppressed). Sending requires the account to be verified by the GrowSurf team, plus a verified custom email domain on the program (set up in Campaign Editor > 3. Emails > Email Settings) — emails always send from your domain, never a GrowSurf address; returns 400 until one is verified. The send is queued asynchronously. Uses GROWSURF_CAMPAIGN_ID.",
+            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured, sendable email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). Free-form emails go with the same compliance handling (company name, postal address, and unsubscribe link added automatically; unsubscribed participants suppressed). Sending requires the account to be verified by the GrowSurf team, plus a verified custom email domain on the program (set up in Campaign Editor > 3. Emails > Email Settings) — emails always send from your domain, never a GrowSurf address; returns 400 until one is verified. The email is accepted for delivery. Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1181,6 +1178,8 @@ const main = async () => {
               externalId: { type: "string" },
               orderId: { type: "string" },
               paymentId: { type: "string" },
+              customerId: { type: "string" },
+              subscriptionId: { type: "string" },
               netAmount: { type: "integer" },
               taxAmount: { type: "integer" },
               amountCashNet: { type: "integer" },
@@ -1233,7 +1232,7 @@ const main = async () => {
               firstName: { type: "string" },
               lastName: { type: "string" },
               referredBy: { type: "string" },
-              referralStatus: { type: "string", enum: ["CREDIT_PENDING", "CREDIT_AWARDED", "CREDIT_EXPIRED"] },
+              referralStatus: { type: "string", enum: ["CREDIT_PENDING", "CREDIT_AWARDED"] },
               ipAddress: { type: "string" },
               fingerprint: { type: "string" },
               mobileInstanceId: { type: "string" },
@@ -1697,6 +1696,8 @@ const main = async () => {
             externalId: input.externalId,
             orderId: input.orderId,
             paymentId: input.paymentId,
+            customerId: input.customerId,
+            subscriptionId: input.subscriptionId,
             netAmount: input.netAmount,
             taxAmount: input.taxAmount,
             amountCashNet: input.amountCashNet,
