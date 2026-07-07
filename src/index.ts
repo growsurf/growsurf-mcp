@@ -248,6 +248,65 @@ const rewardTaxValuationSchema = z.object({
   isTaxReportable: z.boolean().nullable().optional(),
 });
 
+// Affiliate commission structure (openapi CommissionStructure) — a CLOSED object. The API rejects
+// unknown keys, so the MCP mirrors that exact shape instead of advertising an open `{[key]: any}`
+// dictionary. Provide `amount` (+ optional `amountISO`) for a FIXED commission, or `percent` for a
+// PERCENT commission; the remaining fields tune hold/duration, caps, and the intro rate.
+const commissionStructureSchema = z
+  .object({
+    type: z.enum(["PERCENT", "FIXED"]).optional(),
+    event: z.enum(["CLICK", "LEAD", "SALE"]).optional(),
+    amount: z.number().int().nullable().optional(),
+    amountISO: z.string().nullable().optional(),
+    percent: z.number().nullable().optional(),
+    minPaidReferrals: z.number().int().min(1).optional(),
+    holdDuration: z.number().int().optional(),
+    duration: z.enum(["FOREVER", "REPEATING", "ONCE"]).optional(),
+    durationInMonths: z.number().int().nullable().optional(),
+    approvalRequired: z.boolean().optional(),
+    hasMaxAmount: z.boolean().optional(),
+    maxAmount: z.number().int().nullable().optional(),
+    maxAmountISO: z.string().nullable().optional(),
+    hasIntro: z.boolean().optional(),
+    introType: z.enum(["PERCENT", "FIXED"]).nullable().optional(),
+    introPercent: z.number().nullable().optional(),
+    introAmount: z.number().int().nullable().optional(),
+    introAmountISO: z.string().nullable().optional(),
+    introDuration: z.enum(["REPEATING", "ONCE"]).nullable().optional(),
+    introDurationInMonths: z.number().int().nullable().optional(),
+  })
+  .strict();
+
+// JSON-schema mirror of commissionStructureSchema for the MCP tool input contract (closed object).
+const commissionStructureJsonSchema = {
+  type: "object",
+  description:
+    "Affiliate commission structure (AFFILIATE rewards only). Provide `amount` (+ optional `amountISO`) for a FIXED commission, or `percent` for a PERCENT commission.",
+  properties: {
+    type: { type: "string", enum: ["PERCENT", "FIXED"] },
+    event: { type: "string", enum: ["CLICK", "LEAD", "SALE"] },
+    amount: { type: ["integer", "null"] },
+    amountISO: { type: ["string", "null"] },
+    percent: { type: ["number", "null"] },
+    minPaidReferrals: { type: "integer", minimum: 1 },
+    holdDuration: { type: "integer" },
+    duration: { type: "string", enum: ["FOREVER", "REPEATING", "ONCE"] },
+    durationInMonths: { type: ["integer", "null"] },
+    approvalRequired: { type: "boolean" },
+    hasMaxAmount: { type: "boolean" },
+    maxAmount: { type: ["integer", "null"] },
+    maxAmountISO: { type: ["string", "null"] },
+    hasIntro: { type: "boolean" },
+    introType: { type: ["string", "null"] },
+    introPercent: { type: ["number", "null"] },
+    introAmount: { type: ["integer", "null"] },
+    introAmountISO: { type: ["string", "null"] },
+    introDuration: { type: ["string", "null"] },
+    introDurationInMonths: { type: ["integer", "null"] },
+  },
+  additionalProperties: false,
+} as const;
+
 // Writable fields shared by the create and update campaign-reward tools.
 const rewardWritableFields = {
   title: z.string().min(1).optional(),
@@ -267,7 +326,7 @@ const rewardWritableFields = {
   couponCode: z.string().nullable().optional(),
   referralCouponCode: z.string().nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-  commissionStructure: z.record(z.string(), z.unknown()).optional(),
+  commissionStructure: commissionStructureSchema.optional(),
   value: rewardTaxValuationSchema.optional(),
   referredValue: rewardTaxValuationSchema.optional(),
 };
@@ -679,7 +738,7 @@ const main = async () => {
               couponCode: { type: "string" },
               referralCouponCode: { type: "string" },
               metadata: { type: "object", additionalProperties: true },
-              commissionStructure: { type: "object", additionalProperties: true },
+              commissionStructure: commissionStructureJsonSchema,
               value: {
                 type: "object",
                 description:
@@ -730,7 +789,7 @@ const main = async () => {
               couponCode: { type: "string" },
               referralCouponCode: { type: "string" },
               metadata: { type: "object", additionalProperties: true },
-              commissionStructure: { type: "object", additionalProperties: true },
+              commissionStructure: commissionStructureJsonSchema,
               value: {
                 type: "object",
                 description:
