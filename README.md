@@ -230,7 +230,7 @@ node dist/index.js
   Create a new program (campaign) with type-appropriate defaults and optional inline rewards (only needs `GROWSURF_API_KEY`, not `GROWSURF_CAMPAIGN_ID`).
 
 - `growsurf_update_campaign`
-  Update the program's configuration and/or status (only the fields you send are changed).
+  Update the program's identity and lifecycle: name, company branding, and status (only the fields you send are changed).
 
 - `growsurf_clone_campaign`
   Clone the program into a new `DRAFT` program (integrations and credentials are not copied).
@@ -317,9 +317,9 @@ If a webhook cannot be delivered, GrowSurf retries it for several days using exp
 
 ### Webhook Security & Idempotency
 
-GrowSurf does not currently publish signed webhook headers or a built-in signature verification scheme. To securely use webhooks, we recommend the following:
+GrowSurf signs webhook deliveries when the webhook has a `secret` configured: each delivery includes a `GrowSurf-Signature` HMAC header computed with that secret (the secret is write-only and never returned). To securely use webhooks, we recommend the following:
 
-- Include a random, unguessable token in your webhook URL (path or query string) and validate it on receipt
+- Set a `secret` on the webhook and verify the `GrowSurf-Signature` header on receipt
 - Validate the payload shape and expected event type
 - Deduplicate webhook events using an idempotency key, since deliveries may be retried
 

@@ -34,9 +34,9 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "obj
  * Normalize and validate a GrowSurf webhook payload shape.
  *
  * Security note:
- * GrowSurf docs do not specify signed webhooks. For verification, we recommend:
- * - put a random token in the webhook URL path/query and validate it
- * - restrict ingress (WAF/IP allowlist) where possible
+ * GrowSurf signs deliveries with the `GrowSurf-Signature` HMAC header when the webhook
+ * has a (write-only) `secret` configured. For verification, we recommend:
+ * - verify the `GrowSurf-Signature` header using your webhook secret
  * - validate payload schema + dedupe with an idempotency key
  */
 export const normalizeWebhook = (payload: unknown): WebhookNormalizationResult => {
