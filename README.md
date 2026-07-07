@@ -27,7 +27,7 @@ This MCP server is NOT for:
   - Affiliate sale / transaction tracking
   - Webhooks
 - **Happy‑Path REST API Wrappers**:
-  - Create an account and get an API key (no API key required), plus get/update account, rotate API key, and request/resend verification
+  - Create an account and get an API key (no API key required; the key unlocks after email verification), plus get/update account, rotate API key, and request/resend verification
   - Get campaign
   - Get campaign analytics (totals, plus an optional per-period time-series and optional previous-period, status-count, and rate enrichments)
   - Create, update, and clone programs (campaigns)
@@ -201,7 +201,7 @@ node dist/index.js
 ### Account
 
 - `growsurf_create_account`
-  Create a brand-new GrowSurf account and get an API key back. The **only** tool that does not require `GROWSURF_API_KEY` to be configured.
+  Create a brand-new GrowSurf account and get an API key back. The **only** tool that does not require `GROWSURF_API_KEY` to be configured. The returned key is locked (`403` `EMAIL_NOT_VERIFIED_ERROR`) until the account's email is verified — have the owner click the emailed verification link, then retry. The key is rotated on the owner's first dashboard sign-in.
 
 - `growsurf_get_account`
   Fetch the account that owns the API key (profile and GrowSurf-team verification state).
@@ -268,6 +268,9 @@ node dist/index.js
 - `growsurf_update_participant`
   Update a participant by ID or email (including `notes` and `paypalEmail`).
 
+- `growsurf_bulk_delete_participants`
+  Permanently delete up to 200 participants (by ID and/or email, mixed lists allowed) in one request, with per-row `DELETED`/`NOT_FOUND`/`DUPLICATE`/`ERROR` results. Irreversible — removes the participants' referrals, rewards, commissions, and payout records.
+
 - `growsurf_email_participant`
   Email a participant using a configured template or a free-form subject/body.
 
@@ -310,7 +313,7 @@ GrowSurf webhooks notify your server when important referral or affiliate events
 
 ### Retry Behavior
 
-GrowSurf delivers webhooks using a persistent queue with retry logic. If a webhook cannot be delivered, it will be retried for several days using exponential backoff. Because of this, duplicate deliveries are possible and must be handled safely by your server.
+If a webhook cannot be delivered, GrowSurf retries it for several days using exponential backoff. Because of this, duplicate deliveries are possible and must be handled safely by your server.
 
 ### Webhook Security & Idempotency
 

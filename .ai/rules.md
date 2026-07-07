@@ -20,6 +20,16 @@
   - Source of truth: the latest tag at `https://github.com/growsurf/growsurf-{ios,android}-sdk-distribution/releases`.
 - Do not add private `.ai` files to public distribution repos unless explicitly requested.
 
+## Writing Style For User-Facing Copy
+
+Applies to anything an MCP consumer reads: tool names/descriptions, guidance text, snippets, and the README.
+
+- Before writing or editing that copy, load the `human-writing` skill (`~/.agents/skills/human-writing/SKILL.md`). It covers the AI-generated patterns to avoid (buzzwords, hedging, robotic lists, generic transitions) and the human patterns to use (specifics, active voice, short plain sentences).
+- Two house rules the skill does not spell out, from Kevin (2026-07-07):
+  - Em dashes: use rarely. Prefer a comma, a period, parentheses, or a restructured sentence. Prose peppered with em dashes reads as AI-written.
+  - Bold: reserve for the one thing per section a reader must not miss. Do not bold every key term; heavy bolding is an AI tell and makes nothing stand out.
+- Do not mass-rewrite existing tool text for style; apply this to new copy and to text you are already changing.
+
 ## Verification And Handoff
 
 - Run the narrowest relevant checks when practical: `npm run test`, `npm run typecheck`, or `npm run build`.

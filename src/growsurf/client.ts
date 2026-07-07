@@ -248,7 +248,9 @@ export class GrowSurfClient {
   // full field-level schemas. Every method except createAccount authenticates with the API key.
 
   // createAccount is the ONLY unauthenticated endpoint — it creates a new account and returns a
-  // fresh API key, so it is sent WITHOUT an Authorization header even when one is configured.
+  // fresh API key (locked with 403 EMAIL_NOT_VERIFIED_ERROR until the account's email is verified,
+  // and rotated on the owner's first dashboard sign-in), so it is sent WITHOUT an Authorization
+  // header even when one is configured.
   async createAccount(body: Record<string, unknown>): Promise<unknown> {
     return this.requestJson("POST", `/accounts`, body, { auth: false });
   }
@@ -369,6 +371,17 @@ export class GrowSurfClient {
 
   async updateParticipantByEmail(participantEmail: string, fields: Record<string, unknown>): Promise<unknown> {
     return this.requestJson("POST", this.participantPath(participantEmail), fields);
+  }
+
+  // Bulk-deletes up to 200 participants in one request. Each entry is a GrowSurf participant ID or
+  // an email address (mixed lists allowed). Deletion is permanent; the response reports a per-row
+  // status (DELETED/NOT_FOUND/DUPLICATE/ERROR) plus a summary, so a 200 can include failed rows.
+  async bulkDeleteParticipants(participants: string[]): Promise<unknown> {
+    return this.requestJson(
+      "POST",
+      `/campaign/${encodeURIComponent(this.campaignId)}/participants/bulk-delete`,
+      { participants },
+    );
   }
 
   private async recordSale(participantPath: string, sale: Record<string, unknown>): Promise<unknown> {

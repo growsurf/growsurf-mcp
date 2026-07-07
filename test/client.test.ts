@@ -286,7 +286,12 @@ describe("GrowSurfClient", () => {
   // ---- Account ----
 
   it("creates an account with a POST to /accounts and NO Authorization header (keyless)", async () => {
-    const fetchMock = mockJson({ id: "acct_1", email: "richard@piedpiper.com", apiKey: "new_key" });
+    const fetchMock = mockJson({
+      id: "acct_1",
+      email: "richard@piedpiper.com",
+      apiKey: "new_key",
+      verificationStatus: "NOT_REQUESTED",
+    });
     globalThis.fetch = fetchMock as typeof fetch;
 
     // Keyless client: no apiKey configured — createAccount must still work.
@@ -298,7 +303,12 @@ describe("GrowSurfClient", () => {
       company: "Pied Piper",
     });
 
-    expect(result).toEqual({ id: "acct_1", email: "richard@piedpiper.com", apiKey: "new_key" });
+    expect(result).toEqual({
+      id: "acct_1",
+      email: "richard@piedpiper.com",
+      apiKey: "new_key",
+      verificationStatus: "NOT_REQUESTED",
+    });
     expect(fetchMock).toHaveBeenCalledWith(
       "https://api.growsurf.com/v2/accounts",
       expect.objectContaining({
@@ -316,7 +326,7 @@ describe("GrowSurfClient", () => {
   });
 
   it("never sends Authorization for createAccount even when an API key is configured", async () => {
-    const fetchMock = mockJson({ id: "acct_1", apiKey: "new_key" });
+    const fetchMock = mockJson({ id: "acct_1", apiKey: "new_key", verificationStatus: "NOT_REQUESTED" });
     globalThis.fetch = fetchMock as typeof fetch;
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
@@ -636,5 +646,28 @@ describe("GrowSurfClient", () => {
         body: JSON.stringify({ notes: "VIP affiliate", paypalEmail: "richard@piedpiper.com" }),
       }),
     );
+  });
+
+  it("bulk deletes participants with a POST to the bulk-delete endpoint", async () => {
+    const fetchMock = mockJson({
+      summary: { total: 2, deletedCount: 1, notFoundCount: 1, duplicateCount: 0, errorCount: 0 },
+      results: [
+        { index: 0, identifier: "gavin@hooli.com", status: "DELETED", participantId: "f8g9nl", email: "gavin@hooli.com" },
+        { index: 1, identifier: "erlich@aviato.com", status: "NOT_FOUND", message: "No participant matches this id or email." },
+      ],
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+    const result = await client.bulkDeleteParticipants(["gavin@hooli.com", "erlich@aviato.com"]);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.growsurf.com/v2/campaign/abc123/participants/bulk-delete",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ participants: ["gavin@hooli.com", "erlich@aviato.com"] }),
+      }),
+    );
+    expect((result as { summary: { deletedCount: number } }).summary.deletedCount).toBe(1);
   });
 });

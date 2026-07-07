@@ -458,6 +458,21 @@ const updateParticipantSchema = z
     { message: "Provide at least one participant field to update." },
   );
 
+// Bulk delete is campaign-scoped (POST /campaign/{id}/participants/bulk-delete), not addressed by a
+// single participant identity — each array entry is itself an ID-or-email identifier.
+const bulkDeleteParticipantsSchema = z.object({
+  participants: z
+    .array(
+      z
+        .string()
+        .min(1)
+        .describe("A GrowSurf participant ID or an email address identifying one participant to delete."),
+    )
+    .min(1)
+    .max(200)
+    .describe("GrowSurf participant IDs and/or email addresses to delete (1-200 entries; mixed lists allowed)."),
+});
+
 const main = async () => {
   const env = getEnv();
 
@@ -836,7 +851,7 @@ const main = async () => {
         {
           name: "growsurf_create_account",
           description:
-            "Create a brand-new GrowSurf account and return an API key. This is the ONLY tool that does NOT require GROWSURF_API_KEY to be configured — the endpoint is unauthenticated and returns a fresh key in `apiKey`. New accounts start on a short Business plan trial (no card required) so the API is fully usable right away; when the trial ends the account moves to the FREE plan. The account is always created passwordless; GrowSurf emails a set-password link. A verification email is also sent — the account's email address must be verified before the returned key works with the other tools (until then they return a `403` `EMAIL_NOT_VERIFIED_ERROR`; use `growsurf_resend_verification_email` to resend). Some actions (such as emailing participants) additionally require the GrowSurf team to verify the account first. Disposable email addresses are not accepted.",
+            "Create a brand-new GrowSurf account and return an API key. This is the ONLY tool that does NOT require GROWSURF_API_KEY to be configured — the endpoint is unauthenticated and returns a fresh key in `apiKey`. The key is LOCKED until the account's email address is verified: until then, authenticated endpoints outside the Account tools return a `403` with error code `EMAIL_NOT_VERIFIED_ERROR`. Practical flow: create the account, tell the user to click the link in the verification email GrowSurf sends, then retry/poll until the `EMAIL_NOT_VERIFIED_ERROR` clears and continue with the returned key (use `growsurf_resend_verification_email` if the email was lost). The account is created passwordless; the welcome email contains the verification link and a set-password link for dashboard access. Accounts whose email is never verified are deleted automatically after 7 days. For security, the API key is rotated the first time the account owner signs in to the GrowSurf dashboard. New accounts start on a short Business plan trial (no card required) so the API is fully usable right away; when the trial ends the account moves to the FREE plan. Some actions (such as emailing participants) additionally require the GrowSurf team to verify the account first. Personal email and disposable email addresses are not accepted.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1028,6 +1043,30 @@ const main = async () => {
               },
             },
             anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_bulk_delete_participants",
+          description:
+            "Bulk delete participants from your GrowSurf program in one request. DESTRUCTIVE: deletion is permanent, cannot be undone, and removes the participants' referrals, rewards, commissions, and payout records. Each entry in `participants` is a GrowSurf participant ID or an email address (mixed lists are allowed), up to 200 entries per request — chunk larger lists across multiple calls. Returns a `summary` (total, deletedCount, notFoundCount, duplicateCount, errorCount) plus per-row `results` in request order, each with `status` DELETED, NOT_FOUND, DUPLICATE (resolves to the same participant as an earlier entry), or ERROR — a 200 response can still include NOT_FOUND or ERROR rows, so check the summary. Uses GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participants: {
+                type: "array",
+                minItems: 1,
+                maxItems: 200,
+                items: {
+                  type: "string",
+                  minLength: 1,
+                  description: "A GrowSurf participant ID or an email address identifying one participant to delete.",
+                },
+                description:
+                  "GrowSurf participant IDs and/or email addresses to delete (1-200 entries; mixed lists allowed).",
+              },
+            },
+            required: ["participants"],
             additionalProperties: false,
           },
         },
@@ -1444,7 +1483,8 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_create_account": {
-          // Keyless exception: works without GROWSURF_API_KEY and returns a new key.
+          // Keyless exception: works without GROWSURF_API_KEY and returns a new key (locked
+          // until the account's email is verified).
           const growsurf = getKeylessGrowSurfClient(env);
           const input = createAccountSchema.parse(request.params.arguments ?? {});
           const body = omitUndefined({
@@ -1579,6 +1619,12 @@ const main = async () => {
           const result = participantId
             ? await growsurf.updateParticipantById(participantId, fields)
             : await growsurf.updateParticipantByEmail(participantEmail!, fields);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_bulk_delete_participants": {
+          const growsurf = requireGrowSurfClient(env);
+          const input = bulkDeleteParticipantsSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.bulkDeleteParticipants(input.participants);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_email_participant": {
