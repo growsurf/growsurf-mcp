@@ -201,7 +201,7 @@ node dist/index.js
 ### Account
 
 - `growsurf_create_account`
-  Create a brand-new GrowSurf account and get an API key back. The **only** tool that does not require `GROWSURF_API_KEY` to be configured. The returned key is locked (`403` `EMAIL_NOT_VERIFIED_ERROR`) until the account's email is verified — have the owner click the emailed verification link, then retry. The key is rotated on the owner's first dashboard sign-in.
+  Create a brand-new GrowSurf account and get an API key back. The **only** tool that does not require `GROWSURF_API_KEY` to be configured. The returned key is locked (`403` `EMAIL_NOT_VERIFIED_ERROR`) until the account's email is verified — have the owner click the emailed verification link, then retry. The key is rotated on the owner's first dashboard sign-in. Creating an account agrees, on the account holder's behalf, to GrowSurf's [Terms of Service](https://growsurf.com/terms) and [Privacy Policy](https://growsurf.com/privacy).
 
 - `growsurf_get_account`
   Fetch the account that owns the API key (profile and GrowSurf-team verification state).
