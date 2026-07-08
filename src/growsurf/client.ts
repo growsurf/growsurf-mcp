@@ -222,6 +222,10 @@ export class GrowSurfClient {
     return this.requestJson("PATCH", `/campaign/${encodeURIComponent(this.campaignId)}/design`, fields);
   }
 
+  async getReferralFlowScreenshots(): Promise<unknown> {
+    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/referral-flow-screenshots`);
+  }
+
   async getCampaignEmails(): Promise<unknown> {
     return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/emails`);
   }

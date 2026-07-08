@@ -7,6 +7,7 @@ This repo owns the public GrowSurf Model Context Protocol server package `@grows
 ## What This Repo Does
 
 - Exposes MCP tools and guidance for integrating GrowSurf referral and affiliate programs.
+- Exports `createGrowSurfMcpServer` so hosted MCP runtimes can embed the same server without starting the stdio CLI.
 - Implements public GrowSurf API client helpers and customer-facing integration snippets.
 - Builds TypeScript from `src/` into `dist/` for the published package.
 

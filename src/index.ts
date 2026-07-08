@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-import { createRequire } from "module";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
   ListResourcesRequestSchema,
   ListToolsRequestSchema,
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-const { version: PACKAGE_VERSION } = createRequire(import.meta.url)("../package.json") as { version: string };
+export const GROWSURF_MCP_VERSION = "0.6.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient, type GrowSurfRequestError } from "./growsurf/client.js";
@@ -32,6 +32,7 @@ import {
 import { mobileSdkGuideInputSchema, renderMobileSdkGuide } from "./growsurf/mobileSdkGuide.js";
 import { computeParticipantAuthHash } from "./growsurf/participantAuth.js";
 import { normalizeWebhook } from "./growsurf/webhooks.js";
+import { getGrowSurfPrompt, listGrowSurfPrompts } from "./prompts.js";
 
 const optionalNonEmptyString = () =>
   z
@@ -45,11 +46,12 @@ const optionalNonEmptyString = () =>
 const envSchema = z.object({
   GROWSURF_API_KEY: optionalNonEmptyString(),
   GROWSURF_CAMPAIGN_ID: optionalNonEmptyString(),
+  GROWSURF_API_BASE_URL: optionalNonEmptyString(),
   GROWSURF_PARTICIPANT_AUTH_SECRET: optionalNonEmptyString(),
   GROWSURF_WEBHOOK_TOKEN: optionalNonEmptyString(),
 });
 
-type Env = z.infer<typeof envSchema>;
+export type Env = z.infer<typeof envSchema>;
 
 const getEnv = (): Env => {
   const parsed = envSchema.safeParse(process.env);
@@ -65,7 +67,11 @@ const requireGrowSurfClient = (env: Env): GrowSurfClient => {
       "Missing GrowSurf REST credentials. Set GROWSURF_API_KEY and GROWSURF_CAMPAIGN_ID to use API-calling tools.",
     );
   }
-  return new GrowSurfClient({ apiKey: env.GROWSURF_API_KEY, campaignId: env.GROWSURF_CAMPAIGN_ID });
+  return new GrowSurfClient({
+    apiKey: env.GROWSURF_API_KEY,
+    campaignId: env.GROWSURF_CAMPAIGN_ID,
+    ...(env.GROWSURF_API_BASE_URL ? { baseUrl: env.GROWSURF_API_BASE_URL } : {}),
+  });
 };
 
 // Creating a campaign (POST /campaigns) has no campaign id, so it only needs the API key.
@@ -74,13 +80,21 @@ const requireGrowSurfApiKey = (env: Env): GrowSurfClient => {
   if (!env.GROWSURF_API_KEY) {
     throw new Error("Missing GrowSurf REST credentials. Set GROWSURF_API_KEY to use this tool.");
   }
-  return new GrowSurfClient({ apiKey: env.GROWSURF_API_KEY, campaignId: env.GROWSURF_CAMPAIGN_ID ?? "" });
+  return new GrowSurfClient({
+    apiKey: env.GROWSURF_API_KEY,
+    campaignId: env.GROWSURF_CAMPAIGN_ID ?? "",
+    ...(env.GROWSURF_API_BASE_URL ? { baseUrl: env.GROWSURF_API_BASE_URL } : {}),
+  });
 };
 
 // Creating an account (POST /accounts) is the one unauthenticated endpoint — it RETURNS a new API
 // key, so it must work even when no GROWSURF_API_KEY is configured (the keyless exception).
 const getKeylessGrowSurfClient = (env: Env): GrowSurfClient =>
-  new GrowSurfClient({ apiKey: env.GROWSURF_API_KEY, campaignId: env.GROWSURF_CAMPAIGN_ID ?? "" });
+  new GrowSurfClient({
+    apiKey: env.GROWSURF_API_KEY,
+    campaignId: env.GROWSURF_CAMPAIGN_ID ?? "",
+    ...(env.GROWSURF_API_BASE_URL ? { baseUrl: env.GROWSURF_API_BASE_URL } : {}),
+  });
 
 // The campaign-scoped tools: every tool that operates on a single program (campaign). Each accepts
 // an optional `campaignId` argument that overrides GROWSURF_CAMPAIGN_ID (resolved per call via
@@ -100,6 +114,7 @@ const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
   "growsurf_delete_campaign_reward",
   "growsurf_get_campaign_design",
   "growsurf_update_campaign_design",
+  "growsurf_get_referral_flow_screenshots",
   "growsurf_get_campaign_emails",
   "growsurf_update_campaign_emails",
   "growsurf_get_campaign_options",
@@ -126,7 +141,7 @@ const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
 ]);
 
 // Shared JSON-schema property injected into every campaign-scoped tool's input schema (see the loop
-// in the ListTools handler). Keeping it in one place means the 32 tool schemas cannot drift.
+// in the ListTools handler). Keeping it in one place means the campaign-scoped tool schemas cannot drift.
 const CAMPAIGN_ID_JSON_PROP = {
   type: "string",
   description:
@@ -594,8 +609,12 @@ const bulkDeleteParticipantsSchema = z.object({
     .describe("GrowSurf participant IDs and/or email addresses to delete (1-200 entries; mixed lists allowed)."),
 });
 
-const main = async () => {
-  const env = getEnv();
+export type CreateGrowSurfMcpServerOptions = {
+  env?: Env;
+};
+
+export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions = {}) => {
+  const env = options.env ?? getEnv();
 
   // Shared env shape for the install-kit renderers (decoupled from the MCP Env).
   const installKitEnv = {
@@ -607,12 +626,13 @@ const main = async () => {
   const server = new Server(
     {
       name: "growsurf-mcp",
-      version: PACKAGE_VERSION,
+      version: GROWSURF_MCP_VERSION,
     },
     {
       capabilities: {
         tools: {},
         resources: {},
+        prompts: {},
       },
     },
   );
@@ -646,6 +666,16 @@ const main = async () => {
       };
     }
     throw new Error(`Unknown resource: ${request.params.uri}`);
+  });
+
+  server.setRequestHandler(ListPromptsRequestSchema, async () => {
+    return {
+      prompts: listGrowSurfPrompts(),
+    };
+  });
+
+  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    return getGrowSurfPrompt(request.params.name, request.params.arguments ?? {});
   });
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -733,7 +763,7 @@ const main = async () => {
         {
           name: "growsurf_create_campaign",
           description:
-            "Create a new GrowSurf program (campaign) pre-populated with type-appropriate defaults, optionally with inline rewards. Only `type` is required; the program is created in DRAFT status owned by your API key's account. `currencyISO` sets the program's currency (defaults to USD) and is immutable after creation. Editor-tab config (design, emails, options, installation) is not accepted here — configure it after creation with the config sub-resource tools. Does NOT require GROWSURF_CAMPAIGN_ID. The response includes the new program `id`; pass it as `campaignId` to the other tools (or set GROWSURF_CAMPAIGN_ID) to configure and operate the program.",
+            "Create a new GrowSurf program (campaign) pre-populated with type-appropriate starter content, optionally with inline rewards. Starter content includes Design, Emails, Options, Installation, and GrowSurf Window defaults. Only `type` is required; the program is created in `DRAFT` status owned by your API key's account. `currencyISO` sets the program's currency (defaults to `USD`) and is immutable after creation. Editor-tab config (design, emails, options, installation) is not accepted here. Fetch and review those config sub-resources after creation, then patch only what needs to change. Does NOT require GROWSURF_CAMPAIGN_ID. The response includes the new program `id`; pass it as `campaignId` to the other tools (or set GROWSURF_CAMPAIGN_ID) to configure and operate the program.",
           inputSchema: {
             type: "object",
             properties: {
@@ -897,13 +927,13 @@ const main = async () => {
         {
           name: "growsurf_get_campaign_design",
           description:
-            "Fetch the Design tab configuration for your GrowSurf program (colors, fonts, sharing sections, and other appearance settings). Returns the full object with every field and its current value — the same shape you send back on update. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Design tab configuration for your GrowSurf program, including GrowSurf Window content, colors, sharing sections, landing/referred-friend content, and other appearance settings. Returns the full object with every field and its current value. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_design",
           description:
-            "Update the Design tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Pass just the fields you want to change under `fields`. To see the full object with every field and its current value, fetch the tab first, then send back only what you want to change. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update the Design tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Fetch the tab first, preserve the starter GrowSurf Window content unless the user asked to change it, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -912,6 +942,12 @@ const main = async () => {
             required: ["fields"],
             additionalProperties: false,
           },
+        },
+        {
+          name: "growsurf_get_referral_flow_screenshots",
+          description:
+            "Capture screenshots of what the current GrowSurf program looks like to a referrer and to a referred friend. Use this after creating or changing a program so the user can confirm the design, participant messaging, and reward presentation. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_get_campaign_emails",
@@ -1204,7 +1240,7 @@ const main = async () => {
               participantEmail: { type: "string" },
               emailType: {
                 type: "string",
-                description: "The program email template to trigger. Send the camelCase key; the available types depend on the program type, and the email must also be enabled on the program. System and transactional types (login link, PayPal confirmation, tax) and the invite email cannot be sent. Referral programs: `welcomeNonReferred`, `referralLinkViewedFirstTime`, `referralLinkUsed`, `referredSignup`, `welcomeReferred`, `goalAchieved`, `campaignEndedWinners`, `campaignEndedNonWinners`, `progressUpdateMonthly`. Affiliate programs: `welcomeNonReferred`, `referralLinkViewedFirstTime`, `referredSignup`, `commissionGenerated`, `commissionAdjusted`, `payoutPending`, `payoutSentSuccess`, `progressUpdateMonthly`.",
+                description: "The program email template to trigger. Send the camelCase key; the available types depend on the program type. The template's `isEnabled` setting controls automatic sends only, so this tool can trigger any sendable template. System and transactional types (login link, PayPal confirmation, tax) and the invite email cannot be sent. Referral programs: `welcomeNonReferred`, `referralLinkViewedFirstTime`, `referralLinkUsed`, `referredSignup`, `welcomeReferred`, `goalAchieved`, `campaignEndedWinners`, `campaignEndedNonWinners`, `progressUpdateMonthly`. Affiliate programs: `welcomeNonReferred`, `referralLinkViewedFirstTime`, `referredSignup`, `commissionGenerated`, `commissionAdjusted`, `payoutPending`, `payoutSentSuccess`, `progressUpdateMonthly`.",
               },
               subject: { type: "string", description: "Free-form subject. Supports dynamic text (`{{...}}` tokens), the same as the body." },
               body: { type: "string", description: "Free-form HTML body. You can personalize it with dynamic text, inserting `{{...}}` tokens like `{{firstName}}` or `{{shareUrl}}`. See [Guide to using dynamic text in GrowSurf emails](https://support.growsurf.com/article/213-guide-to-using-dynamic-text-in-growsurf-emails)." },
@@ -1289,7 +1325,7 @@ const main = async () => {
         {
           name: "growsurf_record_sale",
           description:
-            "Record a sale/transaction for an affiliate program (commissions generate asynchronously; use webhooks). Requires at least one transaction identifier (externalId, transactionId, orderId, paymentId, invoiceId, paymentIntentId, or chargeId) so repeated calls are de-duplicated instead of double-paying the referrer; reuse the same one when refunding. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Record a sale/transaction for an affiliate program. Use webhooks to know when commissions are added. Requires at least one transaction identifier (externalId, transactionId, orderId, paymentId, invoiceId, paymentIntentId, or chargeId) so repeated calls are de-duplicated instead of double-paying the referrer; reuse the same one when refunding. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1397,7 +1433,7 @@ const main = async () => {
         {
           name: "growsurf_client_snippets",
           description:
-            "Generate copy-pasteable client-side snippets for GrowSurf referral tracking, embeddable elements, and GrowSurf window (JS + CSS).",
+            "Generate copy-pasteable client-side snippets for GrowSurf referral tracking, embeddable elements, and the GrowSurf Window (JS + CSS), with placement guidance for app UI work.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1613,6 +1649,11 @@ const main = async () => {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.updateCampaignDesign(input.fields);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_get_referral_flow_screenshots": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const result = await growsurf.getReferralFlowScreenshots();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_get_campaign_emails": {
@@ -1999,11 +2040,29 @@ const main = async () => {
     }
   });
 
+  return server;
+};
+
+const main = async () => {
+  const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js");
+  const server = createGrowSurfMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
 };
 
-main().catch((err) => {
-  console.error(err);
-  process.exitCode = 1;
-});
+const isCliEntrypoint = async (): Promise<boolean> => {
+  if (typeof process === "undefined") return false;
+  const entrypoint = process.argv[1];
+  const moduleUrl = import.meta.url;
+  if (!entrypoint || typeof moduleUrl !== "string" || !moduleUrl) return false;
+
+  const { fileURLToPath } = await import("node:url");
+  return fileURLToPath(moduleUrl) === entrypoint;
+};
+
+if (await isCliEntrypoint()) {
+  main().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
+}

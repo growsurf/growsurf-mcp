@@ -4,6 +4,7 @@ import { GrowSurfClient } from "./client.js";
 export type CampaignScopeEnv = {
   GROWSURF_API_KEY?: string | undefined;
   GROWSURF_CAMPAIGN_ID?: string | undefined;
+  GROWSURF_API_BASE_URL?: string | undefined;
 };
 
 // Resolves the effective program (campaign) id for a campaign-scoped tool call. An explicit
@@ -35,5 +36,9 @@ export const resolveCampaignClient = (
   params?: { campaignId?: string | undefined },
 ): GrowSurfClient => {
   const campaignId = resolveCampaignId(env, params);
-  return new GrowSurfClient({ apiKey: env.GROWSURF_API_KEY, campaignId });
+  return new GrowSurfClient({
+    apiKey: env.GROWSURF_API_KEY,
+    campaignId,
+    ...(env.GROWSURF_API_BASE_URL ? { baseUrl: env.GROWSURF_API_BASE_URL } : {}),
+  });
 };

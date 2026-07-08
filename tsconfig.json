@@ -11,8 +11,9 @@
     "exactOptionalPropertyTypes": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "sourceMap": true
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true
   },
   "include": ["src"]
 }
-

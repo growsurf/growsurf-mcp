@@ -18,7 +18,7 @@ export type WebhookNormalizationResult =
       ok: true;
       envelope: GrowSurfWebhookEnvelope;
       /**
-       * A deterministic key you can use to dedupe/retry safely in your system.
+       * A deterministic key you can use to ignore duplicate deliveries in your system.
        * (GrowSurf docs do not guarantee a delivery id.)
        */
       idempotencyKey: string;
@@ -82,4 +82,3 @@ export const normalizeWebhook = (payload: unknown): WebhookNormalizationResult =
 
   return { ok: true, envelope, idempotencyKey };
 };
-

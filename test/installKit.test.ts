@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderInstallKit, renderIntegrationGuide } from "../src/growsurf/installKit.js";
+import { renderClientSnippets, renderInstallKit, renderIntegrationGuide } from "../src/growsurf/installKit.js";
 
 describe("renderInstallKit", () => {
   const kit = renderInstallKit({ campaignId: "abc123" });
@@ -54,6 +54,38 @@ describe("renderInstallKit", () => {
     expect(kit).toContain("Pay commissions");
   });
 
+  it("steers agents to review starter content and the GrowSurf Window before patching configs", () => {
+    const guide = renderIntegrationGuide(
+      {
+        programType: "both",
+        participantAuthEnabled: false,
+        referralTrigger: "signup_plus_qualifying_action",
+        singlePageApp: false,
+        webhookSecurity: "token_in_url",
+      },
+      { campaignId: "abc123" },
+    );
+
+    expect(guide).toContain("starter Design, Emails, Options, Installation, and GrowSurf Window content");
+    expect(guide).toContain("Preserve that starter content");
+  });
+
+  it("points embeddable UI work at a frontend design workflow when one is available", () => {
+    const snippets = renderClientSnippets({
+      programType: "referral",
+      participantAuthEnabled: false,
+      referralTrigger: "signup_plus_qualifying_action",
+      singlePageApp: false,
+      includeEmbeddableElements: true,
+      includeGrowSurfWindow: true,
+      includeUnreadBadge: true,
+      includeEventSubscriptions: false,
+    });
+
+    expect(snippets).toContain("frontend-design");
+    expect(snippets).toContain("GrowSurf Window");
+  });
+
   it("never recommends a non-connectable integration (excluded from the registry)", () => {
     // Pipedrive, Chargify, and XTRM cards are commented out in the dashboard, so a deep link to
     // them is dead and the connect-link tool rejects them — they must not appear as suggestions.
@@ -101,5 +133,41 @@ describe("renderInstallKit", () => {
     expect(referralGuide).toContain("Recurly");
     // Affiliate-commission framing must not appear in a referral-only guide.
     expect(referralGuide).not.toContain("pay affiliate commissions");
+  });
+
+  it("does not include referral-only upfront discount snippets for affiliate programs", () => {
+    const affiliateSnippets = renderClientSnippets({
+      programType: "affiliate",
+      participantAuthEnabled: false,
+      referralTrigger: "signup",
+      singlePageApp: false,
+      includeEmbeddableElements: true,
+      includeGrowSurfWindow: true,
+      includeUnreadBadge: true,
+      includeEventSubscriptions: false,
+    });
+
+    expect(affiliateSnippets).not.toContain("Upfront discounts for referred friends");
+    expect(affiliateSnippets).not.toContain("growsurf.getUpfrontDiscount");
+    expect(affiliateSnippets).not.toContain("chargebee");
+    expect(affiliateSnippets).not.toContain("recurly");
+  });
+
+  it("keeps webhook guidance public-facing without retry implementation details", () => {
+    const guide = renderIntegrationGuide(
+      {
+        programType: "referral",
+        participantAuthEnabled: false,
+        referralTrigger: "signup_plus_qualifying_action",
+        singlePageApp: false,
+        webhookSecurity: "token_in_url",
+      },
+      { campaignId: "abc123" },
+    );
+
+    expect(guide).toContain("Webhook security");
+    expect(guide).toContain("idempotency key");
+    expect(guide).not.toContain("exponential backoff");
+    expect(guide).not.toContain("retries with");
   });
 });

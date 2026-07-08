@@ -1,6 +1,6 @@
 {
   "name": "@growsurfteam/growsurf-mcp",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Model Context Protocol (MCP) server for integrating GrowSurf referral + affiliate programs.",
   "publishConfig": {
     "access": "public"
@@ -23,17 +23,39 @@
     "url": "git+https://github.com/growsurf/growsurf-mcp.git"
   },
   "type": "module",
+  "types": "./dist/index.d.ts",
   "bin": {
     "growsurf-mcp": "./dist/index.js"
   },
   "exports": {
-    ".": "./dist/index.js",
-    "./install-kit": "./dist/growsurf/installKit.js",
-    "./secret-deny-list": "./dist/growsurf/secretDenyList.js",
-    "./growsurf": "./dist/growsurf/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./prompts": {
+      "types": "./dist/prompts.d.ts",
+      "default": "./dist/prompts.js"
+    },
+    "./install-kit": {
+      "types": "./dist/growsurf/installKit.d.ts",
+      "default": "./dist/growsurf/installKit.js"
+    },
+    "./secret-deny-list": {
+      "types": "./dist/growsurf/secretDenyList.d.ts",
+      "default": "./dist/growsurf/secretDenyList.js"
+    },
+    "./growsurf": {
+      "types": "./dist/growsurf/index.d.ts",
+      "default": "./dist/growsurf/index.js"
+    }
   },
   "files": [
     "dist",
+    "skills",
     "README.md",
     "LICENSE"
   ],

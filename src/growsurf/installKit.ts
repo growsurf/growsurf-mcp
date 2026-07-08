@@ -66,6 +66,8 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
     [
       "### 1) Install GrowSurf Universal Code",
       "",
+      "- Before patching configuration, fetch and review the starter Design, Emails, Options, Installation, and GrowSurf Window content. GrowSurf creates useful defaults for the program type, including Window copy, email templates, landing/referred-friend content, and share settings.",
+      "- Preserve that starter content unless the user asks for a specific change. Patch only the fields that need to change for the user's program.",
       "- Paste the **GrowSurf Universal Code** into your site `<head>` (per GrowSurf docs).",
       "- Ensure your site origin matches the **Share URL / Signup URL** configured in GrowSurf.",
       "",
@@ -121,7 +123,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
         "- **On signup**: add the participant (this generates their share URL).",
         "- **On sale/payment event** for a referred customer: record a transaction via GrowSurf REST.",
         "  - Use `invoiceId` / `chargeId` / `paymentIntentId` / etc. to ensure idempotency.",
-        "  - Commissions are generated **asynchronously**; use webhooks to receive them.",
+        "  - Use webhooks to know when commissions are added.",
         "",
         "- **Automate sale tracking**: if they use Stripe, recommend connecting it so referred sales are recorded automatically instead of you calling record-sale (see the \"Connect integrations\" section below).",
         "- **Pay commissions**: recommend connecting PayPal (see the \"Connect integrations\" section below).",
@@ -219,13 +221,13 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
       "### 5) Webhooks (recommended)",
       "",
       "- Configure a webhook URL in GrowSurf (Program Editor → Options → Webhooks).",
-      "- GrowSurf retries with exponential backoff on failures.",
+      "- Build your handler to be idempotent because the same event can arrive more than once.",
       "",
       "#### Webhook security",
       "",
       "GrowSurf’s docs don’t specify signed webhook headers. The simplest practical approach is to:",
       "- Add a **random token** in your webhook URL (path or querystring) and verify it server-side.",
-      "- Validate the payload shape and use an **idempotency key** for safe retries.",
+      "- Validate the payload shape and use an **idempotency key** before changing anything in your system.",
       "",
       hasWebhookToken
         ? `- **Detected**: \`GROWSURF_WEBHOOK_TOKEN\` is set; you can enforce it in your handler.`
@@ -324,6 +326,7 @@ export const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>
   lines.push("");
   lines.push("- Prereq: install your **GrowSurf Universal Code** on the page.");
   lines.push("- Always call `growsurf.*` APIs after GrowSurf has loaded (use the `grsfReady` event listener).");
+  lines.push("- If you are adding or styling a GrowSurf Window launcher or embeddable element in the user's app, use a `frontend-design` skill or equivalent design workflow when available.");
   lines.push("");
 
   lines.push("### Referral tracking (JS SDK)");
@@ -359,62 +362,64 @@ export const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>
   lines.push("```");
   lines.push("");
 
-  lines.push("### Upfront discounts for referred friends");
-  lines.push("");
-  lines.push("If upfront discounts are enabled, referred visitors can receive a discount code **before** completing the qualifying action.");
-  lines.push("");
-  lines.push("#### `growsurf.validateReferrer(participantId?)`");
-  lines.push("");
-  lines.push("Validates whether a referrer exists in the campaign. Does not require participant auth and does not expose participant data.");
-  lines.push("If `participantId` is omitted, automatically resolves the referrer from the `grsf` URL parameter or browser cookie.");
-  lines.push("Returns a `Promise<boolean>`.");
-  lines.push("");
-  lines.push("```html");
-  lines.push("<script>");
-  lines.push("  document.addEventListener('grsfReady', async () => {");
-  lines.push("    const isValidReferral = await growsurf.validateReferrer();");
-  lines.push("    if (isValidReferral) {");
-  lines.push("      // Show upfront discount or apply coupon");
-  lines.push("    }");
-  lines.push("  });");
-  lines.push("</script>");
-  lines.push("```");
-  lines.push("");
-  lines.push("#### `growsurf.getUpfrontDiscount(integrationType?)`");
-  lines.push("");
-  lines.push("Returns the upfront discount promotion code for the current referred visitor. Returns `null` if the visitor was not referred or upfront discount is not enabled.");
-  lines.push("`integrationType` is optional: `'stripe'`, `'chargebee'`, or `'recurly'`. If omitted, returns the first available upfront discount.");
-  lines.push("");
-  lines.push("Returns: `{ integration, promotionCode, couponId }` or `null`.");
-  lines.push("");
-  lines.push("```html");
-  lines.push("<script>");
-  lines.push("  document.addEventListener('grsfReady', async () => {");
-  lines.push("    const discount = growsurf.getUpfrontDiscount(); // or getUpfrontDiscount('stripe')");
-  lines.push("    if (discount) {");
-  lines.push("      console.log(discount.integration);   // 'stripe', 'chargebee', or 'recurly'");
-  lines.push("      console.log(discount.promotionCode); // e.g. 'GRSF_A1B2C3D4'");
-  lines.push("      console.log(discount.couponId);      // the coupon ID on the integration platform");
-  lines.push("    }");
-  lines.push("  });");
-  lines.push("</script>");
-  lines.push("```");
-  lines.push("");
-  lines.push("**Common pattern** — validate the referrer, then apply the upfront discount:");
-  lines.push("");
-  lines.push("```html");
-  lines.push("<script>");
-  lines.push("  document.addEventListener('grsfReady', async () => {");
-  lines.push("    const isValid = await growsurf.validateReferrer();");
-  lines.push("    if (!isValid) return;");
-  lines.push("    const discount = growsurf.getUpfrontDiscount('stripe');");
-  lines.push("    if (discount) {");
-  lines.push("      // Auto-apply discount.promotionCode to Stripe Checkout / Payment Link");
-  lines.push("    }");
-  lines.push("  });");
-  lines.push("</script>");
-  lines.push("```");
-  lines.push("");
+  if (input.programType === "referral" || input.programType === "both") {
+    lines.push("### Upfront discounts for referred friends");
+    lines.push("");
+    lines.push("If upfront discounts are enabled, referred visitors can receive a discount code **before** completing the qualifying action.");
+    lines.push("");
+    lines.push("#### `growsurf.validateReferrer(participantId?)`");
+    lines.push("");
+    lines.push("Validates whether a referrer exists in the campaign. Does not require participant auth and does not expose participant data.");
+    lines.push("If `participantId` is omitted, automatically resolves the referrer from the `grsf` URL parameter or browser cookie.");
+    lines.push("Returns a `Promise<boolean>`.");
+    lines.push("");
+    lines.push("```html");
+    lines.push("<script>");
+    lines.push("  document.addEventListener('grsfReady', async () => {");
+    lines.push("    const isValidReferral = await growsurf.validateReferrer();");
+    lines.push("    if (isValidReferral) {");
+    lines.push("      // Show upfront discount or apply coupon");
+    lines.push("    }");
+    lines.push("  });");
+    lines.push("</script>");
+    lines.push("```");
+    lines.push("");
+    lines.push("#### `growsurf.getUpfrontDiscount(integrationType?)`");
+    lines.push("");
+    lines.push("Returns the upfront discount promotion code for the current referred visitor. Returns `null` if the visitor was not referred or upfront discount is not enabled.");
+    lines.push("`integrationType` is optional: `'stripe'`, `'chargebee'`, or `'recurly'`. If omitted, returns the first available upfront discount.");
+    lines.push("");
+    lines.push("Returns: `{ integration, promotionCode, couponId }` or `null`.");
+    lines.push("");
+    lines.push("```html");
+    lines.push("<script>");
+    lines.push("  document.addEventListener('grsfReady', async () => {");
+    lines.push("    const discount = growsurf.getUpfrontDiscount(); // or getUpfrontDiscount('stripe')");
+    lines.push("    if (discount) {");
+    lines.push("      console.log(discount.integration);   // 'stripe', 'chargebee', or 'recurly'");
+    lines.push("      console.log(discount.promotionCode); // e.g. 'GRSF_A1B2C3D4'");
+    lines.push("      console.log(discount.couponId);      // the coupon ID on the integration platform");
+    lines.push("    }");
+    lines.push("  });");
+    lines.push("</script>");
+    lines.push("```");
+    lines.push("");
+    lines.push("**Common pattern** — validate the referrer, then apply the upfront discount:");
+    lines.push("");
+    lines.push("```html");
+    lines.push("<script>");
+    lines.push("  document.addEventListener('grsfReady', async () => {");
+    lines.push("    const isValid = await growsurf.validateReferrer();");
+    lines.push("    if (!isValid) return;");
+    lines.push("    const discount = growsurf.getUpfrontDiscount('stripe');");
+    lines.push("    if (discount) {");
+    lines.push("      // Auto-apply discount.promotionCode to Stripe Checkout / Payment Link");
+    lines.push("    }");
+    lines.push("  });");
+    lines.push("</script>");
+    lines.push("```");
+    lines.push("");
+  }
 
   if (input.participantAuthEnabled) {
     lines.push("### Participant auto-auth (if authentication is enabled)");
@@ -437,7 +442,7 @@ export const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>
   }
 
   if (input.includeGrowSurfWindow) {
-    lines.push("### GrowSurf window (JS + CSS)");
+    lines.push("### GrowSurf Window (JS + CSS)");
     lines.push("");
     lines.push("**JS method:**");
     lines.push("");

@@ -283,6 +283,30 @@ describe("GrowSurfClient", () => {
     });
   }
 
+  it("gets referral-flow screenshots with a GET on the screenshot sub-resource path", async () => {
+    const fetchMock = mockJson({
+      referrer: { view: "referrer", url: "https://cdn.example.com/referrer.jpg", width: 1280, height: 800 },
+      referredFriend: { view: "referredFriend", url: "https://cdn.example.com/referred.jpg", width: 1280, height: 800 },
+      generatedAt: 1783512000000,
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+    const result = await client.getReferralFlowScreenshots();
+
+    expect(result).toEqual({
+      referrer: { view: "referrer", url: "https://cdn.example.com/referrer.jpg", width: 1280, height: 800 },
+      referredFriend: { view: "referredFriend", url: "https://cdn.example.com/referred.jpg", width: 1280, height: 800 },
+      generatedAt: 1783512000000,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.growsurf.com/v2/campaign/abc123/referral-flow-screenshots",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.body).toBeUndefined();
+  });
+
   // ---- Account ----
 
   it("creates an account with a POST to /accounts and NO Authorization header (keyless)", async () => {

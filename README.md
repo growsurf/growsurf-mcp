@@ -22,6 +22,7 @@ This MCP server is for:
 This MCP server is NOT for:
 
 - ChatGPT web users (ChatGPT does not support local MCP servers at this time)
+- Claude.ai browser users unless they are using GrowSurf's hosted remote MCP connector
 
 ## What you get
 
@@ -33,12 +34,18 @@ This MCP server is NOT for:
   - Qualifying action flow
   - Affiliate sale / transaction tracking
   - Webhooks
+- **Agent Recipes**:
+  - MCP prompts for creating referral programs, creating affiliate programs, embedding the widget, configuring rewards, wiring webhooks, and reading analytics
+  - Installable Agent Skill bundle at `skills/growsurf-agent-toolkit`
+  - Steering to review starter Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching
 - **Happy‑Path REST API Wrappers**:
   - Create an account and get an API key (no API key required; the key unlocks after email verification), plus get/update account, rotate API key, and request/resend verification
   - Get campaign
   - Get campaign analytics (totals, plus an optional per-period time-series and optional previous-period, status-count, and rate enrichments)
   - Create, update, and clone programs (campaigns)
   - List, create, update, and delete campaign rewards
+  - Get/update Design, Emails, Options, and Installation config
+  - Capture referrer and referred-friend screenshots for visual confirmation
   - List, create, update, delete, and test program webhooks
   - Add participant
   - Update a participant, email a participant, and get a participant's analytics and activity logs
@@ -163,6 +170,7 @@ Set the following environment variables when running the MCP server:
 
 - `GROWSURF_API_KEY` (optional for startup; required for API-calling tools)
 - `GROWSURF_CAMPAIGN_ID` (optional; the default program for campaign-scoped tools. A tool's `campaignId` argument overrides it, so a single server can operate on any of your programs)
+- `GROWSURF_API_BASE_URL` (optional; defaults to `https://api.growsurf.com/v2`. Useful for local or hosted MCP gateways that should call a different GrowSurf API origin)
 - `GROWSURF_PARTICIPANT_AUTH_SECRET` (optional; used by the hash helper)
 - `GROWSURF_WEBHOOK_TOKEN` (optional; used for your own webhook URL token scheme)
 
@@ -202,7 +210,7 @@ node dist/index.js
 ### Client & UI Snippets
 
 - `growsurf_client_snippets`
-  JavaScript SDK, GrowSurf window, and embeddable examples.
+  JavaScript SDK, GrowSurf Window, and embeddable examples. Includes a reminder to use a frontend design workflow when placing or styling embeddable UI.
 
 - `growsurf_embeddable_element_snippet`
   HTML snippet for a specific GrowSurf embeddable element.
@@ -239,7 +247,7 @@ node dist/index.js
   Fetch program analytics (totals, plus an optional per-period `series` via `interval`, and optional `previousPeriod`/`statusCounts`/`rates` enrichments via `include`).
 
 - `growsurf_create_campaign`
-  Create a new program (campaign) with type-appropriate defaults and optional inline rewards (only needs `GROWSURF_API_KEY`, not `GROWSURF_CAMPAIGN_ID`).
+  Create a new program (campaign) with type-appropriate starter content and optional inline rewards (only needs `GROWSURF_API_KEY`, not `GROWSURF_CAMPAIGN_ID`). Review the seeded Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching.
 
 - `growsurf_update_campaign`
   Update the program's identity and lifecycle: name, company branding, and status (only the fields you send are changed).
@@ -258,6 +266,21 @@ node dist/index.js
 
 - `growsurf_delete_campaign_reward`
   Delete a campaign reward by its reward key.
+
+- `growsurf_get_campaign_design` / `growsurf_update_campaign_design`
+  Read or patch the Program Editor Design tab config.
+
+- `growsurf_get_campaign_emails` / `growsurf_update_campaign_emails`
+  Read or patch the Program Editor Emails tab config.
+
+- `growsurf_get_campaign_options` / `growsurf_update_campaign_options`
+  Read or patch the Program Editor Options tab config.
+
+- `growsurf_get_campaign_installation` / `growsurf_update_campaign_installation`
+  Read or patch the Program Editor Installation tab config.
+
+- `growsurf_get_referral_flow_screenshots`
+  Capture screenshots of the referrer view and referred-friend view for the current program.
 
 - `growsurf_list_campaign_webhooks`
   List the program's webhooks (secrets are never returned).
@@ -323,9 +346,9 @@ GrowSurf webhooks notify your server when important referral or affiliate events
 - Maintain internal points or credit systems
 - Sync participant and referral data into your database
 
-### Retry Behavior
+### Duplicate Delivery Handling
 
-If a webhook cannot be delivered, GrowSurf retries it for several days using exponential backoff. Because of this, duplicate deliveries are possible and must be handled safely by your server.
+Webhook handlers should be idempotent because the same event can arrive more than once. Store an idempotency key before changing anything in your system.
 
 ### Webhook Security & Idempotency
 
@@ -333,7 +356,7 @@ GrowSurf signs webhook deliveries when the webhook has a `secret` configured: ea
 
 - Set a `secret` on the webhook and verify the `GrowSurf-Signature` header on receipt
 - Validate the payload shape and expected event type
-- Deduplicate webhook events using an idempotency key, since deliveries may be retried
+- Deduplicate webhook events using an idempotency key, because the same event can arrive more than once
 
 The GrowSurf MCP server provides a helper tool (`growsurf_webhook_normalize` ) that normalizes webhook payloads and generates a best-effort idempotency key to simplify safe webhook processing.
 
