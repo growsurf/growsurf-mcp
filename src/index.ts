@@ -31,6 +31,10 @@ import {
 } from "./growsurf/integrations.js";
 import { mobileSdkGuideInputSchema, renderMobileSdkGuide } from "./growsurf/mobileSdkGuide.js";
 import { computeParticipantAuthHash } from "./growsurf/participantAuth.js";
+import {
+  agentProgramCreationEvalInputSchema,
+  renderAgentProgramCreationEval,
+} from "./growsurf/programCreationEval.js";
 import { normalizeWebhook } from "./growsurf/webhooks.js";
 import { getGrowSurfPrompt, listGrowSurfPrompts } from "./prompts.js";
 
@@ -298,8 +302,7 @@ const updateCampaignSchema = z
     // the update endpoint rejects it with a 400. It is only settable via growsurf_create_campaign.
     // Only IN_PROGRESS (publish/resume) and COMPLETE (end) are accepted as PATCH status
     // targets. The API rejects DRAFT/PENDING/CANCELLED with a 400 (they would stamp
-    // deletedAt on a live campaign). Mirrors growsurf-api UPDATABLE_CAMPAIGN_STATUSES,
-    // derived from rest-campaign-write.service ALLOWED_STATUS_TRANSITIONS.
+    // deletedAt on a live campaign). Matches the public API's accepted status transitions.
     status: z.enum(["IN_PROGRESS", "COMPLETE"]).optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), {
@@ -691,6 +694,19 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               referralTrigger: { type: "string", enum: ["signup", "signup_plus_qualifying_action"], default: "signup_plus_qualifying_action" },
               singlePageApp: { type: "boolean", default: false },
               webhookSecurity: { type: "string", enum: ["token_in_url", "none"], default: "token_in_url" },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_agent_program_creation_eval",
+          description:
+            "Generate one-shot GrowSurf program-creation eval prompts and acceptance checks for agent steering: starter content review, conservative rewards, referrer/referred screenshots, and frontend install proof.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              programType: { type: "string", enum: ["referral", "affiliate", "both"], default: "both" },
+              includeOneShotPrompts: { type: "boolean", default: true },
             },
             additionalProperties: false,
           },
@@ -1537,6 +1553,11 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         case "growsurf_integration_guide": {
           const input = integrationGuideInputSchema.parse(request.params.arguments ?? {});
           const text = renderIntegrationGuide(input, installKitEnv);
+          return { content: [{ type: "text", text }] };
+        }
+        case "growsurf_agent_program_creation_eval": {
+          const input = agentProgramCreationEvalInputSchema.parse(request.params.arguments ?? {});
+          const text = renderAgentProgramCreationEval(input);
           return { content: [{ type: "text", text }] };
         }
         case "growsurf_mobile_sdk_guide": {

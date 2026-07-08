@@ -17,6 +17,9 @@ describe("renderInstallKit", () => {
 
   it("includes the verify-install checklist heading", () => {
     expect(kit).toContain("## How to verify your install");
+    expect(kit).toContain("referrer GrowSurf Window");
+    expect(kit).toContain("sticky banner and inline heading");
+    expect(kit).toContain("browser tab title");
   });
 
   it("documents the ?grsf= share-url attribution param", () => {

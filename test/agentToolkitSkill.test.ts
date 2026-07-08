@@ -9,10 +9,19 @@ describe("GrowSurf Agent Toolkit skill", () => {
     expect(skill).toContain("starter content");
     expect(skill).toContain("GrowSurf Window");
     expect(skill).toMatch(/preserve/i);
+    expect(skill).toContain("default source for Window copy");
   });
 
   it("routes embeddable frontend work through a design-focused workflow when available", () => {
     expect(skill).toContain("frontend-design");
     expect(skill).toContain("embeddable");
+  });
+
+  it("requires end-user visual proof and exposes one-shot eval prompts", () => {
+    expect(skill).toContain("growsurf_get_referral_flow_screenshots");
+    expect(skill).toContain("sticky banner and inline heading");
+    expect(skill).toContain("browser tab title motivator");
+    expect(skill).toContain("growsurf_agent_program_creation_eval");
+    expect(skill).toContain("One-Shot Eval Examples");
   });
 });

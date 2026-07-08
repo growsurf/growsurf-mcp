@@ -38,6 +38,7 @@ This MCP server is NOT for:
   - MCP prompts for creating referral programs, creating affiliate programs, embedding the widget, configuring rewards, wiring webhooks, and reading analytics
   - Installable Agent Skill bundle at `skills/growsurf-agent-toolkit`
   - Steering to review starter Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching
+  - One-shot program-creation eval prompts and acceptance checks for referrer/referred screenshots
 - **Happy‑Path REST API Wrappers**:
   - Create an account and get an API key (no API key required; the key unlocks after email verification), plus get/update account, rotate API key, and request/resend verification
   - Get campaign
@@ -249,6 +250,9 @@ node dist/index.js
 - `growsurf_create_campaign`
   Create a new program (campaign) with type-appropriate starter content and optional inline rewards (only needs `GROWSURF_API_KEY`, not `GROWSURF_CAMPAIGN_ID`). Review the seeded Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching.
 
+- `growsurf_agent_program_creation_eval`
+  Generate one-shot program-creation eval prompts and acceptance checks for starter content, conservative rewards, referrer/referred screenshots, frontend install proof, and clean public copy.
+
 - `growsurf_update_campaign`
   Update the program's identity and lifecycle: name, company branding, and status (only the fields you send are changed).
 
@@ -280,7 +284,7 @@ node dist/index.js
   Read or patch the Program Editor Installation tab config.
 
 - `growsurf_get_referral_flow_screenshots`
-  Capture screenshots of the referrer view and referred-friend view for the current program.
+  Capture screenshots of the referrer view and referred-friend view for the current program. Use these images to verify the actual GrowSurf Window and referred-friend landing page, not a long HTML page or config dump.
 
 - `growsurf_list_campaign_webhooks`
   List the program's webhooks (secrets are never returned).

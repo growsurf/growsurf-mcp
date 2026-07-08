@@ -27,6 +27,10 @@ describe("GrowSurf MCP prompts", () => {
     expect(text).toContain("pass it as campaignId");
     expect(text).toContain("starter Design, Emails, Options, Installation, rewards, and GrowSurf Window content");
     expect(text).toContain("Keep rewards in a non-awarding or disabled state");
+    expect(text).toContain("growsurf_get_referral_flow_screenshots");
+    expect(text).toContain("referred-friend banner and inline heading");
+    expect(text).toContain("browser title motivator");
+    expect(text).toContain("not a long HTML page or config JSON");
   });
 
   it("renders an affiliate recipe with payout-safety guidance", () => {
@@ -42,6 +46,8 @@ describe("GrowSurf MCP prompts", () => {
     expect(text).toContain("starter content");
     expect(text).toContain("Do not enable payout exposure");
     expect(text).toContain("growsurf_get_integration_connect_link");
+    expect(text).toContain("growsurf_get_referral_flow_screenshots");
+    expect(text).toContain("referred-friend banner and inline heading");
   });
 
   it("throws clearly for an unknown prompt", () => {

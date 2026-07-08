@@ -12,9 +12,10 @@ Use this skill to turn a user goal into a real GrowSurf program, not just API ca
 - Use the user's own GrowSurf API key. If they do not have an account, call `growsurf_create_account`, give them the verification step, and pause until the key is usable.
 - After `growsurf_create_campaign`, pass the returned `id` as `campaignId` to every campaign-scoped tool. Do not rely on a process-level default after creating a new program.
 - Campaign create seeds type-specific starter content across Design, Emails, Options, Installation, rewards, and the GrowSurf Window. Fetch and review it before patching. Preserve starter content unless the user asks for a specific change.
+- Treat starter content as the default source for Window copy, referred-friend copy, email copy, share settings, landing-page content, and rewards. Do not rebuild the program from scratch unless the user asks for a custom program.
 - Keep rewards conservative until the user confirms money movement, payout funding, tax collection, and approval settings.
 - Fetch before patching large config surfaces. Use `growsurf_get_campaign_design`, `growsurf_get_campaign_emails`, `growsurf_get_campaign_options`, or `growsurf_get_campaign_installation`, then patch only the fields that must change.
-- Finish by proving what changed: fetch the campaign, fetch key configs, and call `growsurf_get_referral_flow_screenshots`.
+- Finish by proving what changed: fetch the campaign, fetch key configs, and call `growsurf_get_referral_flow_screenshots`. Inspect the actual referrer GrowSurf Window and referred-friend landing-page screenshots before reporting back.
 
 ## Referral Program Workflow
 
@@ -39,6 +40,8 @@ Use this skill to turn a user goal into a real GrowSurf program, not just API ca
 
 4. Confirm:
    - `growsurf_get_referral_flow_screenshots`
+   - Check that the referrer Window shows normal share options, not QR-only sharing.
+   - Check that the referred-friend page shows both visible motivators: sticky banner and inline heading. The browser tab title motivator should be configured too, but it does not need to appear in screenshots.
    - Summarize the referrer view, referred-friend view, reward state, install step, and any user action still needed.
 
 ## Affiliate Program Workflow
@@ -61,6 +64,8 @@ Use this skill to turn a user goal into a real GrowSurf program, not just API ca
 
 4. Confirm:
    - `growsurf_get_referral_flow_screenshots`
+   - Check that the referrer Window shows normal share options, not QR-only sharing.
+   - Check that the referred-friend page shows both visible motivators: sticky banner and inline heading. The browser tab title motivator should be configured too, but it does not need to appear in screenshots.
    - Summarize commission defaults, payout/tax readiness, portal sections, and remaining launch blockers.
 
 ## Common Tasks
@@ -68,6 +73,10 @@ Use this skill to turn a user goal into a real GrowSurf program, not just API ca
 ### Embed The Widget
 
 Use `growsurf_integration_guide` for the user's stack. If no stack is known, give the universal install snippet and ask where their signup event happens. Verify the installed script with the campaign's Installation config and the user's site URL when available. When placing or styling a GrowSurf Window launcher or embeddable element inside the user's app, use `frontend-design` or the closest available design-focused workflow before changing UI.
+
+### Check Agent Steering
+
+Use `growsurf_agent_program_creation_eval` when you need one-shot eval prompts or acceptance checks for program creation. A passing eval creates a program through MCP, reviews starter content, keeps rewards conservative, captures referrer and referred-friend screenshots, and verifies the visible motivators, share options, header spacing, and clean public copy.
 
 ### Adjust Rewards
 
@@ -91,3 +100,8 @@ Include:
 - Installation or launch action still needed
 - Screenshot URLs from `growsurf_get_referral_flow_screenshots`
 - Campaign Editor URL when the user wants to inspect design defaults
+
+## One-Shot Eval Examples
+
+- Referral: "Create a GrowSurf referral program for DevTrace, an AI developer tool at https://devtrace.example. Goal: drive qualified developer signups from existing users. Use a double-sided $25 credit concept, keep rewards disabled until I confirm funding, and show me referrer and referred-friend screenshots."
+- Affiliate: "Create a GrowSurf affiliate program for EchoKit, a voice AI API at https://echokit.example. Goal: let integration consultants refer qualified customers. Use a 20% recurring commission concept, keep payouts disabled until I confirm payout operations, and show me referrer and referred-friend screenshots."

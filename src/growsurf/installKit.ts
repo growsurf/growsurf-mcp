@@ -2,8 +2,8 @@ import { z } from "zod";
 
 /**
  * Minimal env shape the install-kit renderers need, decoupled from the MCP
- * server's `Env`. A sibling CommonJS app (e.g. growsurf-api) renders an install
- * kit by importing this module directly, so it must not depend on MCP internals.
+ * server's `Env`. Other CommonJS consumers can render an install kit by importing
+ * this module directly, so it must not depend on MCP internals.
  *
  * Fields are `string | undefined` (not bare `?: string`) so callers can pass
  * values straight from a parsed environment under `exactOptionalPropertyTypes`.
@@ -685,6 +685,8 @@ export const renderInstallKit = (options: RenderInstallKitOptions): string => {
       "",
       "- [ ] The GrowSurf Universal Code snippet loads on **every** page (it lives in your \`<head>\`, on all routes).",
       "- [ ] \`window.growsurf\` is defined in the browser console once the page has loaded.",
+      "- [ ] The referrer GrowSurf Window opens from the real UI and shows normal share options.",
+      "- [ ] The referred-friend page shows the sticky banner and inline heading; the browser tab title is configured even though it may not be visible in a screenshot.",
       "- [ ] A test signup appears as a new participant in your GrowSurf dashboard.",
       "- [ ] After sharing, the generated share URL contains the \`?grsf=\` referral parameter.",
     ].join("\n"),
