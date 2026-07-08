@@ -2,6 +2,8 @@
 
 This repo owns the public GrowSurf Model Context Protocol server package `@growsurfteam/growsurf-mcp`.
 
+> **This is a public, open-source repository.** Everything here is world-readable. Do not add internal-facing content — see `.ai/rules.md` → "This Repo Is Public".
+
 ## What This Repo Does
 
 - Exposes MCP tools and guidance for integrating GrowSurf referral and affiliate programs.
@@ -27,15 +29,8 @@ This repo owns the public GrowSurf Model Context Protocol server package `@grows
 - `npm run typecheck` runs TypeScript without emit.
 - `npm run build` rebuilds `dist/`.
 
-## Cross-Repo Contract Sync
+## Staying In Sync With The Public API
 
-When API endpoints, request/response fields, SDK install snippets, mobile SDK behavior, participant-token guidance, or public docs examples change, check sibling repos:
+The tools, snippets, and guidance this server exposes must match the public GrowSurf REST API and the published GrowSurf documentation. When the public API adds or changes an endpoint, request/response field, SDK install snippet, mobile SDK behavior, participant-token guidance, or a documented example, update the matching MCP tool metadata, schemas, and snippets here to keep them accurate.
 
-- `../growsurf-api`
-- `../growsurf-app`
-- `../growsurf-docs`
-- `../growsurf-website`
-- `../growsurf-ios-sdk`
-- `../growsurf-android-sdk`
-
-Do not import runtime code from sibling repos. Cross-repo references in `.ai` files and docs are coordination notes only.
+Reference the public GrowSurf API documentation and SDKs as the contract. This package is self-contained: it does not import runtime code from any other repository.
