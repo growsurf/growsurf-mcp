@@ -187,6 +187,9 @@ node dist/index.js
 - `growsurf_api_library_snippets`
   Official REST API library snippets for TypeScript, Python, PHP, Ruby, and Java.
 
+- `growsurf_get_integration_connect_link`
+  Get a dashboard link that opens a specific integration's connect panel (Stripe, PayPal, Tango Card, Mailchimp, and many more). Hand it to the user when they want to connect one. Connecting happens in the dashboard, not through the API.
+
 ### Client & UI Snippets
 
 - `growsurf_client_snippets`

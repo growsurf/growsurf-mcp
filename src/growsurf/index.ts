@@ -2,6 +2,7 @@
 // Re-exports the install-kit renderers, the secret deny-list, and the existing
 // public helpers so a sibling app can import everything from one barrel.
 export * from "./installKit.js";
+export * from "./integrations.js";
 export * from "./secretDenyList.js";
 export * from "./client.js";
 export * from "./apiLibrarySnippets.js";

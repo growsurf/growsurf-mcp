@@ -23,6 +23,11 @@ import {
   renderGrsfConfigSnippet,
   renderIntegrationGuide,
 } from "./growsurf/installKit.js";
+import {
+  buildIntegrationConnectUrl,
+  getIntegration,
+  INTEGRATION_KEYS,
+} from "./growsurf/integrations.js";
 import { mobileSdkGuideInputSchema, renderMobileSdkGuide } from "./growsurf/mobileSdkGuide.js";
 import { computeParticipantAuthHash } from "./growsurf/participantAuth.js";
 import { normalizeWebhook } from "./growsurf/webhooks.js";
@@ -354,6 +359,13 @@ const participantAuthHashSchema = z.object({
 
 const webhookNormalizeSchema = z.object({
   payload: z.unknown(),
+});
+
+// Integration connect-link tool. `integration` must be one of the connectable keys
+// (see ./growsurf/integrations); `campaignId` overrides GROWSURF_CAMPAIGN_ID as the link target.
+const integrationConnectLinkSchema = z.object({
+  integration: z.enum(INTEGRATION_KEYS as unknown as [string, ...string[]]),
+  campaignId: z.string().min(1).optional(),
 });
 
 // ---- Account tools ----
@@ -990,7 +1002,7 @@ const main = async () => {
         {
           name: "growsurf_create_campaign_webhook",
           description:
-            "Add a webhook to your GrowSurf program. `payloadUrl` is required. `events` selects which events to deliver (omit for the program default). `secret` is write-only — GrowSurf uses it to sign deliveries (the GrowSurf-Signature HMAC header) and never returns it. Uses GROWSURF_CAMPAIGN_ID.",
+            "Add a webhook to your GrowSurf program. `payloadUrl` is required. `events` is the list of events this webhook is subscribed to (omit to subscribe it to no events). `secret` is write-only — GrowSurf uses it to sign deliveries (the GrowSurf-Signature HMAC header) and never returns it. Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1036,7 +1048,7 @@ const main = async () => {
         {
           name: "growsurf_test_campaign_webhook",
           description:
-            "Send a live test event to a webhook on your GrowSurf program using its stored URL and secret. Optionally pass `event` to choose which event type to mock (defaults to a sample event). Returns the mock payload and the receiving endpoint's response. Uses GROWSURF_CAMPAIGN_ID.",
+            "Send a live test event to a webhook on your GrowSurf program using its stored URL and secret. Optionally pass `event` to choose which event type to simulate; when omitted, the webhook's first enabled event is used (returns 400 if the webhook has no enabled events). Returns the mock payload and the receiving endpoint's response. Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1389,6 +1401,28 @@ const main = async () => {
             required: [],
             additionalProperties: false
           }
+        },
+        {
+          name: "growsurf_get_integration_connect_link",
+          description:
+            "Return a dashboard link that opens a specific integration's connect panel in the GrowSurf Program Editor (Options > Integrations). Use this whenever a user says they want to connect an integration, for example \"connect Stripe\", \"set up PayPal payouts\", \"send Tango Card gift cards\", or \"sync signups to Mailchimp\": call it with the `integration` key and give the user the returned `url` to open. Connecting an integration happens in the dashboard, not through the API. GrowSurf cannot link a Stripe, PayPal, or other account on the user's behalf, so hand them the link. `integration` must be one of the supported keys (some are camelCase, e.g. `constantContact`, `helpScout`). The link points at GROWSURF_CAMPAIGN_ID; pass `campaignId` to target a different program. Chargebee, Recurly, and Tango Card apply to referral programs only (they are hidden on affiliate programs).",
+          inputSchema: {
+            type: "object",
+            properties: {
+              integration: {
+                type: "string",
+                enum: [...INTEGRATION_KEYS],
+                description:
+                  "The integration to connect. Must exactly match one of the supported keys (some are camelCase, e.g. `constantContact`, `campaignMonitor`, `helpScout`, `pabblyConnect`, `baskHealth`).",
+              },
+              campaignId: {
+                type: "string",
+                description: "Target program for the link. Defaults to GROWSURF_CAMPAIGN_ID.",
+              },
+            },
+            required: ["integration"],
+            additionalProperties: false,
+          },
         }
       ],
     };
@@ -1851,6 +1885,37 @@ const main = async () => {
           const input = grsfConfigSnippetSchema.parse(request.params.arguments ?? {});
           const text = renderGrsfConfigSnippet(input, installKitEnv);
           return { content: [{ type: "text", text }] };
+        }
+        case "growsurf_get_integration_connect_link": {
+          const input = integrationConnectLinkSchema.parse(request.params.arguments ?? {});
+          const campaignId = input.campaignId ?? env.GROWSURF_CAMPAIGN_ID;
+          if (!campaignId) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: "Missing program id. Set GROWSURF_CAMPAIGN_ID or pass campaignId so the link points at your program.",
+                },
+              ],
+              isError: true,
+            };
+          }
+          const integration = getIntegration(input.integration);
+          if (!integration) {
+            return {
+              content: [{ type: "text", text: `Unknown integration: ${input.integration}` }],
+              isError: true,
+            };
+          }
+          const result = {
+            integration: integration.key,
+            label: integration.label,
+            category: integration.category,
+            referralOnly: integration.referralOnly ?? false,
+            url: buildIntegrationConnectUrl(campaignId, integration.key),
+            note: `Open this link and connect ${integration.label} from the Program Editor. Connecting an integration happens in the GrowSurf dashboard, not through the API.`,
+          };
+          return { content: [{ type: "text", text: safeJson(result) }] };
         }
         default:
           return { content: [{ type: "text", text: `Unknown tool: ${request.params.name}` }], isError: true };

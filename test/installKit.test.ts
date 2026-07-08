@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderInstallKit } from "../src/growsurf/installKit.js";
+import { renderInstallKit, renderIntegrationGuide } from "../src/growsurf/installKit.js";
 
 describe("renderInstallKit", () => {
   const kit = renderInstallKit({ campaignId: "abc123" });
@@ -31,5 +31,75 @@ describe("renderInstallKit", () => {
     // referral + affiliate sections both render under the default programType "both".
     expect(kit).toContain("Referral program flow");
     expect(kit).toContain("Affiliate program flow");
+  });
+
+  it("includes a connect-integrations section with a real editor deep link and the tool reference", () => {
+    expect(kit).toContain("### Connect integrations");
+    // The link is baked with the real program id (no placeholder) and the editor path.
+    expect(kit).toContain("app.growsurf.com/editor/abc123/options/integrations?integration=<key>");
+    expect(kit).toContain("growsurf_get_integration_connect_link");
+    // Tango Card is surfaced as a connectable gift-card integration.
+    expect(kit).toContain("Tango Card");
+  });
+
+  it("tells the agent to recommend integrations from the user's stack, not just ask", () => {
+    // Recommend-first + context-aware guidance (read the codebase, map stack -> integration).
+    expect(kit).toContain("read the user's codebase and stack");
+    expect(kit).toContain("Recommend, don't just ask");
+    expect(kit).toContain("Billing / payments");
+    expect(kit).toContain("CRM (B2B signals)");
+    expect(kit).toContain("Salesforce");
+    // Prompts are woven into the real steps: referral tracking + affiliate payout.
+    expect(kit).toContain("recommend connecting that billing integration so referred purchases are tracked");
+    expect(kit).toContain("Pay commissions");
+  });
+
+  it("never recommends a non-connectable integration (excluded from the registry)", () => {
+    // Pipedrive, Chargify, and XTRM cards are commented out in the dashboard, so a deep link to
+    // them is dead and the connect-link tool rejects them — they must not appear as suggestions.
+    expect(kit).not.toContain("Pipedrive");
+    expect(kit).not.toContain("Chargify");
+    expect(kit).not.toContain("XTRM");
+  });
+
+  it("fully tailors an affiliate guide: no referral-only integrations anywhere", () => {
+    // Chargebee, Recurly, and Tango Card are hidden on affiliate programs (hideForAffiliatePrograms),
+    // so a deep link to them from an affiliate program opens to a missing card. An affiliate-only
+    // guide must recommend only affiliate-visible options (Stripe for tracking, PayPal for payouts).
+    const affiliateGuide = renderIntegrationGuide(
+      {
+        programType: "affiliate",
+        participantAuthEnabled: false,
+        referralTrigger: "signup",
+        singlePageApp: false,
+        webhookSecurity: "token_in_url",
+      },
+      { campaignId: "abc123" },
+    );
+    expect(affiliateGuide).not.toContain("Tango Card");
+    expect(affiliateGuide).not.toContain("Chargebee");
+    expect(affiliateGuide).not.toContain("Recurly");
+    expect(affiliateGuide).toContain("Stripe");
+    expect(affiliateGuide).toContain("PayPal");
+    expect(affiliateGuide).toContain("pay affiliate commissions");
+  });
+
+  it("fully tailors a referral guide: gift cards + billing trio, no affiliate-commission framing", () => {
+    const referralGuide = renderIntegrationGuide(
+      {
+        programType: "referral",
+        participantAuthEnabled: false,
+        referralTrigger: "signup_plus_qualifying_action",
+        singlePageApp: false,
+        webhookSecurity: "token_in_url",
+      },
+      { campaignId: "abc123" },
+    );
+    // Tango Card (gift-card rewards) and the full billing trio are referral-relevant.
+    expect(referralGuide).toContain("Tango Card");
+    expect(referralGuide).toContain("Chargebee");
+    expect(referralGuide).toContain("Recurly");
+    // Affiliate-commission framing must not appear in a referral-only guide.
+    expect(referralGuide).not.toContain("pay affiliate commissions");
   });
 });

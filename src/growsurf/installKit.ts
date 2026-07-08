@@ -102,6 +102,8 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
         "",
         `- **Your configured trigger**: \`${input.referralTrigger}\``,
         "",
+        "- **If the qualifying action is a purchase** and the stack uses Stripe, Chargebee, or Recurly, recommend connecting that billing integration so referred purchases are tracked automatically (see the \"Connect integrations\" section below).",
+        "",
         "MCP tools you’ll likely use:",
         "- `growsurf_add_participant`",
         "- `growsurf_trigger_referral` (only needed for `signup_plus_qualifying_action`)",
@@ -120,6 +122,9 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
         "- **On sale/payment event** for a referred customer: record a transaction via GrowSurf REST.",
         "  - Use `invoiceId` / `chargeId` / `paymentIntentId` / etc. to ensure idempotency.",
         "  - Commissions are generated **asynchronously**; use webhooks to receive them.",
+        "",
+        "- **Automate sale tracking**: if they use Stripe, recommend connecting it so referred sales are recorded automatically instead of you calling record-sale (see the \"Connect integrations\" section below).",
+        "- **Pay commissions**: recommend connecting PayPal (see the \"Connect integrations\" section below).",
         "",
         "MCP tools you’ll likely use:",
         "- `growsurf_add_participant`",
@@ -148,6 +153,66 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
       ].join("\n"),
     );
   }
+
+  // Recommend only integrations available on the CURRENT program type. Chargebee, Recurly, and
+  // Tango Card are hidden on affiliate programs (referral-only), so an affiliate guide must not
+  // suggest them; a referral guide drops the affiliate-commission framing. "both" keeps the
+  // general list with explicit "referral programs only" qualifiers.
+  const isAffiliateOnly = input.programType === "affiliate";
+  const isReferralOnly = input.programType === "referral";
+
+  const stackMoneyBullets = isAffiliateOnly
+    ? [
+        "- **Billing / payments**: if the code uses Stripe (SDK, webhooks, checkout), recommend connecting it so referred sales are recorded automatically instead of manual record-sale calls. Raise it at the sale-tracking step.",
+        "- **Payouts**: recommend PayPal to pay affiliate commissions. Raise it once commissions start flowing.",
+      ]
+    : isReferralOnly
+      ? [
+          "- **Billing / payments**: if the code uses Stripe, Chargebee, or Recurly (SDK, webhooks, checkout), recommend connecting it. It tracks referred purchases automatically and auto-applies upfront-discount coupons for referred friends. Raise it at the qualifying-action step.",
+          "- **Gift-card rewards**: if the program sends gift cards, recommend Tango Card. Raise it when setting up rewards.",
+        ]
+      : [
+          "- **Billing / payments**: if the code uses Stripe (any program) or Chargebee / Recurly (referral programs only), recommend connecting it. It tracks referred purchases automatically and, on referral programs, auto-applies upfront-discount coupons. Raise it at the qualifying-action or sale-tracking step.",
+          "- **Payouts & rewards**: recommend PayPal to pay affiliate commissions. For referral programs that send gift-card rewards, recommend Tango Card. Raise it once rewards or commissions start flowing.",
+        ];
+
+  const stackKeyExamples = isAffiliateOnly
+    ? "`stripe`, `paypal`, `mailchimp`, `salesforce`, or `googleanalytics`"
+    : isReferralOnly
+      ? "`stripe`, `tangocard`, `mailchimp`, `salesforce`, or `googleanalytics`"
+      : "`stripe`, `paypal`, `tangocard`, `mailchimp`, `salesforce`, or `googleanalytics`";
+
+  const connectSection = [
+    "### Connect integrations (recommend based on the user's stack)",
+    "",
+    "Integrations are connected in the GrowSurf dashboard, not through the API. GrowSurf can't link a Stripe, PayPal, or other account for the user. Your job: read the user's codebase and stack, recommend the ones that clearly fit, and hand over the link that opens each. Recommend, don't just ask, and suggest the one to three that match rather than the whole catalog.",
+    "",
+    "How to read the stack and what to suggest:",
+    "",
+    ...stackMoneyBullets,
+    "- **CRM (B2B signals)**: if it's B2B or you see Salesforce or HubSpot, suggest connecting it to sync participants and referral events into their pipeline.",
+    "- **Email / ESP**: if you see Mailchimp, Klaviyo, ActiveCampaign, ConvertKit, Customer.io, and the like, offer to pipe referral events into it. Good moment: right after the referral portal and signup flow work.",
+    "- **Analytics & ads**: if the app already loads Google Analytics, Segment, Mixpanel, Amplitude, or a Google/Meta/LinkedIn pixel, offer to send referral events there for attribution.",
+    "- **No clear signal**: ask which of the above they want, or point them to Zapier, Make, or a raw webhook to connect anything else.",
+    "",
+    `Give the user the link that opens an integration's connect panel for program \`${campaignId}\`:`,
+    "",
+    `\`https://app.growsurf.com/editor/${campaignId}/options/integrations?integration=<key>\``,
+    "",
+    "`<key>` is the integration's id, for example " +
+      stackKeyExamples +
+      ". A few are camelCase (`constantContact`, `helpScout`). Or call the MCP tool `growsurf_get_integration_connect_link` with an integration key to get the exact link and label back; it also lists every supported key.",
+    "",
+  ];
+
+  if (!isAffiliateOnly && !isReferralOnly) {
+    connectSection.push(
+      "Chargebee, Recurly, and Tango Card apply to referral programs only (they're hidden on affiliate programs).",
+      "",
+    );
+  }
+
+  sections.push(connectSection.join("\n"));
 
   sections.push(
     [
@@ -191,6 +256,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
       "- For native mobile apps, use `growsurf_mobile_sdk_guide` for Mobile SDK, attribution, `trackShare`, and native GrowSurf Window examples.",
       "- It **helps compute participant-auth hashes** and create participant-scoped mobile SDK tokens.",
       "- For broader production REST API coverage, use `growsurf_api_library_snippets` and the official GrowSurf API Libraries: https://docs.growsurf.com/developer-tools/rest-api/api-libraries",
+      "- It **links to the dashboard** to connect integrations (Stripe, PayPal, Mailchimp, and more) via `growsurf_get_integration_connect_link`; the connection itself is set up in the dashboard, not via API.",
       "- It **does not** embed the Universal Code for you (you copy that snippet from GrowSurf).",
       "- It **does not** host a webhook endpoint (you run that in your app), but it can normalize/validate payloads.",
       "",
