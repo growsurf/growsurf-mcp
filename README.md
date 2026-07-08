@@ -1,6 +1,13 @@
 # GrowSurf MCP Server
 
+[![npm version](https://img.shields.io/npm/v/@growsurfteam/growsurf-mcp)](https://www.npmjs.com/package/@growsurfteam/growsurf-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/@growsurfteam/growsurf-mcp)](https://www.npmjs.com/package/@growsurfteam/growsurf-mcp)
+[![license](https://img.shields.io/npm/l/@growsurfteam/growsurf-mcp)](./LICENSE)
+[![node](https://img.shields.io/node/v/@growsurfteam/growsurf-mcp)](https://nodejs.org)
+
 An **open-source Model Context Protocol (MCP) server** that helps developers implement **GrowSurf referral and affiliate programs** using guided steps and safe REST API wrappers.
+
+Connect it to an AI agent and, in plain language, the agent can create a referral or affiliate program, configure rewards, install tracking, add and manage participants, and read analytics, all backed by the GrowSurf REST API.
 
 - Learn more about GrowSurf at https://growsurf.com
 - Learn more about this MCP server at https://docs.growsurf.com/getting-started#mcp
@@ -53,7 +60,8 @@ This MCP server is NOT for:
 ## Requirements
 
 - Node.js 22+
-- A GrowSurf **API key** and **campaign (program) ID** for API-calling tools
+- A GrowSurf **API key** for API-calling tools
+- A **campaign (program) ID** for campaign-scoped tools. Set `GROWSURF_CAMPAIGN_ID` as the default, or pass a `campaignId` argument to any campaign-scoped tool to target a specific program (for example the `id` returned by `growsurf_create_campaign`, so you can create a program and operate it in the same session)
 - Static guidance/snippet tools can run without credentials
 - Exception: `growsurf_create_account` needs **no** API key — it creates a new account and returns one. Account-level tools (`growsurf_get_account`, `growsurf_update_account`, `growsurf_rotate_api_key`, verification) need the API key but **not** a campaign ID
 
@@ -94,9 +102,10 @@ The GrowSurf MCP server works with any MCP‑compatible host that supports local
 Open your terminal and install the server directly into Claude Code:
 
 ```bash
-claude mcp add @growsurfteam/growsurf-mcp -- \
+claude mcp add growsurf \
   -e GROWSURF_API_KEY=your_api_key \
-  -e GROWSURF_CAMPAIGN_ID=your_campaign_id
+  -e GROWSURF_CAMPAIGN_ID=your_campaign_id \
+  -- npx -y @growsurfteam/growsurf-mcp
 ```
 
 
@@ -153,7 +162,7 @@ codex mcp add growsurf \
 Set the following environment variables when running the MCP server:
 
 - `GROWSURF_API_KEY` (optional for startup; required for API-calling tools)
-- `GROWSURF_CAMPAIGN_ID` (optional for startup; required for API-calling tools)
+- `GROWSURF_CAMPAIGN_ID` (optional; the default program for campaign-scoped tools. A tool's `campaignId` argument overrides it, so a single server can operate on any of your programs)
 - `GROWSURF_PARTICIPANT_AUTH_SECRET` (optional; used by the hash helper)
 - `GROWSURF_WEBHOOK_TOKEN` (optional; used for your own webhook URL token scheme)
 

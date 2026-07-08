@@ -209,8 +209,10 @@ export class GrowSurfClient {
   }
 
   // Campaign config sub-resources — one GET/PATCH pair per dashboard Program Editor tab
-  // (design, emails, options, installation). Bodies/responses are large nested objects;
-  // see the GrowSurf REST API reference for the full field-level schemas.
+  // (design, emails, options, installation). Bodies/responses are large nested objects.
+  // PATCH changes only the fields you send; anything left out is untouched (arrays such as
+  // signup.fields replace wholesale). To see the full object with every field and its current
+  // value, GET the resource, then PATCH back only the fields you want to change.
 
   async getCampaignDesign(): Promise<unknown> {
     return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/design`);

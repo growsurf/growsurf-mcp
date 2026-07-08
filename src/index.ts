@@ -12,6 +12,7 @@ import { z } from "zod";
 
 const { version: PACKAGE_VERSION } = createRequire(import.meta.url)("../package.json") as { version: string };
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
+import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient, type GrowSurfRequestError } from "./growsurf/client.js";
 import {
   clientSnippetsSchema,
@@ -80,6 +81,57 @@ const requireGrowSurfApiKey = (env: Env): GrowSurfClient => {
 // key, so it must work even when no GROWSURF_API_KEY is configured (the keyless exception).
 const getKeylessGrowSurfClient = (env: Env): GrowSurfClient =>
   new GrowSurfClient({ apiKey: env.GROWSURF_API_KEY, campaignId: env.GROWSURF_CAMPAIGN_ID ?? "" });
+
+// The campaign-scoped tools: every tool that operates on a single program (campaign). Each accepts
+// an optional `campaignId` argument that overrides GROWSURF_CAMPAIGN_ID (resolved per call via
+// resolveCampaignClient), so an agent can create a program and immediately operate on the returned
+// id. The list-time loop below injects the shared campaignId input-schema property into exactly
+// these tools, and each handler resolves its client with resolveCampaignClient(env, toolArgs).
+// Account-level, keyless, and static guidance tools are intentionally excluded, as are the tools
+// that already declare their own campaignId (create_campaign has none; the guide/snippet and
+// integration-connect-link tools carry their own bespoke campaignId param).
+const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
+  "growsurf_get_campaign",
+  "growsurf_update_campaign",
+  "growsurf_clone_campaign",
+  "growsurf_list_campaign_rewards",
+  "growsurf_create_campaign_reward",
+  "growsurf_update_campaign_reward",
+  "growsurf_delete_campaign_reward",
+  "growsurf_get_campaign_design",
+  "growsurf_update_campaign_design",
+  "growsurf_get_campaign_emails",
+  "growsurf_update_campaign_emails",
+  "growsurf_get_campaign_options",
+  "growsurf_update_campaign_options",
+  "growsurf_get_campaign_installation",
+  "growsurf_update_campaign_installation",
+  "growsurf_get_campaign_analytics",
+  "growsurf_list_campaign_webhooks",
+  "growsurf_create_campaign_webhook",
+  "growsurf_update_campaign_webhook",
+  "growsurf_delete_campaign_webhook",
+  "growsurf_test_campaign_webhook",
+  "growsurf_add_participant",
+  "growsurf_update_participant",
+  "growsurf_bulk_delete_participants",
+  "growsurf_email_participant",
+  "growsurf_get_participant_analytics",
+  "growsurf_get_participant_activity_logs",
+  "growsurf_trigger_referral",
+  "growsurf_cancel_delayed_referral",
+  "growsurf_record_sale",
+  "growsurf_refund_transaction",
+  "growsurf_create_mobile_participant_token",
+]);
+
+// Shared JSON-schema property injected into every campaign-scoped tool's input schema (see the loop
+// in the ListTools handler). Keeping it in one place means the 32 tool schemas cannot drift.
+const CAMPAIGN_ID_JSON_PROP = {
+  type: "string",
+  description:
+    "Target program (campaign) id for this call. Defaults to GROWSURF_CAMPAIGN_ID when omitted. Pass the `id` returned by growsurf_create_campaign to configure or operate a program you just created, without restarting the server.",
+} as const;
 
 const safeJson = (value: unknown): string => JSON.stringify(value, null, 2);
 
@@ -240,8 +292,9 @@ const updateCampaignSchema = z
   });
 
 // Permissive request body shared by the four campaign config sub-resource update tools.
-// PATCH is a partial merge, so every field is optional; see the GrowSurf REST API
-// reference for the full field-level schemas of each editor tab.
+// Only the fields you send are changed, so every field is optional. To see the full object
+// with every field and its current value, fetch the tab first, then send back only what you
+// want to change.
 const campaignConfigUpdateSchema = z.object({
   fields: z.record(z.string(), z.unknown()),
 });
@@ -579,8 +632,9 @@ const main = async () => {
 
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     if (request.params.uri === "growsurf://campaign") {
-      const growsurf = requireGrowSurfClient(env);
-      const result = await growsurf.getCampaign();
+      // The campaign resource has no per-read arguments, so it stays scoped to GROWSURF_CAMPAIGN_ID.
+      const campaignResource = requireGrowSurfClient(env);
+      const result = await campaignResource.getCampaign();
       return {
         contents: [
           {
@@ -595,8 +649,7 @@ const main = async () => {
   });
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-      tools: [
+    const tools = [
         {
           name: "growsurf_integration_guide",
           description: "Generate a guided, happy-path GrowSurf integration plan (referral + affiliate).",
@@ -673,13 +726,14 @@ const main = async () => {
         },
         {
           name: "growsurf_get_campaign",
-          description: "Fetch your GrowSurf campaign (program) details via REST.",
+          description:
+            "Fetch your GrowSurf campaign (program) details via REST. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_create_campaign",
           description:
-            "Create a new GrowSurf program (campaign) pre-populated with type-appropriate defaults, optionally with inline rewards. Only `type` is required; the program is created in DRAFT status owned by your API key's account. `currencyISO` sets the program's currency (defaults to USD) and is immutable after creation. Editor-tab config (design, emails, options, installation) is not accepted here — configure it after creation with the config sub-resource tools. Does NOT require GROWSURF_CAMPAIGN_ID.",
+            "Create a new GrowSurf program (campaign) pre-populated with type-appropriate defaults, optionally with inline rewards. Only `type` is required; the program is created in DRAFT status owned by your API key's account. `currencyISO` sets the program's currency (defaults to USD) and is immutable after creation. Editor-tab config (design, emails, options, installation) is not accepted here — configure it after creation with the config sub-resource tools. Does NOT require GROWSURF_CAMPAIGN_ID. The response includes the new program `id`; pass it as `campaignId` to the other tools (or set GROWSURF_CAMPAIGN_ID) to configure and operate the program.",
           inputSchema: {
             type: "object",
             properties: {
@@ -697,7 +751,7 @@ const main = async () => {
         {
           name: "growsurf_update_campaign",
           description:
-            "Update your GrowSurf program's (campaign's) identity and lifecycle: name, companyName, companyLogoImageUrl, and status (set IN_PROGRESS to publish/resume the program, COMPLETE to end it). Only the fields you send are changed. `type`, `urlId`, and `currencyISO` are immutable (currency is chosen once at program creation), so this tool does not accept them. Editor-tab config (design, emails, options, installation) is edited with the dedicated config sub-resource tools, not here. Uses GROWSURF_CAMPAIGN_ID.",
+            "Update your GrowSurf program's (campaign's) identity and lifecycle: name, companyName, companyLogoImageUrl, and status (set IN_PROGRESS to publish/resume the program, COMPLETE to end it). Only the fields you send are changed. `type`, `urlId`, and `currencyISO` are immutable (currency is chosen once at program creation), so this tool does not accept them. Editor-tab config (design, emails, options, installation) is edited with the dedicated config sub-resource tools, not here. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -717,18 +771,18 @@ const main = async () => {
         {
           name: "growsurf_clone_campaign",
           description:
-            "Clone your GrowSurf program (campaign) into a new DRAFT program. Integrations and credentials are not copied; active rewards are cloned. Uses GROWSURF_CAMPAIGN_ID.",
+            "Clone your GrowSurf program (campaign) into a new DRAFT program. Integrations and credentials are not copied; active rewards are cloned. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_list_campaign_rewards",
-          description: "List your GrowSurf program's configured rewards (reward configs). Uses GROWSURF_CAMPAIGN_ID.",
+          description: "List your GrowSurf program's configured rewards (reward configs). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_create_campaign_reward",
           description:
-            "Create a new campaign reward (reward config) on your GrowSurf program. `type` must be compatible with the program type (affiliate programs support only AFFILIATE rewards; referral programs support the other types). Uses GROWSURF_CAMPAIGN_ID.",
+            "Create a new campaign reward (reward config) on your GrowSurf program. `type` must be compatible with the program type (affiliate programs support only AFFILIATE rewards; referral programs support the other types). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -779,7 +833,7 @@ const main = async () => {
         {
           name: "growsurf_update_campaign_reward",
           description:
-            "Update an existing campaign reward (reward config) on your GrowSurf program. `campaignRewardId` is the reward key (e.g. crew_...). The reward `type` is immutable. Uses GROWSURF_CAMPAIGN_ID.",
+            "Update an existing campaign reward (reward config) on your GrowSurf program. `campaignRewardId` is the reward key (e.g. crew_...). The reward `type` is immutable. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -830,7 +884,7 @@ const main = async () => {
         {
           name: "growsurf_delete_campaign_reward",
           description:
-            "Delete a campaign reward (reward config) from your GrowSurf program. The reward is deactivated, removed from the program's reward set, and any connected upfront-discount coupons are cleaned up. `campaignRewardId` is the reward key. Returns { id, success }. Uses GROWSURF_CAMPAIGN_ID.",
+            "Delete a campaign reward (reward config) from your GrowSurf program. The reward is deactivated, removed from the program's reward set, and any connected upfront-discount coupons are cleaned up. `campaignRewardId` is the reward key. Returns { id, success }. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -843,13 +897,13 @@ const main = async () => {
         {
           name: "growsurf_get_campaign_design",
           description:
-            "Fetch the Design tab configuration for your GrowSurf program (colors, fonts, sharing sections, and other appearance settings). Returns a large nested object; see the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Design tab configuration for your GrowSurf program (colors, fonts, sharing sections, and other appearance settings). Returns the full object with every field and its current value — the same shape you send back on update. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_design",
           description:
-            "Update the Design tab configuration for your GrowSurf program. This is a partial merge — pass only the nested fields you want to change under `fields`. See the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+            "Update the Design tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Pass just the fields you want to change under `fields`. To see the full object with every field and its current value, fetch the tab first, then send back only what you want to change. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -862,13 +916,13 @@ const main = async () => {
         {
           name: "growsurf_get_campaign_emails",
           description:
-            "Fetch the Emails tab configuration for your GrowSurf program (participant and admin email templates and settings). Returns a large nested object; see the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Emails tab configuration for your GrowSurf program (participant and admin email templates and settings). Returns the full object with every field and its current value — the same shape you send back on update. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_emails",
           description:
-            "Update the Emails tab configuration for your GrowSurf program. This is a partial merge — pass only the nested fields you want to change under `fields`. See the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+            "Update the Emails tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Pass just the fields you want to change under `fields`. To see the full object with every field and its current value, fetch the tab first, then send back only what you want to change. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -881,13 +935,13 @@ const main = async () => {
         {
           name: "growsurf_get_campaign_options",
           description:
-            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, notifications, and other behavior options). Returns a large nested object; see the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, notifications, and other behavior options). Returns the full object with every field and its current value — the same shape you send back on update. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_options",
           description:
-            "Update the Options tab configuration for your GrowSurf program. This is a partial merge — pass only the nested fields you want to change under `fields`. See the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+            "Update the Options tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Pass just the fields you want to change under `fields`. To see the full object with every field and its current value, fetch the tab first, then send back only what you want to change. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -900,13 +954,13 @@ const main = async () => {
         {
           name: "growsurf_get_campaign_installation",
           description:
-            "Fetch the Installation tab configuration for your GrowSurf program (embed/installation and tracking setup). Returns a large nested object; see the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Installation tab configuration for your GrowSurf program (embed/installation and tracking setup). Returns the full object with every field and its current value — the same shape you send back on update. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_installation",
           description:
-            "Update the Installation tab configuration for your GrowSurf program. This is a partial merge — pass only the nested fields you want to change under `fields`. See the GrowSurf REST API reference for the field-level schema. Uses GROWSURF_CAMPAIGN_ID.",
+            "Update the Installation tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Pass just the fields you want to change under `fields`. To see the full object with every field and its current value, fetch the tab first, then send back only what you want to change. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -973,7 +1027,7 @@ const main = async () => {
         {
           name: "growsurf_get_campaign_analytics",
           description:
-            "Fetch analytics for your GrowSurf program — participants, referrals, impressions, per-channel shares, plus affiliate revenue/commissions for affiliate programs. Pass `interval` (day, week, or month) to also receive a `series` array of per-period totals for trend detection (defaults to `total`, no series). Pass `include` (comma-separated: previousPeriod, statusCounts, rates) to enrich the response — previousPeriod adds totals for the equal-length window immediately before the requested one; statusCounts adds reward (and, for affiliate programs, affiliate/commission/payout) status breakdowns; rates adds derived referral rates. Scope the timeframe with `days` (last N days, default 365, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). Uses GROWSURF_CAMPAIGN_ID.",
+            "Fetch analytics for your GrowSurf program — participants, referrals, impressions, per-channel shares, plus affiliate revenue/commissions for affiliate programs. Pass `interval` (day, week, or month) to also receive a `series` array of per-period totals for trend detection (defaults to `total`, no series). Pass `include` (comma-separated: previousPeriod, statusCounts, rates) to enrich the response — previousPeriod adds totals for the equal-length window immediately before the requested one; statusCounts adds reward (and, for affiliate programs, affiliate/commission/payout) status breakdowns; rates adds derived referral rates. Scope the timeframe with `days` (last N days, default 365, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -996,13 +1050,13 @@ const main = async () => {
         },
         {
           name: "growsurf_list_campaign_webhooks",
-          description: "List your GrowSurf program's webhooks (secrets are never returned). Uses GROWSURF_CAMPAIGN_ID.",
+          description: "List your GrowSurf program's webhooks (secrets are never returned). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_create_campaign_webhook",
           description:
-            "Add a webhook to your GrowSurf program. `payloadUrl` is required. `events` is the list of events this webhook is subscribed to (omit to subscribe it to no events). `secret` is write-only — GrowSurf uses it to sign deliveries (the GrowSurf-Signature HMAC header) and never returns it. Uses GROWSURF_CAMPAIGN_ID.",
+            "Add a webhook to your GrowSurf program. `payloadUrl` is required. `events` is the list of events this webhook is subscribed to (omit to subscribe it to no events). `secret` is write-only — GrowSurf uses it to sign deliveries (the GrowSurf-Signature HMAC header) and never returns it. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1018,7 +1072,7 @@ const main = async () => {
         {
           name: "growsurf_update_campaign_webhook",
           description:
-            "Update a webhook on your GrowSurf program by id (`webhookId` is `primary` for the program's primary webhook). Only the fields you send are changed. `secret` is write-only and never returned. Uses GROWSURF_CAMPAIGN_ID.",
+            "Update a webhook on your GrowSurf program by id (`webhookId` is `primary` for the program's primary webhook). Only the fields you send are changed. `secret` is write-only and never returned. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1035,7 +1089,7 @@ const main = async () => {
         {
           name: "growsurf_delete_campaign_webhook",
           description:
-            "Remove a webhook from your GrowSurf program by id. Returns { id, success }. Uses GROWSURF_CAMPAIGN_ID.",
+            "Remove a webhook from your GrowSurf program by id. Returns { id, success }. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1048,7 +1102,7 @@ const main = async () => {
         {
           name: "growsurf_test_campaign_webhook",
           description:
-            "Send a live test event to a webhook on your GrowSurf program using its stored URL and secret. Optionally pass `event` to choose which event type to simulate; when omitted, the webhook's first enabled event is used (returns 400 if the webhook has no enabled events). Returns the mock payload and the receiving endpoint's response. Uses GROWSURF_CAMPAIGN_ID.",
+            "Send a live test event to a webhook on your GrowSurf program using its stored URL and secret. Optionally pass `event` to choose which event type to simulate; when omitted, the webhook's first enabled event is used (returns 400 if the webhook has no enabled events). Returns the mock payload and the receiving endpoint's response. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1061,7 +1115,8 @@ const main = async () => {
         },
         {
           name: "growsurf_add_participant",
-          description: "Add or fetch an existing participant by email (GrowSurf REST).",
+          description:
+            "Add or fetch an existing participant by email (GrowSurf REST). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1082,7 +1137,7 @@ const main = async () => {
         {
           name: "growsurf_update_participant",
           description:
-            "Update a participant (by GrowSurf participant ID or email). Only the fields you send are changed; read-only fields (counters, origin, fraud state) are rejected with a 400. `notes` is freeform internal notes (never shown to participants); `paypalEmail` is the participant's PayPal address for affiliate payouts. Uses GROWSURF_CAMPAIGN_ID.",
+            "Update a participant (by GrowSurf participant ID or email). Only the fields you send are changed; read-only fields (counters, origin, fraud state) are rejected with a 400. `notes` is freeform internal notes (never shown to participants); `paypalEmail` is the participant's PayPal address for affiliate payouts. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1117,7 +1172,7 @@ const main = async () => {
         {
           name: "growsurf_bulk_delete_participants",
           description:
-            "Bulk delete participants from your GrowSurf program in one request. DESTRUCTIVE: deletion is permanent, cannot be undone, and removes the participants' referrals, rewards, commissions, and payout records. Each entry in `participants` is a GrowSurf participant ID or an email address (mixed lists are allowed), up to 200 entries per request — chunk larger lists across multiple calls. Returns a `summary` (total, deletedCount, notFoundCount, duplicateCount, errorCount) plus per-row `results` in request order, each with `status` DELETED, NOT_FOUND, DUPLICATE (resolves to the same participant as an earlier entry), or ERROR — a 200 response can still include NOT_FOUND or ERROR rows, so check the summary. Uses GROWSURF_CAMPAIGN_ID.",
+            "Bulk delete participants from your GrowSurf program in one request. DESTRUCTIVE: deletion is permanent, cannot be undone, and removes the participants' referrals, rewards, commissions, and payout records. Each entry in `participants` is a GrowSurf participant ID or an email address (mixed lists are allowed), up to 200 entries per request — chunk larger lists across multiple calls. Returns a `summary` (total, deletedCount, notFoundCount, duplicateCount, errorCount) plus per-row `results` in request order, each with `status` DELETED, NOT_FOUND, DUPLICATE (resolves to the same participant as an earlier entry), or ERROR — a 200 response can still include NOT_FOUND or ERROR rows, so check the summary. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1141,7 +1196,7 @@ const main = async () => {
         {
           name: "growsurf_email_participant",
           description:
-            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). Free-form emails are sent with the same compliance handling (company name, postal address, and an unsubscribe link are added automatically, and unsubscribed participants are suppressed). Sending requires the account to be verified by the GrowSurf team and a verified custom email domain on the program (set up in *Campaign Editor > 3. Emails > Email Settings*). Returns 400 until one is verified. The email is accepted for delivery. Uses GROWSURF_CAMPAIGN_ID.",
+            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). Free-form emails are sent with the same compliance handling (company name, postal address, and an unsubscribe link are added automatically, and unsubscribed participants are suppressed). Sending requires the account to be verified by the GrowSurf team and a verified custom email domain on the program (set up in *Campaign Editor > 3. Emails > Email Settings*). Returns 400 until one is verified. The email is accepted for delivery. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1151,8 +1206,8 @@ const main = async () => {
                 type: "string",
                 description: "The program email template to trigger. Send the camelCase key; the available types depend on the program type, and the email must also be enabled on the program. System and transactional types (login link, PayPal confirmation, tax) and the invite email cannot be sent. Referral programs: `welcomeNonReferred`, `referralLinkViewedFirstTime`, `referralLinkUsed`, `referredSignup`, `welcomeReferred`, `goalAchieved`, `campaignEndedWinners`, `campaignEndedNonWinners`, `progressUpdateMonthly`. Affiliate programs: `welcomeNonReferred`, `referralLinkViewedFirstTime`, `referredSignup`, `commissionGenerated`, `commissionAdjusted`, `payoutPending`, `payoutSentSuccess`, `progressUpdateMonthly`.",
               },
-              subject: { type: "string", description: "Free-form subject. Supports interpolation variables like {{firstName}}." },
-              body: { type: "string", description: "Free-form HTML body. Supports interpolation variables." },
+              subject: { type: "string", description: "Free-form subject. Supports dynamic text (`{{...}}` tokens), the same as the body." },
+              body: { type: "string", description: "Free-form HTML body. You can personalize it with dynamic text, inserting `{{...}}` tokens like `{{firstName}}` or `{{shareUrl}}`. See [Guide to using dynamic text in GrowSurf emails](https://support.growsurf.com/article/213-guide-to-using-dynamic-text-in-growsurf-emails)." },
               preheader: { type: "string" },
             },
             anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
@@ -1162,7 +1217,7 @@ const main = async () => {
         {
           name: "growsurf_get_participant_analytics",
           description:
-            "Fetch all-time analytics for a single participant (by GrowSurf participant ID or email): engagement counters, leaderboard ranks, and per-channel share counts, plus affiliate money metrics (referral revenue, commissions, paid out, upcoming payout) for affiliate programs. Pass `include=series` to also receive a `series` array of this participant's own activity per period; bucket it with `interval` (day, week, or month; default day) and scope the timeframe with `days` (last N days, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). Useful for segmenting and re-engaging participants. Uses GROWSURF_CAMPAIGN_ID.",
+            "Fetch all-time analytics for a single participant (by GrowSurf participant ID or email): engagement counters, leaderboard ranks, and per-channel share counts, plus affiliate money metrics (referral revenue, commissions, paid out, upcoming payout) for affiliate programs. Pass `include=series` to also receive a `series` array of this participant's own activity per period; bucket it with `interval` (day, week, or month; default day) and scope the timeframe with `days` (last N days, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). Useful for segmenting and re-engaging participants. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1189,7 +1244,7 @@ const main = async () => {
         {
           name: "growsurf_get_participant_activity_logs",
           description:
-            "List a participant's activity logs (by GrowSurf participant ID or email), most recent first, offset/limit paginated. `limit` is 1-100 (default 20); `offset` skips logs. The response `offset` is the cursor for the next page (null when there are no more). Uses GROWSURF_CAMPAIGN_ID.",
+            "List a participant's activity logs (by GrowSurf participant ID or email), most recent first, offset/limit paginated. `limit` is 1-100 (default 20); `offset` skips logs. The response `offset` is the cursor for the next page (null when there are no more). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1205,7 +1260,7 @@ const main = async () => {
         {
           name: "growsurf_trigger_referral",
           description:
-            "Trigger referral credit for a referred participant (use when your trigger is Sign up + Qualifying Action). Optionally pass delayInDays (1-90) to hold the credit for N days before awarding it (e.g. to cover a refund window).",
+            "Trigger referral credit for a referred participant (use when your trigger is Sign up + Qualifying Action). Optionally pass delayInDays (1-90) to hold the credit for N days before awarding it (e.g. to cover a refund window). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1220,7 +1275,7 @@ const main = async () => {
         {
           name: "growsurf_cancel_delayed_referral",
           description:
-            "Cancel a pending delayed referral trigger for a participant before the delay elapses (e.g. on refund/cancellation). Returns { success, message }.",
+            "Cancel a pending delayed referral trigger for a participant before the delay elapses (e.g. on refund/cancellation). Returns { success, message }. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1234,7 +1289,7 @@ const main = async () => {
         {
           name: "growsurf_record_sale",
           description:
-            "Record a sale/transaction for an affiliate program (commissions generate asynchronously; use webhooks). Requires at least one transaction identifier (externalId, transactionId, orderId, paymentId, invoiceId, paymentIntentId, or chargeId) so repeated calls are de-duplicated instead of double-paying the referrer; reuse the same one when refunding.",
+            "Record a sale/transaction for an affiliate program (commissions generate asynchronously; use webhooks). Requires at least one transaction identifier (externalId, transactionId, orderId, paymentId, invoiceId, paymentIntentId, or chargeId) so repeated calls are de-duplicated instead of double-paying the referrer; reuse the same one when refunding. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1266,7 +1321,7 @@ const main = async () => {
         {
           name: "growsurf_refund_transaction",
           description:
-            "Record an amendment (refund, partial refund, or chargeback) against a previously recorded affiliate transaction; reverses or adjusts the referrer's commission. The inverse of growsurf_record_sale. Identify the original transaction with the same identifier you sent when recording it (omit amountRefunded for a full refund). Already-paid commissions are not clawed back (recorded for tax only).",
+            "Record an amendment (refund, partial refund, or chargeback) against a previously recorded affiliate transaction; reverses or adjusts the referrer's commission. The inverse of growsurf_record_sale. Identify the original transaction with the same identifier you sent when recording it (omit amountRefunded for a full refund). Already-paid commissions are not clawed back (recorded for tax only). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1295,7 +1350,7 @@ const main = async () => {
         {
           name: "growsurf_create_mobile_participant_token",
           description:
-            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST.",
+            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1424,12 +1479,24 @@ const main = async () => {
             additionalProperties: false,
           },
         }
-      ],
-    };
+    ];
+    // Inject the optional campaignId argument into every campaign-scoped tool so an agent can target
+    // a program by id (for example one just returned by growsurf_create_campaign) without a server
+    // restart. Keyless, account-level, and static tools are left untouched.
+    for (const tool of tools) {
+      if (!CAMPAIGN_SCOPED_TOOL_NAMES.has(tool.name)) continue;
+      const inputSchema = tool.inputSchema as { properties?: Record<string, unknown> };
+      inputSchema.properties = { ...(inputSchema.properties ?? {}), campaignId: CAMPAIGN_ID_JSON_PROP };
+    }
+    return { tools };
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
+      // Optional per-call program override — an explicit `campaignId` tool argument wins over
+      // GROWSURF_CAMPAIGN_ID (see resolveCampaignClient), so an agent can operate on a program it
+      // just created without restarting the server. Tools that are not campaign-scoped ignore it.
+      const toolArgs = (request.params.arguments ?? {}) as { campaignId?: string } & Record<string, unknown>;
       switch (request.params.name) {
         case "growsurf_integration_guide": {
           const input = integrationGuideInputSchema.parse(request.params.arguments ?? {});
@@ -1447,7 +1514,7 @@ const main = async () => {
           return { content: [{ type: "text", text }] };
         }
         case "growsurf_get_campaign": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaign();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
@@ -1463,10 +1530,17 @@ const main = async () => {
             rewards: input.rewards,
           }) as Record<string, unknown>;
           const result = await growsurf.createCampaign(body);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          const newProgramId =
+            result && typeof result === "object" && typeof (result as { id?: unknown }).id === "string"
+              ? (result as { id: string }).id
+              : undefined;
+          const hint = newProgramId
+            ? `\n\nNew program id: ${newProgramId}. Pass it as campaignId to the other tools (or set GROWSURF_CAMPAIGN_ID) to configure and operate this program.`
+            : "";
+          return { content: [{ type: "text", text: safeJson(result) + hint }] };
         }
         case "growsurf_update_campaign": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = updateCampaignSchema.parse(request.params.arguments ?? {});
           const fields = omitUndefined({
             name: input.name,
@@ -1478,17 +1552,17 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_clone_campaign": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.cloneCampaign();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_list_campaign_rewards": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.listCampaignRewards();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_create_campaign_reward": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = createCampaignRewardSchema.parse(request.params.arguments ?? {});
           const reward = omitUndefined({
             type: input.type,
@@ -1517,7 +1591,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_update_campaign_reward": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = updateCampaignRewardSchema.parse(request.params.arguments ?? {});
           const { campaignRewardId, ...rest } = input;
           const fields = omitUndefined(rest) as Record<string, unknown>;
@@ -1525,51 +1599,51 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_delete_campaign_reward": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = deleteCampaignRewardSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.deleteCampaignReward(input.campaignRewardId);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_get_campaign_design": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaignDesign();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_update_campaign_design": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.updateCampaignDesign(input.fields);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_get_campaign_emails": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaignEmails();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_update_campaign_emails": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.updateCampaignEmails(input.fields);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_get_campaign_options": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaignOptions();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_update_campaign_options": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.updateCampaignOptions(input.fields);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_get_campaign_installation": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaignInstallation();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_update_campaign_installation": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.updateCampaignInstallation(input.fields);
           return { content: [{ type: "text", text: safeJson(result) }] };
@@ -1620,7 +1694,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_get_campaign_analytics": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = getCampaignAnalyticsSchema.parse(request.params.arguments ?? {});
           const query = omitUndefined({
             interval: input.interval,
@@ -1633,12 +1707,12 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_list_campaign_webhooks": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.listWebhooks();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_create_campaign_webhook": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = createWebhookSchema.parse(request.params.arguments ?? {});
           const webhook = omitUndefined({
             payloadUrl: input.payloadUrl,
@@ -1650,7 +1724,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_update_campaign_webhook": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = updateWebhookSchema.parse(request.params.arguments ?? {});
           const { webhookId, ...rest } = input;
           const fields = omitUndefined(rest) as Record<string, unknown>;
@@ -1658,13 +1732,13 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_delete_campaign_webhook": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = deleteWebhookSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.deleteWebhook(input.webhookId);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_test_campaign_webhook": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = testWebhookSchema.parse(request.params.arguments ?? {});
           const body = omitUndefined({ event: input.event }) as Record<string, unknown>;
           const result = await growsurf.testWebhook(
@@ -1674,7 +1748,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_add_participant": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = addParticipantSchema.parse(request.params.arguments ?? {});
           if (input.metadata && Object.prototype.hasOwnProperty.call(input.metadata, "gdprAgreements")) {
             return {
@@ -1692,7 +1766,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_update_participant": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = updateParticipantSchema.parse(request.params.arguments ?? {});
           if (input.metadata && Object.prototype.hasOwnProperty.call(input.metadata, "gdprAgreements")) {
             return {
@@ -1714,13 +1788,13 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_bulk_delete_participants": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = bulkDeleteParticipantsSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.bulkDeleteParticipants(input.participants);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_email_participant": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = emailParticipantSchema.parse(request.params.arguments ?? {});
           const body = omitUndefined({
             emailType: input.emailType,
@@ -1734,7 +1808,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_get_participant_analytics": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = getParticipantAnalyticsSchema.parse(request.params.arguments ?? {});
           const query = omitUndefined({
             include: input.include,
@@ -1749,7 +1823,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_get_participant_activity_logs": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = getParticipantActivityLogsSchema.parse(request.params.arguments ?? {});
           const query = omitUndefined({ limit: input.limit, offset: input.offset }) as {
             limit?: number;
@@ -1761,7 +1835,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_trigger_referral": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = triggerReferralSchema.parse(request.params.arguments ?? {});
           const result = input.participantId
             ? await growsurf.triggerReferralByParticipantId(input.participantId, input.delayInDays)
@@ -1769,7 +1843,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_cancel_delayed_referral": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = cancelDelayedReferralSchema.parse(request.params.arguments ?? {});
           const result = input.participantId
             ? await growsurf.cancelDelayedReferralByParticipantId(input.participantId)
@@ -1777,7 +1851,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_record_sale": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = recordSaleSchema.parse(request.params.arguments ?? {});
           const sale = omitUndefined({
             currency: input.currency,
@@ -1804,7 +1878,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_refund_transaction": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = refundTransactionSchema.parse(request.params.arguments ?? {});
           const amendment = omitUndefined({
             amendmentType: input.amendmentType,
@@ -1829,7 +1903,7 @@ const main = async () => {
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_create_mobile_participant_token": {
-          const growsurf = requireGrowSurfClient(env);
+          const growsurf = resolveCampaignClient(env, toolArgs);
           const input = createMobileParticipantTokenSchema.parse(request.params.arguments ?? {});
           if (input.metadata && Object.prototype.hasOwnProperty.call(input.metadata, "gdprAgreements")) {
             return {
