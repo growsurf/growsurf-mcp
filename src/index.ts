@@ -1129,7 +1129,7 @@ const main = async () => {
         {
           name: "growsurf_email_participant",
           description:
-            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured, sendable email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). Free-form emails go with the same compliance handling (company name, postal address, and unsubscribe link added automatically; unsubscribed participants suppressed). Sending requires the account to be verified by the GrowSurf team, plus a verified custom email domain on the program (set up in Campaign Editor > 3. Emails > Email Settings) — emails always send from your domain, never a GrowSurf address; returns 400 until one is verified. The email is accepted for delivery. Uses GROWSURF_CAMPAIGN_ID.",
+            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). Free-form emails are sent with the same compliance handling (company name, postal address, and an unsubscribe link are added automatically, and unsubscribed participants are suppressed). Sending requires the account to be verified by the GrowSurf team and a verified custom email domain on the program (set up in *Campaign Editor > 3. Emails > Email Settings*). Returns 400 until one is verified. The email is accepted for delivery. Uses GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1137,7 +1137,7 @@ const main = async () => {
               participantEmail: { type: "string" },
               emailType: {
                 type: "string",
-                description: "A configured, sendable program email template. System/transactional types and the invite email cannot be sent here.",
+                description: "The program email template to trigger. Send the camelCase key; the available types depend on the program type, and the email must also be enabled on the program. System and transactional types (login link, PayPal confirmation, tax) and the invite email cannot be sent. Referral programs: `welcomeNonReferred`, `referralLinkViewedFirstTime`, `referralLinkUsed`, `referredSignup`, `welcomeReferred`, `goalAchieved`, `campaignEndedWinners`, `campaignEndedNonWinners`, `progressUpdateMonthly`. Affiliate programs: `welcomeNonReferred`, `referralLinkViewedFirstTime`, `referredSignup`, `commissionGenerated`, `commissionAdjusted`, `payoutPending`, `payoutSentSuccess`, `progressUpdateMonthly`.",
               },
               subject: { type: "string", description: "Free-form subject. Supports interpolation variables like {{firstName}}." },
               body: { type: "string", description: "Free-form HTML body. Supports interpolation variables." },
