@@ -1,4 +1,4 @@
 interface:
   display_name: "GrowSurf Agent Toolkit"
   short_description: "Create and operate GrowSurf programs"
-  default_prompt: "Use $growsurf-agent-toolkit to create a referral program in GrowSurf and show me the confirmation screenshots."
+  default_prompt: "Use $growsurf-agent-toolkit to create a referral program in GrowSurf and summarize the confirmed settings."

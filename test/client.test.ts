@@ -126,6 +126,28 @@ describe("GrowSurfClient", () => {
     );
   });
 
+  it("lists campaigns with a GET to /campaigns and no campaign-id path segment", async () => {
+    const fetchMock = mockJson({ campaigns: [{ id: "abc123", name: "Referral Program" }] });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "" });
+    const result = await client.listCampaigns();
+
+    expect(result).toEqual({ campaigns: [{ id: "abc123", name: "Referral Program" }] });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.growsurf.com/v2/campaigns",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          Authorization: "Bearer api_key",
+          Accept: "application/json",
+        }),
+      }),
+    );
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.body).toBeUndefined();
+  });
+
   it("updates a campaign with a PATCH and a body", async () => {
     const fetchMock = mockJson({ id: "abc123", status: "IN_PROGRESS" });
     globalThis.fetch = fetchMock as typeof fetch;
@@ -283,28 +305,51 @@ describe("GrowSurfClient", () => {
     });
   }
 
-  it("gets referral-flow screenshots with a GET on the screenshot sub-resource path", async () => {
+  it("captures referral-flow screenshots with a POST to the MCP API path and no body", async () => {
     const fetchMock = mockJson({
-      referrer: { view: "referrer", url: "https://cdn.example.com/referrer.jpg", width: 1280, height: 800 },
-      referredFriend: { view: "referredFriend", url: "https://cdn.example.com/referred.jpg", width: 1280, height: 800 },
-      generatedAt: 1783512000000,
+      generatedAt: "2026-07-09T00:00:00.000Z",
+      expiresAt: "2026-07-09T00:15:00.000Z",
+      screenshots: [
+        { view: "referrer", url: "https://signed.example.com/referrer.jpg", width: 1280, height: 800 },
+        { view: "referredFriend", url: "https://signed.example.com/friend.jpg", width: 1280, height: 800 },
+      ],
     });
     globalThis.fetch = fetchMock as typeof fetch;
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
-    const result = await client.getReferralFlowScreenshots();
+    const result = await client.captureReferralFlowScreenshots();
 
     expect(result).toEqual({
-      referrer: { view: "referrer", url: "https://cdn.example.com/referrer.jpg", width: 1280, height: 800 },
-      referredFriend: { view: "referredFriend", url: "https://cdn.example.com/referred.jpg", width: 1280, height: 800 },
-      generatedAt: 1783512000000,
+      generatedAt: "2026-07-09T00:00:00.000Z",
+      expiresAt: "2026-07-09T00:15:00.000Z",
+      screenshots: [
+        { view: "referrer", url: "https://signed.example.com/referrer.jpg", width: 1280, height: 800 },
+        { view: "referredFriend", url: "https://signed.example.com/friend.jpg", width: 1280, height: 800 },
+      ],
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.growsurf.com/v2/campaign/abc123/referral-flow-screenshots",
-      expect.objectContaining({ method: "GET" }),
+      "https://api.growsurf.com/api/v2/mcp/campaign/abc123/referral-flow-screenshots",
+      expect.objectContaining({ method: "POST" }),
     );
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.body).toBeUndefined();
+  });
+
+  it("derives the MCP API path from a custom REST base URL", async () => {
+    const fetchMock = mockJson({ screenshots: [] });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({
+      apiKey: "api_key",
+      campaignId: "abc123",
+      baseUrl: "http://127.0.0.1:8080/v2",
+    });
+    await client.captureReferralFlowScreenshots();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8080/api/v2/mcp/campaign/abc123/referral-flow-screenshots",
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 
   // ---- Account ----
@@ -575,6 +620,42 @@ describe("GrowSurfClient", () => {
   });
 
   // ---- Participant email / analytics / activity-logs / update ----
+
+  it("lists participants with limit and nextId query params", async () => {
+    const fetchMock = mockJson({
+      participants: [{ id: "part_1", email: "richard@piedpiper.com" }],
+      limit: 50,
+      nextId: "part_2",
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+    const result = await client.listParticipants({ limit: 50, nextId: "part_0" });
+
+    expect(result).toEqual({
+      participants: [{ id: "part_1", email: "richard@piedpiper.com" }],
+      limit: 50,
+      nextId: "part_2",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.growsurf.com/v2/campaign/abc123/participants?limit=50&nextId=part_0",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("gets a participant by email address with a GET on the participant path", async () => {
+    const fetchMock = mockJson({ id: "part_1", email: "richard@piedpiper.com" });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+    const result = await client.getParticipantByEmail("richard@piedpiper.com");
+
+    expect(result).toEqual({ id: "part_1", email: "richard@piedpiper.com" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.growsurf.com/v2/campaign/abc123/participant/richard%40piedpiper.com",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
 
   it("emails a participant by id with a POST on the /email path", async () => {
     const fetchMock = mockJson({ success: true, status: "queued" });

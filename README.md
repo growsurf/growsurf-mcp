@@ -35,20 +35,20 @@ This MCP server is NOT for:
   - Affiliate sale / transaction tracking
   - Webhooks
 - **Agent Recipes**:
-  - MCP prompts for creating referral programs, creating affiliate programs, embedding the widget, configuring rewards, wiring webhooks, and reading analytics
+  - MCP prompts for creating referral programs, creating affiliate programs, embedding the widget, listing and fetching programs and participants, configuring rewards, wiring webhooks, and reading analytics
   - Installable Agent Skill bundle at `skills/growsurf-agent-toolkit`
   - Steering to review starter Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching
-  - One-shot program-creation eval prompts and acceptance checks for referrer/referred screenshots
+  - One-shot program-creation eval prompts and acceptance checks for starter content and configuration review
 - **Happy‑Path REST API Wrappers**:
   - Create an account and get an API key (no API key required; the key unlocks after email verification), plus get/update account, rotate API key, and request/resend verification
-  - Get campaign
+  - List and get campaigns
   - Get campaign analytics (totals, plus an optional per-period time-series and optional previous-period, status-count, and rate enrichments)
   - Create, update, and clone programs (campaigns)
   - List, create, update, and delete campaign rewards
   - Get/update Design, Emails, Options, and Installation config
-  - Capture referrer and referred-friend screenshots for visual confirmation
+  - Capture temporary GrowSurf preview screenshots when the user explicitly asks for visual proof
   - List, create, update, delete, and test program webhooks
-  - Add participant
+  - List, get, and add participants
   - Update a participant, email a participant, and get a participant's analytics and activity logs
   - Trigger referral credit (for referral programs), with optional delayed award (1-90 days)
   - Cancel a pending delayed referral trigger (for referral programs)
@@ -69,7 +69,7 @@ This MCP server is NOT for:
 
 - Node.js 22+
 - A GrowSurf **API key** for API-calling tools
-- A **campaign (program) ID** for campaign-scoped tools. Set `GROWSURF_CAMPAIGN_ID` as the default, or pass a `campaignId` argument to any campaign-scoped tool to target a specific program (for example the `id` returned by `growsurf_create_campaign`, so you can create a program and operate it in the same session)
+- A **campaign (program) ID** for campaign-scoped tools. Set `GROWSURF_CAMPAIGN_ID` as the default, pass a `campaignId` argument to target a specific program, or call `growsurf_list_campaigns` to find available programs. For a newly created program, pass the `id` returned by `growsurf_create_campaign` to the other tools.
 - Static guidance/snippet tools can run without credentials
 - Exception: `growsurf_create_account` needs **no** API key — it creates a new account and returns one. Account-level tools (`growsurf_get_account`, `growsurf_update_account`, `growsurf_rotate_api_key`, verification) need the API key but **not** a campaign ID
 
@@ -244,6 +244,9 @@ node dist/index.js
 - `growsurf_get_campaign`
   Fetch campaign configuration.
 
+- `growsurf_list_campaigns`
+  List programs available to your account. Use this to find a `campaignId` before calling campaign-scoped tools.
+
 - `growsurf_get_campaign_analytics`
   Fetch program analytics (totals, plus an optional per-period `series` via `interval`, and optional `previousPeriod`/`statusCounts`/`rates` enrichments via `include`).
 
@@ -251,7 +254,7 @@ node dist/index.js
   Create a new program (campaign) with type-appropriate starter content and optional inline rewards (only needs `GROWSURF_API_KEY`, not `GROWSURF_CAMPAIGN_ID`). Review the seeded Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching.
 
 - `growsurf_agent_program_creation_eval`
-  Generate one-shot program-creation eval prompts and acceptance checks for starter content, conservative rewards, referrer/referred screenshots, frontend install proof, and clean public copy.
+  Generate one-shot program-creation eval prompts and acceptance checks for starter content, conservative rewards, configuration review, frontend install proof, and clean public copy.
 
 - `growsurf_update_campaign`
   Update the program's identity and lifecycle: name, company branding, and status (only the fields you send are changed).
@@ -283,8 +286,8 @@ node dist/index.js
 - `growsurf_get_campaign_installation` / `growsurf_update_campaign_installation`
   Read or patch the Program Editor Installation tab config.
 
-- `growsurf_get_referral_flow_screenshots`
-  Capture screenshots of the referrer view and referred-friend view for the current program. Use these images to verify the actual GrowSurf Window and referred-friend landing page, not a long HTML page or config dump.
+- `growsurf_capture_referral_flow_screenshots`
+  Capture temporary GrowSurf preview screenshots for the current program after the user explicitly asks for visual proof. This returns the controlled referrer Window and referred-friend experience; use browser automation instead to prove the user's installed site.
 
 - `growsurf_list_campaign_webhooks`
   List the program's webhooks (secrets are never returned).
@@ -303,6 +306,12 @@ node dist/index.js
 
 - `growsurf_add_participant`
   Add a participant (or referred participant) during signup.
+
+- `growsurf_list_participants`
+  List participants in the current program, paginated by `nextId`. Use this to find a participant ID before calling participant-scoped tools.
+
+- `growsurf_get_participant`
+  Fetch one participant by GrowSurf participant ID or email address.
 
 - `growsurf_update_participant`
   Update a participant by ID or email (including `notes` and `paypalEmail`).
