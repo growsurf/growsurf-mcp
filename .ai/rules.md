@@ -34,6 +34,7 @@ Anything the GrowSurf team needs to track that is not safe to publish belongs in
 
 Applies to anything an MCP consumer reads: tool names/descriptions, guidance text, snippets, and the README.
 
+- **Avoid redundant names in namespaced MCP UI.** MCP clients often show prompts/tools under the server namespace, e.g. `/growsurf:<name>`. For any new user-facing command or prompt name that will be listed in that UI, use short verb-object names like `list_participants` or `get_participant`, not `growsurf_list_participants`. If a raw MCP tool identifier must stay `growsurf_*` for compatibility with the existing public tool set, add or preserve a short user-facing prompt, alias, or label so users do not see `/growsurf:growsurf_*`.
 - Before writing or editing that copy, load the `human-writing` skill if available. It covers the AI-generated patterns to avoid (buzzwords, hedging, robotic lists, generic transitions) and the human patterns to use (specifics, active voice, short plain sentences).
 - Em dashes: use rarely. Prefer a comma, a period, parentheses, or a restructured sentence. Prose peppered with em dashes reads as AI-written.
 - Bold: reserve for the one thing per section a reader must not miss. Do not bold every key term; heavy bolding is an AI tell and makes nothing stand out.

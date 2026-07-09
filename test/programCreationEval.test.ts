@@ -8,7 +8,7 @@ import {
 import { createGrowSurfMcpServer } from "../src/index.js";
 
 describe("program creation steering eval", () => {
-  it("renders the required one-shot MCP flow and screenshot acceptance checks", () => {
+  it("renders the required one-shot MCP flow and configuration acceptance checks", () => {
     const text = renderAgentProgramCreationEval(
       agentProgramCreationEvalInputSchema.parse({ programType: "both", includeOneShotPrompts: true }),
     );
@@ -20,15 +20,20 @@ describe("program creation steering eval", () => {
     expect(text).toContain("growsurf_get_campaign_options");
     expect(text).toContain("growsurf_get_campaign_installation");
     expect(text).toContain("growsurf_list_campaign_rewards");
-    expect(text).toContain("growsurf_get_referral_flow_screenshots");
-    expect(text).toContain("actual referrer GrowSurf Window");
-    expect(text).toContain("actual referred-friend landing page");
-    expect(text).toContain("not a long HTML page");
-    expect(text).toContain("sticky banner and the inline heading");
+    expect(text).toContain("Fetch the campaign, Design, Emails, Options, Installation, and Rewards again");
+    expect(text).toContain("Design config preserves the starter GrowSurf Window");
+    expect(text).toContain("Review the returned configuration");
+    expect(text).toContain("sticky banner, inline heading");
     expect(text).toContain("browser tab title");
     expect(text).toContain("normal share options");
     expect(text).toContain("Window header");
     expect(text).toContain("frontend-design");
+    expect(text).toContain("browser-visible GrowSurf flow");
+    expect(text).toContain("growsurf_capture_referral_flow_screenshots");
+    expect(text).toContain("GrowSurf preview screenshots");
+    expect(text).toContain("own installed site");
+    expect(text).toContain("host agent's browser automation tool");
+    expect(text).toContain("read-only lookups");
   });
 
   it("includes referral and affiliate one-shot fixtures by default", () => {

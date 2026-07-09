@@ -10,6 +10,7 @@ This repo owns the public GrowSurf Model Context Protocol server package `@grows
 - Exports `createGrowSurfMcpServer` so hosted MCP runtimes can embed the same server without starting the stdio CLI.
 - Implements public GrowSurf API client helpers and customer-facing integration snippets.
 - Builds TypeScript from `src/` into `dist/` for the published package.
+- Lists MCP prompts with short names like `set_rewards` and `read_analytics` because clients already namespace them by server (for example `/growsurf:set_rewards`). Legacy `growsurf_*` prompt aliases may still resolve for compatibility, but should not be listed to clients.
 
 ## Key Files
 

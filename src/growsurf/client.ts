@@ -34,6 +34,13 @@ const DEFAULT_BASE_URL = "https://api.growsurf.com/v2";
 
 const normalizeBaseUrl = (baseUrl: string) => baseUrl.replace(/\/+$/, "");
 
+const toMcpBaseUrl = (baseUrl: string): string => {
+  const normalized = normalizeBaseUrl(baseUrl);
+  if (normalized.endsWith("/api/v2")) return `${normalized}/mcp`;
+  if (normalized.endsWith("/v2")) return `${normalized.slice(0, -"/v2".length)}/api/v2/mcp`;
+  return `${normalized}/api/v2/mcp`;
+};
+
 // Builds a `?a=1&b=2` query suffix from a params object, skipping undefined values.
 // Returns "" when no params are present so callers can append it unconditionally.
 const toQueryString = (params: Record<string, string | number | undefined>): string => {
@@ -85,11 +92,13 @@ export class GrowSurfClient {
   private readonly apiKey: string;
   private readonly campaignId: string;
   private readonly baseUrl: string;
+  private readonly mcpBaseUrl: string;
 
   constructor(options: GrowSurfClientOptions) {
     this.apiKey = options.apiKey ?? "";
     this.campaignId = options.campaignId;
     this.baseUrl = normalizeBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
+    this.mcpBaseUrl = toMcpBaseUrl(this.baseUrl);
   }
 
   getCampaignId(): string {
@@ -98,6 +107,13 @@ export class GrowSurfClient {
 
   async getCampaign(): Promise<unknown> {
     return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}`);
+  }
+
+  async listParticipants(query: { limit?: number; nextId?: string } = {}): Promise<unknown> {
+    return this.requestJson(
+      "GET",
+      `/campaign/${encodeURIComponent(this.campaignId)}/participants${toQueryString(query)}`,
+    );
   }
 
   async addParticipant(input: GrowSurfParticipantInput): Promise<unknown> {
@@ -141,6 +157,13 @@ export class GrowSurfClient {
     );
   }
 
+  async getParticipantByEmail(participantEmail: string): Promise<unknown> {
+    return this.requestJson(
+      "GET",
+      `/campaign/${encodeURIComponent(this.campaignId)}/participant/${encodeURIComponent(participantEmail)}`,
+    );
+  }
+
   async createMobileParticipantToken(input: GrowSurfParticipantInput): Promise<unknown> {
     return this.requestJson(
       "POST",
@@ -175,6 +198,10 @@ export class GrowSurfClient {
 
   async createCampaign(body: Record<string, unknown>): Promise<unknown> {
     return this.requestJson("POST", `/campaigns`, body);
+  }
+
+  async listCampaigns(): Promise<unknown> {
+    return this.requestJson("GET", `/campaigns`);
   }
 
   async updateCampaign(fields: Record<string, unknown>): Promise<unknown> {
@@ -222,10 +249,6 @@ export class GrowSurfClient {
     return this.requestJson("PATCH", `/campaign/${encodeURIComponent(this.campaignId)}/design`, fields);
   }
 
-  async getReferralFlowScreenshots(): Promise<unknown> {
-    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/referral-flow-screenshots`);
-  }
-
   async getCampaignEmails(): Promise<unknown> {
     return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/emails`);
   }
@@ -248,6 +271,13 @@ export class GrowSurfClient {
 
   async updateCampaignInstallation(fields: Record<string, unknown>): Promise<unknown> {
     return this.requestJson("PATCH", `/campaign/${encodeURIComponent(this.campaignId)}/installation`, fields);
+  }
+
+  async captureReferralFlowScreenshots(): Promise<unknown> {
+    return this.requestMcpJson(
+      "POST",
+      `/campaign/${encodeURIComponent(this.campaignId)}/referral-flow-screenshots`,
+    );
   }
 
   // Account (account-level, not campaign-scoped). See the GrowSurf REST API reference for the
@@ -412,6 +442,25 @@ export class GrowSurfClient {
     options?: { auth?: boolean },
   ): Promise<unknown> {
     const url = `${this.baseUrl}${path}`;
+    return this.requestUrlJson(method, url, body, options);
+  }
+
+  private async requestMcpJson(
+    method: "GET" | "POST" | "PATCH" | "DELETE",
+    path: string,
+    body?: unknown,
+    options?: { auth?: boolean },
+  ): Promise<unknown> {
+    const url = `${this.mcpBaseUrl}${path}`;
+    return this.requestUrlJson(method, url, body, options);
+  }
+
+  private async requestUrlJson(
+    method: "GET" | "POST" | "PATCH" | "DELETE",
+    url: string,
+    body?: unknown,
+    options?: { auth?: boolean },
+  ): Promise<unknown> {
     const headers: Record<string, string> = {
       Accept: "application/json",
     };

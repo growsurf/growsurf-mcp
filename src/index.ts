@@ -78,7 +78,7 @@ const requireGrowSurfClient = (env: Env): GrowSurfClient => {
   });
 };
 
-// Creating a campaign (POST /campaigns) has no campaign id, so it only needs the API key.
+// Listing/creating campaigns (`GET/POST /campaigns`) has no campaign id, so those only need the API key.
 // Account-level reads/writes (get/update account, rotate key, verification) are also key-only.
 const requireGrowSurfApiKey = (env: Env): GrowSurfClient => {
   if (!env.GROWSURF_API_KEY) {
@@ -118,19 +118,21 @@ const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
   "growsurf_delete_campaign_reward",
   "growsurf_get_campaign_design",
   "growsurf_update_campaign_design",
-  "growsurf_get_referral_flow_screenshots",
   "growsurf_get_campaign_emails",
   "growsurf_update_campaign_emails",
   "growsurf_get_campaign_options",
   "growsurf_update_campaign_options",
   "growsurf_get_campaign_installation",
   "growsurf_update_campaign_installation",
+  "growsurf_capture_referral_flow_screenshots",
   "growsurf_get_campaign_analytics",
   "growsurf_list_campaign_webhooks",
   "growsurf_create_campaign_webhook",
   "growsurf_update_campaign_webhook",
   "growsurf_delete_campaign_webhook",
   "growsurf_test_campaign_webhook",
+  "growsurf_list_participants",
+  "growsurf_get_participant",
   "growsurf_add_participant",
   "growsurf_update_participant",
   "growsurf_bulk_delete_participants",
@@ -520,6 +522,11 @@ const getCampaignAnalyticsSchema = z.object({
 
 // ---- Participant email / analytics / activity-log / update tools ----
 
+const listParticipantsSchema = z.object({
+  limit: z.number().int().min(1).max(100).optional(),
+  nextId: z.string().min(1).optional(),
+});
+
 // The participant is addressed by GrowSurf participant ID OR email (identical path parameter),
 // mirroring the existing trigger/record participant tools. Shared identity fields + refine.
 const participantIdentityFields = {
@@ -529,6 +536,10 @@ const participantIdentityFields = {
 const hasParticipantIdentity = (v: { participantId?: string | undefined; participantEmail?: string | undefined }) =>
   Boolean(v.participantId) || Boolean(v.participantEmail);
 const PARTICIPANT_IDENTITY_HINT = "Provide participantId or participantEmail.";
+
+const getParticipantSchema = z.object({ ...participantIdentityFields }).refine(hasParticipantIdentity, {
+  message: PARTICIPANT_IDENTITY_HINT,
+});
 
 const emailParticipantSchema = z
   .object({
@@ -701,7 +712,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_agent_program_creation_eval",
           description:
-            "Generate one-shot GrowSurf program-creation eval prompts and acceptance checks for agent steering: starter content review, conservative rewards, referrer/referred screenshots, and frontend install proof.",
+            "Generate one-shot GrowSurf program-creation eval prompts and acceptance checks for agent steering: starter content review, conservative rewards, configuration review, and frontend install proof.",
           inputSchema: {
             type: "object",
             properties: {
@@ -774,6 +785,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           name: "growsurf_get_campaign",
           description:
             "Fetch your GrowSurf campaign (program) details via REST. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_list_campaigns",
+          description:
+            "List the GrowSurf programs available to your account. Use this first when you need to choose a `campaignId` before calling campaign-scoped tools. Deleted programs are not returned. Does NOT require GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -960,12 +977,6 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           },
         },
         {
-          name: "growsurf_get_referral_flow_screenshots",
-          description:
-            "Capture screenshots of what the current GrowSurf program looks like to a referrer and to a referred friend. Use this after creating or changing a program so the user can confirm the design, participant messaging, and reward presentation. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
-          inputSchema: { type: "object", properties: {}, additionalProperties: false },
-        },
-        {
           name: "growsurf_get_campaign_emails",
           description:
             "Fetch the Emails tab configuration for your GrowSurf program (participant and admin email templates and settings). Returns the full object with every field and its current value — the same shape you send back on update. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
@@ -1021,6 +1032,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             required: ["fields"],
             additionalProperties: false,
           },
+        },
+        {
+          name: "growsurf_capture_referral_flow_screenshots",
+          description:
+            "Capture temporary GrowSurf preview screenshots after the user explicitly asks for screenshots or screenshot proof. Returns short-lived URLs for the controlled referrer Window and referred-friend experience for this program. This does not prove the user's installed site; use browser automation for that. This tool does not accept arbitrary URLs, HTML, JavaScript, or external screenshot targets. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_create_account",
@@ -1162,6 +1179,36 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               event: { type: "string", enum: WEBHOOK_EVENTS },
             },
             required: ["webhookId"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_list_participants",
+          description:
+            "List participants in your GrowSurf program, newest page first. `limit` is 1-100 (default 10). Pass response `nextId` into the next call to continue paging. Use this when you need a participant ID before calling participant-scoped tools. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              limit: { type: "integer", minimum: 1, maximum: 100 },
+              nextId: {
+                type: "string",
+                description: "Participant ID returned as `nextId` from the previous page.",
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_get_participant",
+          description:
+            "Fetch a single participant by GrowSurf participant ID or email address. Use `growsurf_list_participants` first if you need to find a participant ID. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participantId: { type: "string" },
+              participantEmail: { type: "string" },
+            },
+            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
             additionalProperties: false,
           },
         },
@@ -1575,6 +1622,11 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = await growsurf.getCampaign();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
+        case "growsurf_list_campaigns": {
+          const growsurf = requireGrowSurfApiKey(env);
+          const result = await growsurf.listCampaigns();
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
         case "growsurf_create_campaign": {
           const growsurf = requireGrowSurfApiKey(env);
           const input = createCampaignSchema.parse(request.params.arguments ?? {});
@@ -1672,11 +1724,6 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = await growsurf.updateCampaignDesign(input.fields);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
-        case "growsurf_get_referral_flow_screenshots": {
-          const growsurf = resolveCampaignClient(env, toolArgs);
-          const result = await growsurf.getReferralFlowScreenshots();
-          return { content: [{ type: "text", text: safeJson(result) }] };
-        }
         case "growsurf_get_campaign_emails": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaignEmails();
@@ -1708,6 +1755,11 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.updateCampaignInstallation(input.fields);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_capture_referral_flow_screenshots": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const result = await growsurf.captureReferralFlowScreenshots();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_create_account": {
@@ -1807,6 +1859,24 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             input.webhookId,
             Object.keys(body).length ? body : undefined,
           );
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_list_participants": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = listParticipantsSchema.parse(request.params.arguments ?? {});
+          const query = omitUndefined({ limit: input.limit, nextId: input.nextId }) as {
+            limit?: number;
+            nextId?: string;
+          };
+          const result = await growsurf.listParticipants(query);
+          return { content: [{ type: "text", text: safeJson(result) }] };
+        }
+        case "growsurf_get_participant": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = getParticipantSchema.parse(request.params.arguments ?? {});
+          const result = input.participantId
+            ? await growsurf.getParticipantById(input.participantId)
+            : await growsurf.getParticipantByEmail(input.participantEmail!);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_add_participant": {
