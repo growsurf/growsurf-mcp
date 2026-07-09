@@ -284,7 +284,7 @@ export class GrowSurfClient {
   // full field-level schemas. Every method except createAccount authenticates with the API key.
 
   // createAccount is the ONLY unauthenticated endpoint. It creates a new account and returns a
-  // one-time team API key (locked with 403 EMAIL_NOT_VERIFIED_ERROR until the account's email is
+  // one-time API key (locked with 403 EMAIL_NOT_VERIFIED_ERROR until the account's email is
   // verified, and rotated on the owner's first dashboard sign-in), so it is sent WITHOUT an
   // Authorization header even when one is configured.
   async createAccount(body: Record<string, unknown>): Promise<unknown> {

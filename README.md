@@ -40,7 +40,7 @@ This MCP server is NOT for:
   - Steering to review starter Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching
   - One-shot program-creation eval prompts and acceptance checks for starter content and configuration review
 - **Happy‑Path REST API Wrappers**:
-  - Create an account and get a team API key (no API key required; the key unlocks after email verification), plus get/update account, rotate API key, and request/resend verification
+  - Create an account and get an API key (no API key required; the key unlocks after email verification), plus get/update account, rotate API key, and request/resend verification
   - List and get campaigns
   - Get campaign analytics (totals, plus an optional per-period time-series and optional previous-period, status-count, and rate enrichments)
   - Create, update, and clone programs (campaigns)
@@ -69,10 +69,10 @@ This MCP server is NOT for:
 
 - Node.js 22+
 - A GrowSurf account for hosted OAuth
-- A GrowSurf **API key** for local stdio setup or manual API-key remote setup. A scoped team key works as long as it has access to the tools and programs you want the agent to use.
+- A GrowSurf **API key** for local stdio setup or manual API-key remote setup. A scoped key works as long as it has access to the tools and programs you want the agent to use.
 - A **campaign (program) ID** for campaign-scoped tools. Set `GROWSURF_CAMPAIGN_ID` as the default, pass a `campaignId` argument to target a specific program, or call `growsurf_list_campaigns` to find available programs. For a newly created program, pass the `id` returned by `growsurf_create_campaign` to the other tools.
 - Static guidance/snippet tools can run without credentials
-- Exception: `growsurf_create_account` needs **no** API key — it creates a new account and returns a team API key. Account-level tools (`growsurf_get_account`, `growsurf_update_account`, `growsurf_rotate_api_key`, verification) need the API key but **not** a campaign ID
+- Exception: `growsurf_create_account` needs **no** API key — it creates a new account and returns an API key. Account-level tools (`growsurf_get_account`, `growsurf_update_account`, `growsurf_rotate_api_key`, verification) need the API key but **not** a campaign ID
 
 ## Supported MCP Hosts
 
@@ -268,7 +268,7 @@ node dist/index.js
 ### Account
 
 - `growsurf_create_account`
-  Create a brand-new GrowSurf account and get a team API key back. The **only** tool that does not require `GROWSURF_API_KEY` to be configured. The returned key is shown once and locked (`403` `EMAIL_NOT_VERIFIED_ERROR`) until the account's email is verified — have the owner click the emailed verification link, then retry. The key is rotated on the owner's first dashboard sign-in. Creating an account agrees, on the account holder's behalf, to GrowSurf's [Terms of Service](https://growsurf.com/terms) and [Privacy Policy](https://growsurf.com/privacy).
+  Create a brand-new GrowSurf account and get an API key back. The **only** tool that does not require `GROWSURF_API_KEY` to be configured. The returned key is shown once and locked (`403` `EMAIL_NOT_VERIFIED_ERROR`) until the account's email is verified — have the owner click the emailed verification link, then retry. The key is rotated on the owner's first dashboard sign-in. Creating an account agrees, on the account holder's behalf, to GrowSurf's [Terms of Service](https://growsurf.com/terms) and [Privacy Policy](https://growsurf.com/privacy).
 
 - `growsurf_get_account`
   Fetch the account that owns the API key (profile and GrowSurf-team verification state).
