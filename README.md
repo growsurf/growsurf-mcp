@@ -10,13 +10,13 @@ An **open-source Model Context Protocol (MCP) server** that helps developers imp
 Connect it to an AI agent and, in plain language, the agent can create a referral or affiliate program, configure rewards, install tracking, add and manage participants, and read analytics, all backed by the GrowSurf REST API.
 
 - Learn more about GrowSurf at https://growsurf.com
-- Learn more about this MCP server at https://docs.growsurf.com/getting-started#mcp
+- Learn more about this MCP server at https://docs.growsurf.com/build-with-ai
 
 ## Who is this for
 
 This MCP server is for:
 
-- Developers using MCP-compatible tools (Cursor, Claude Code, Codex, Antigravity)
+- Developers using MCP-compatible tools (Claude Code, ChatGPT Codex, Cursor, Antigravity, and other MCP clients)
 - Teams that want guided, AI-assisted GrowSurf integrations
 
 This MCP server is NOT for:
@@ -40,7 +40,7 @@ This MCP server is NOT for:
   - Steering to review starter Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching
   - One-shot program-creation eval prompts and acceptance checks for starter content and configuration review
 - **Happy‑Path REST API Wrappers**:
-  - Create an account and get an API key (no API key required; the key unlocks after email verification), plus get/update account, rotate API key, and request/resend verification
+  - Create an account and get a team API key (no API key required; the key unlocks after email verification), plus get/update account, rotate API key, and request/resend verification
   - List and get campaigns
   - Get campaign analytics (totals, plus an optional per-period time-series and optional previous-period, status-count, and rate enrichments)
   - Create, update, and clone programs (campaigns)
@@ -68,14 +68,17 @@ This MCP server is NOT for:
 ## Requirements
 
 - Node.js 22+
-- A GrowSurf **API key** for API-calling tools
+- A GrowSurf account for hosted OAuth
+- A GrowSurf **API key** for local stdio setup or manual API-key remote setup. A scoped team key works as long as it has access to the tools and programs you want the agent to use.
 - A **campaign (program) ID** for campaign-scoped tools. Set `GROWSURF_CAMPAIGN_ID` as the default, pass a `campaignId` argument to target a specific program, or call `growsurf_list_campaigns` to find available programs. For a newly created program, pass the `id` returned by `growsurf_create_campaign` to the other tools.
 - Static guidance/snippet tools can run without credentials
-- Exception: `growsurf_create_account` needs **no** API key — it creates a new account and returns one. Account-level tools (`growsurf_get_account`, `growsurf_update_account`, `growsurf_rotate_api_key`, verification) need the API key but **not** a campaign ID
+- Exception: `growsurf_create_account` needs **no** API key — it creates a new account and returns a team API key. Account-level tools (`growsurf_get_account`, `growsurf_update_account`, `growsurf_rotate_api_key`, verification) need the API key but **not** a campaign ID
 
 ## Supported MCP Hosts
 
-The GrowSurf MCP server works with any MCP‑compatible host that supports local (stdio) MCP servers, including (but not limited to):
+The recommended path is GrowSurf's hosted OAuth endpoint at `https://mcp.growsurf.com` when your host supports remote Streamable HTTP with OAuth. Use the local `npx` server when your host needs a stdio process or manual API-key setup.
+
+The GrowSurf MCP server works with MCP-compatible hosts including:
 
 - Cursor
 - Claude Code (CLI-based)
@@ -88,7 +91,19 @@ The GrowSurf MCP server works with any MCP‑compatible host that supports local
 2. In the top menu, click **File > Preferences > Cursor Settings**.
 3. In the Cursor Settings panel, open **Tools & MCP**.
 4. Click **Add Custom MCP**.
-5. In the `mcp.json` file, add the following:
+5. Recommended: in the `mcp.json` file, add the hosted OAuth endpoint:
+
+```json
+{
+  "mcpServers": {
+    "growsurf": {
+      "url": "https://mcp.growsurf.com"
+    }
+  }
+}
+```
+
+For local stdio instead, use:
 
 ```json
 {
@@ -107,7 +122,14 @@ The GrowSurf MCP server works with any MCP‑compatible host that supports local
 
 ### Claude Code (CLI-based)
 
-Open your terminal and install the server directly into Claude Code:
+Open your terminal and connect Claude Code to the hosted OAuth endpoint:
+
+```bash
+claude mcp add -t http growsurf https://mcp.growsurf.com
+claude mcp login growsurf
+```
+
+For local stdio instead, install the server directly into Claude Code:
 
 ```bash
 claude mcp add growsurf \
@@ -122,7 +144,19 @@ claude mcp add growsurf \
 1. Open Antigravity.
 2. Click the **…** menu in the panel to the right and select **MCP Store**.
 3. Click **Manage MCP Servers > View raw config**.
-4. In the `mcp_config.json` file, add the following:
+4. Recommended: in the `mcp_config.json` file, add the hosted OAuth endpoint:
+
+```json
+{
+  "mcpServers": {
+    "growsurf": {
+      "serverUrl": "https://mcp.growsurf.com"
+    }
+  }
+}
+```
+
+For local stdio instead, use:
 
 ```json
 {
@@ -141,9 +175,21 @@ claude mcp add growsurf \
 
 ### ChatGPT Codex
 
-### Option 1: Configure via `config.toml`
+Recommended: connect Codex to the hosted OAuth endpoint:
 
-Create or edit the `~/.codex/config.toml` file by adding the following:
+```bash
+codex mcp add growsurf --url https://mcp.growsurf.com
+codex mcp login growsurf
+```
+
+Or create or edit `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.growsurf]
+url = "https://mcp.growsurf.com"
+```
+
+For local stdio instead, add the following:
 
 ```toml
 [mcp_servers.growsurf]
@@ -155,7 +201,7 @@ GROWSURF_API_KEY = "YOUR_API_KEY"
 GROWSURF_CAMPAIGN_ID = "YOUR_CAMPAIGN_ID"
 ```
 
-### Option 2: Configure via Codex CLI
+Or configure local stdio from the CLI:
 
 ```bash
 codex mcp add growsurf \
@@ -169,7 +215,7 @@ codex mcp add growsurf \
 
 Set the following environment variables when running the MCP server:
 
-- `GROWSURF_API_KEY` (optional for startup; required for API-calling tools)
+- `GROWSURF_API_KEY` (optional for startup; required for API-calling tools. Use a key with the scopes and program access those tools need)
 - `GROWSURF_CAMPAIGN_ID` (optional; the default program for campaign-scoped tools. A tool's `campaignId` argument overrides it, so a single server can operate on any of your programs)
 - `GROWSURF_API_BASE_URL` (optional; defaults to `https://api.growsurf.com/v2`. Useful for local or hosted MCP gateways that should call a different GrowSurf API origin)
 - `GROWSURF_PARTICIPANT_AUTH_SECRET` (optional; used by the hash helper)
@@ -222,7 +268,7 @@ node dist/index.js
 ### Account
 
 - `growsurf_create_account`
-  Create a brand-new GrowSurf account and get an API key back. The **only** tool that does not require `GROWSURF_API_KEY` to be configured. The returned key is locked (`403` `EMAIL_NOT_VERIFIED_ERROR`) until the account's email is verified — have the owner click the emailed verification link, then retry. The key is rotated on the owner's first dashboard sign-in. Creating an account agrees, on the account holder's behalf, to GrowSurf's [Terms of Service](https://growsurf.com/terms) and [Privacy Policy](https://growsurf.com/privacy).
+  Create a brand-new GrowSurf account and get a team API key back. The **only** tool that does not require `GROWSURF_API_KEY` to be configured. The returned key is shown once and locked (`403` `EMAIL_NOT_VERIFIED_ERROR`) until the account's email is verified — have the owner click the emailed verification link, then retry. The key is rotated on the owner's first dashboard sign-in. Creating an account agrees, on the account holder's behalf, to GrowSurf's [Terms of Service](https://growsurf.com/terms) and [Privacy Policy](https://growsurf.com/privacy).
 
 - `growsurf_get_account`
   Fetch the account that owns the API key (profile and GrowSurf-team verification state).
@@ -231,7 +277,7 @@ node dist/index.js
   Update your account profile (`firstName`, `lastName`, `company`).
 
 - `growsurf_rotate_api_key`
-  Generate a new API key and immediately revoke the current one.
+  Generate a new API key for the current key. The key used for the request stops working as soon as the response returns, so update `GROWSURF_API_KEY` with the new value.
 
 - `growsurf_request_account_verification`
   Request GrowSurf-team verification (required before a program can email participants).
