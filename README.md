@@ -16,13 +16,12 @@ Connect it to an AI agent and, in plain language, the agent can create a referra
 
 This MCP server is for:
 
-- Developers using MCP-compatible tools (Claude Code, ChatGPT Codex, Cursor, Antigravity, and other MCP clients)
+- Developers using MCP-compatible tools (Claude Code, Codex, Cursor, Copilot, and other MCP clients)
 - Teams that want guided, AI-assisted GrowSurf integrations
 
 This MCP server is NOT for:
 
-- ChatGPT web users (ChatGPT does not support local MCP servers at this time)
-- Claude.ai browser users unless they are using GrowSurf's hosted remote MCP connector
+- Browser-only users who want a local stdio install. ChatGPT web, Claude.ai, and Claude Desktop do not run a local MCP server, but all three connect to GrowSurf through the hosted remote connector at `https://mcp.growsurf.com`. See the full client list and setup at https://docs.growsurf.com/build-with-ai#mcp.
 
 ## What you get
 
@@ -72,31 +71,29 @@ This MCP server is NOT for:
 - A GrowSurf **API key** for local stdio setup or manual API-key remote setup. A scoped key works as long as it has access to the tools and programs you want the agent to use.
 - A **campaign (program) ID** for campaign-scoped tools. Set `GROWSURF_CAMPAIGN_ID` as the default, pass a `campaignId` argument to target a specific program, or call `growsurf_list_campaigns` to find available programs. For a newly created program, pass the `id` returned by `growsurf_create_campaign` to the other tools.
 - Static guidance/snippet tools can run without credentials
-- Exception: `growsurf_create_account` needs **no** API key — it creates a new account and returns an API key. Account-level tools (`growsurf_get_account`, `growsurf_update_account`, `growsurf_rotate_api_key`, verification) need the API key but **not** a campaign ID
+- Exception: `growsurf_create_account` needs **no** API key — it creates a new account and returns an API key. Account-level tools do not need a campaign ID. `growsurf_rotate_api_key` specifically needs an API key with `api_key:rotate` and is unavailable through MCP OAuth.
 
 ## Supported MCP Hosts
 
 The recommended path is GrowSurf's hosted OAuth endpoint at `https://mcp.growsurf.com` when your host supports remote Streamable HTTP with OAuth. Use the local `npx` server when your host needs a stdio process or manual API-key setup.
 
-The GrowSurf MCP server works with MCP-compatible hosts including:
+The GrowSurf MCP server works with any MCP-compatible host. The examples below cover a few config-based and CLI hosts. For the complete, current list of supported clients (including ChatGPT web, Claude.ai, Claude Desktop, GitHub Copilot, Gemini CLI, Devin Desktop, and Cline) with step-by-step setup, see https://docs.growsurf.com/build-with-ai#mcp.
 
 - Cursor
 - Claude Code (CLI-based)
 - Antigravity
-- ChatGPT Codex (CLI-based)
+- Codex (CLI-based)
 
 ### Cursor
 
-1. Open Cursor.
-2. In the top menu, click **File > Preferences > Cursor Settings**.
-3. In the Cursor Settings panel, open **Tools & MCP**.
-4. Click **Add Custom MCP**.
-5. Recommended: in the `mcp.json` file, add the hosted OAuth endpoint:
+1. Open or create Cursor's global MCP configuration at `~/.cursor/mcp.json`.
+2. Add a server named `growsurf` with the hosted OAuth endpoint:
 
 ```json
 {
   "mcpServers": {
     "growsurf": {
+      "type": "http",
       "url": "https://mcp.growsurf.com"
     }
   }
@@ -125,7 +122,7 @@ For local stdio instead, use:
 Open your terminal and connect Claude Code to the hosted OAuth endpoint:
 
 ```bash
-claude mcp add -t http growsurf https://mcp.growsurf.com
+claude mcp add --transport http --scope user growsurf https://mcp.growsurf.com
 claude mcp login growsurf
 ```
 
@@ -142,7 +139,7 @@ claude mcp add growsurf \
 ### Antigravity
 
 1. Open Antigravity.
-2. Click the **…** menu in the panel to the right and select **MCP Store**.
+2. Click the **…** menu in the panel to the right and select **MCP Servers**.
 3. Click **Manage MCP Servers > View raw config**.
 4. Recommended: in the `mcp_config.json` file, add the hosted OAuth endpoint:
 
@@ -155,6 +152,8 @@ claude mcp add growsurf \
   }
 }
 ```
+
+5. Save the config, open **Settings > Customizations**, and select **Authenticate** for GrowSurf.
 
 For local stdio instead, use:
 
@@ -173,7 +172,7 @@ For local stdio instead, use:
 }
 ```
 
-### ChatGPT Codex
+### Codex
 
 Recommended: connect Codex to the hosted OAuth endpoint:
 
@@ -277,7 +276,7 @@ node dist/index.js
   Update your account profile (`firstName`, `lastName`, `company`).
 
 - `growsurf_rotate_api_key`
-  Generate a new API key for the current key. The key used for the request stops working as soon as the response returns, so update `GROWSURF_API_KEY` with the new value.
+  Generate a new API key and invalidate the current key. Requires an API key with `api_key:rotate`; MCP OAuth cannot use this tool. The request uses a retry-safe `Idempotency-Key`, so an automatic retry returns the same replacement. Update `GROWSURF_API_KEY` with the new value.
 
 - `growsurf_request_account_verification`
   Request GrowSurf-team verification (required before a program can email participants).

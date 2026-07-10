@@ -449,7 +449,10 @@ describe("GrowSurfClient", () => {
       "https://api.growsurf.com/v2/account/api-key",
       expect.objectContaining({ method: "POST" }),
     );
-    expect((fetchMock.mock.calls[0][1] as RequestInit).body).toBeUndefined();
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.body).toBeUndefined();
+    expect(new Headers(init.headers).get("Idempotency-Key"))
+      .toMatch(/^growsurf-mcp-rotation-[0-9a-f-]{36}$/);
   });
 
   it("requests account verification with a POST on /account/verification-request", async () => {

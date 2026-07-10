@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 
 export type GrowSurfClientOptions = {
@@ -300,7 +301,9 @@ export class GrowSurfClient {
   }
 
   async rotateApiKey(): Promise<unknown> {
-    return this.requestJson("POST", `/account/api-key`);
+    return this.requestJson("POST", `/account/api-key`, undefined, {
+      idempotencyKey: `growsurf-mcp-rotation-${randomUUID()}`,
+    });
   }
 
   async requestAccountVerification(): Promise<unknown> {
@@ -439,7 +442,7 @@ export class GrowSurfClient {
     method: "GET" | "POST" | "PATCH" | "DELETE",
     path: string,
     body?: unknown,
-    options?: { auth?: boolean },
+    options?: { auth?: boolean; idempotencyKey?: string },
   ): Promise<unknown> {
     const url = `${this.baseUrl}${path}`;
     return this.requestUrlJson(method, url, body, options);
@@ -449,7 +452,7 @@ export class GrowSurfClient {
     method: "GET" | "POST" | "PATCH" | "DELETE",
     path: string,
     body?: unknown,
-    options?: { auth?: boolean },
+    options?: { auth?: boolean; idempotencyKey?: string },
   ): Promise<unknown> {
     const url = `${this.mcpBaseUrl}${path}`;
     return this.requestUrlJson(method, url, body, options);
@@ -459,7 +462,7 @@ export class GrowSurfClient {
     method: "GET" | "POST" | "PATCH" | "DELETE",
     url: string,
     body?: unknown,
-    options?: { auth?: boolean },
+    options?: { auth?: boolean; idempotencyKey?: string },
   ): Promise<unknown> {
     const headers: Record<string, string> = {
       Accept: "application/json",
@@ -468,6 +471,9 @@ export class GrowSurfClient {
     // Guarding on this.apiKey lets a keyless client hit /accounts without sending an empty token.
     if (options?.auth !== false && this.apiKey) {
       headers.Authorization = `Bearer ${this.apiKey}`;
+    }
+    if (options?.idempotencyKey) {
+      headers["Idempotency-Key"] = options.idempotencyKey;
     }
     const init: RequestInit = { method, headers };
 
