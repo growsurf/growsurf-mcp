@@ -13,7 +13,7 @@ describe("package distribution", () => {
       version?: string;
     };
 
-    expect(packageJson.version).toBe("0.6.0");
+    expect(packageJson.version).toBe("0.7.0");
     expect(GROWSURF_MCP_VERSION).toBe(packageJson.version);
     expect(packageJson.types).toBe("./dist/index.d.ts");
     expect(packageJson.exports).toMatchObject({
