@@ -39,6 +39,7 @@ import { normalizeWebhook } from "./growsurf/webhooks.js";
 import { getGrowSurfPrompt, listGrowSurfPrompts } from "./prompts.js";
 import {
   filterToolsForCredential,
+  withToolAuthorizationMetadata,
   type ResolveVerifiedCredentialContext,
 } from "./toolAuthorization.js";
 
@@ -48,10 +49,14 @@ export {
   HOSTED_MCP_REQUESTED_SCOPES,
   MACHINE_SCOPES,
   TOOL_AUTHORIZATION_MANIFEST,
+  TOOL_RISK_META_KEY,
+  TOOL_RISK_TIERS,
+  withToolAuthorizationMetadata,
   type CredentialType,
   type MachineScope,
   type ResolveVerifiedCredentialContext,
   type ToolAuthorizationRequirement,
+  type ToolRiskTier,
   type VerifiedCredentialContext,
 } from "./toolAuthorization.js";
 
@@ -238,6 +243,22 @@ const hasTransactionIdentifier = (v: {
 
 const TRANSACTION_IDENTIFIER_HINT =
   "at least one transaction identifier (externalId, transactionId, orderId, paymentId, invoiceId, paymentIntentId, or chargeId)";
+
+const PARTICIPANT_IDENTIFIER_JSON_REQUIREMENT = {
+  anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+};
+
+const TRANSACTION_IDENTIFIER_JSON_REQUIREMENT = {
+  anyOf: [
+    { required: ["externalId"] },
+    { required: ["transactionId"] },
+    { required: ["orderId"] },
+    { required: ["paymentId"] },
+    { required: ["invoiceId"] },
+    { required: ["paymentIntentId"] },
+    { required: ["chargeId"] },
+  ],
+};
 
 const recordSaleSchema = z
   .object({
@@ -1094,12 +1115,6 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           },
         },
         {
-          name: "growsurf_rotate_api_key",
-          description:
-            "Generate a new GrowSurf API key and invalidate the current key. Requires an API key with `api_key:rotate`; MCP OAuth cannot use this tool. The request uses a retry-safe `Idempotency-Key`, so an automatic retry returns the same replacement. Update every integration (including `GROWSURF_API_KEY` in this MCP server's config) with the new key from `apiKey`. The account owner is notified by email whenever the key is rotated. Does NOT require `GROWSURF_CAMPAIGN_ID`.",
-          inputSchema: { type: "object", properties: {}, additionalProperties: false },
-        },
-        {
           name: "growsurf_request_account_verification",
           description:
             "Request GrowSurf-team verification of your account (required before a program can email its participants). Idempotent — calling it again while a request is pending does not create a duplicate. Returns the account with its updated `verificationStatus`. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
@@ -1431,7 +1446,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               description: { type: "string" },
             },
             required: ["currency", "grossAmount"],
-            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            allOf: [PARTICIPANT_IDENTIFIER_JSON_REQUIREMENT, TRANSACTION_IDENTIFIER_JSON_REQUIREMENT],
             additionalProperties: false,
           },
         },
@@ -1460,7 +1475,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               paymentId: { type: "string" },
               description: { type: "string" },
             },
-            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            allOf: [PARTICIPANT_IDENTIFIER_JSON_REQUIREMENT, TRANSACTION_IDENTIFIER_JSON_REQUIREMENT],
             additionalProperties: false,
           },
         },
@@ -1605,11 +1620,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
       const inputSchema = tool.inputSchema as { properties?: Record<string, unknown> };
       inputSchema.properties = { ...(inputSchema.properties ?? {}), campaignId: CAMPAIGN_ID_JSON_PROP };
     }
+    const toolsWithMetadata = tools.map(withToolAuthorizationMetadata);
     // Hosted transports can hide tools that a verified credential cannot use. Omitting the
     // resolver preserves the local/stdio server's existing all-tools discovery behavior.
-    if (!options.resolveCredentialContext) return { tools };
+    if (!options.resolveCredentialContext) return { tools: toolsWithMetadata };
     const credentialContext = await options.resolveCredentialContext();
-    return { tools: filterToolsForCredential(tools, credentialContext) };
+    return { tools: filterToolsForCredential(toolsWithMetadata, credentialContext) };
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -1812,11 +1828,6 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             company: input.company,
           }) as Record<string, unknown>;
           const result = await growsurf.updateAccount(fields);
-          return { content: [{ type: "text", text: safeJson(result) }] };
-        }
-        case "growsurf_rotate_api_key": {
-          const growsurf = requireGrowSurfApiKey(env);
-          const result = await growsurf.rotateApiKey();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_request_account_verification": {

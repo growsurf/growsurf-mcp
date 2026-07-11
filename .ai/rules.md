@@ -24,6 +24,8 @@ Anything the GrowSurf team needs to track that is not safe to publish belongs in
 ## Staying In Sync With The Public API
 
 - Keep MCP tool descriptions, schemas, and snippets aligned with the public GrowSurf REST API and the published GrowSurf documentation.
+- Keep scoped business actions available, including destructive actions, and publish standard MCP safety annotations plus `_meta["growsurf/riskTier"]` (`READ`, `CONTENT`, `DESTRUCTIVE`, or `MONEY`) for every tool. These are host-facing hints, not server-side approval enforcement. Credential rotation is a direct REST/SDK/dashboard operation, not an MCP tool.
+- Advertised JSON schemas must express every runtime cross-field requirement. When runtime validation requires one of several identifiers, keep that `anyOf`/`allOf` requirement in `tools/list` too.
 - When a public API field, mobile SDK install snippet, participant-token handoff, or webhook behavior changes in the public contract, update the matching MCP tool metadata and snippets in the same work session when practical.
 - When a new GrowSurf mobile SDK version is published, bump the mobile SDK version literal everywhere this repo hardcodes it:
   - `src/growsurf/mobileSdkGuide.ts` — constant `MOBILE_SDK_GUIDANCE_VERSION`.

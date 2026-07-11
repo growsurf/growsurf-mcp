@@ -39,7 +39,7 @@ This MCP server is NOT for:
   - Steering to review starter Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching
   - One-shot program-creation eval prompts and acceptance checks for starter content and configuration review
 - **Happy‑Path REST API Wrappers**:
-  - Create an account and get an API key (no API key required; the key unlocks after email verification), plus get/update account, rotate API key, and request/resend verification
+  - Create an account and get an API key (no API key required; the key unlocks after email verification), plus get/update account and request/resend verification
   - List and get campaigns
   - Get campaign analytics (totals, plus an optional per-period time-series and optional previous-period, status-count, and rate enrichments)
   - Create, update, and clone programs (campaigns)
@@ -71,7 +71,8 @@ This MCP server is NOT for:
 - A GrowSurf **API key** for local stdio setup or manual API-key remote setup. A scoped key works as long as it has access to the tools and programs you want the agent to use.
 - A **campaign (program) ID** for campaign-scoped tools. Set `GROWSURF_CAMPAIGN_ID` as the default, pass a `campaignId` argument to target a specific program, or call `growsurf_list_campaigns` to find available programs. For a newly created program, pass the `id` returned by `growsurf_create_campaign` to the other tools.
 - Static guidance/snippet tools can run without credentials
-- Exception: `growsurf_create_account` needs **no** API key — it creates a new account and returns an API key. Account-level tools do not need a campaign ID. `growsurf_rotate_api_key` specifically needs an API key with `api_key:rotate` and is unavailable through MCP OAuth.
+- Exception: `growsurf_create_account` needs **no** API key — it creates a new account and returns an API key. Account-level tools do not need a campaign ID.
+- Every listed tool publishes standard MCP read-only, destructive, idempotent, and open-world safety hints. Scoped business actions stay available; API-key rotation is intentionally not an MCP tool. Rotate keys in GrowSurf Settings or through a direct REST/SDK client.
 
 ## Supported MCP Hosts
 
@@ -274,9 +275,6 @@ node dist/index.js
 
 - `growsurf_update_account`
   Update your account profile (`firstName`, `lastName`, `company`).
-
-- `growsurf_rotate_api_key`
-  Generate a new API key and invalidate the current key. Requires an API key with `api_key:rotate`; MCP OAuth cannot use this tool. The request uses a retry-safe `Idempotency-Key`, so an automatic retry returns the same replacement. Update `GROWSURF_API_KEY` with the new value.
 
 - `growsurf_request_account_verification`
   Request GrowSurf-team verification (required before a program can email participants).

@@ -6,7 +6,10 @@ import {
   createGrowSurfMcpServer,
   filterToolsForCredential,
   HOSTED_MCP_REQUESTED_SCOPES,
+  MACHINE_SCOPES,
   TOOL_AUTHORIZATION_MANIFEST,
+  TOOL_RISK_META_KEY,
+  TOOL_RISK_TIERS,
 } from "../src/index.js";
 
 const env = {
@@ -16,9 +19,9 @@ const env = {
 
 const originalFetch = globalThis.fetch;
 
-const listToolNames = async (
+const listTools = async (
   options: Parameters<typeof createGrowSurfMcpServer>[0] = { env },
-): Promise<string[]> => {
+) => {
   const server = createGrowSurfMcpServer(options);
   const client = new Client({ name: "authorization-test-client", version: "1.0.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -26,12 +29,16 @@ const listToolNames = async (
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
   try {
     const result = await client.listTools();
-    return result.tools.map((tool) => tool.name);
+    return result.tools;
   } finally {
     await client.close();
     await server.close();
   }
 };
+
+const listToolNames = async (
+  options: Parameters<typeof createGrowSurfMcpServer>[0] = { env },
+): Promise<string[]> => (await listTools(options)).map((tool) => tool.name);
 
 describe("MCP tool authorization", () => {
   afterEach(() => {
@@ -45,7 +52,30 @@ describe("MCP tool authorization", () => {
     expect([...listedToolNames].sort()).toEqual(Object.keys(TOOL_AUTHORIZATION_MANIFEST).sort());
   });
 
+  it("keeps credential rotation in the REST client instead of exposing it as an MCP tool", async () => {
+    const listedToolNames = await listToolNames();
+
+    expect(listedToolNames).not.toContain("growsurf_rotate_api_key");
+    expect(TOOL_AUTHORIZATION_MANIFEST).not.toHaveProperty("growsurf_rotate_api_key");
+
+    const server = createGrowSurfMcpServer({ env });
+    const client = new Client({ name: "rotation-policy-test-client", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const result = await client.callTool({ name: "growsurf_rotate_api_key", arguments: {} });
+      expect(result.isError).toBe(true);
+      expect(result.content).toEqual([
+        { type: "text", text: "Unknown tool: growsurf_rotate_api_key" },
+      ]);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it("derives the hosted OAuth request scope union from OAuth-compatible tools", () => {
+    expect(MACHINE_SCOPES).not.toHaveProperty("API_KEY_ROTATE");
     expect(HOSTED_MCP_REQUESTED_SCOPES).toEqual([
       "account:read",
       "account:write",
@@ -73,6 +103,96 @@ describe("MCP tool authorization", () => {
     ]);
   });
 
+  it("publishes standard safety annotations and one control-plane risk tier for every tool", async () => {
+    const tools = await listTools();
+    const byName = new Map(tools.map((tool) => [tool.name, tool]));
+
+    for (const tool of tools) {
+      expect(tool.annotations, tool.name).toEqual(expect.objectContaining({
+        readOnlyHint: expect.any(Boolean),
+        destructiveHint: expect.any(Boolean),
+        idempotentHint: expect.any(Boolean),
+        openWorldHint: expect.any(Boolean),
+      }));
+      expect(TOOL_AUTHORIZATION_MANIFEST[tool.name as keyof typeof TOOL_AUTHORIZATION_MANIFEST].riskTier)
+        .toMatch(/^(READ|CONTENT|DESTRUCTIVE|MONEY)$/);
+      expect(tool._meta?.[TOOL_RISK_META_KEY], tool.name)
+        .toBe(TOOL_AUTHORIZATION_MANIFEST[tool.name as keyof typeof TOOL_AUTHORIZATION_MANIFEST].riskTier);
+    }
+
+    expect(byName.get("growsurf_get_campaign")?.annotations).toMatchObject({
+      readOnlyHint: true,
+      destructiveHint: false,
+    });
+    expect(byName.get("growsurf_create_campaign")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+    });
+    expect(byName.get("growsurf_create_account")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
+    expect(byName.get("growsurf_capture_referral_flow_screenshots")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    });
+    expect(byName.get("growsurf_update_campaign")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+    });
+    expect(byName.get("growsurf_bulk_delete_participants")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+    });
+    expect(byName.get("growsurf_email_participant")?.annotations).toMatchObject({
+      openWorldHint: true,
+    });
+    expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_bulk_delete_participants.riskTier)
+      .toBe(TOOL_RISK_TIERS.DESTRUCTIVE);
+    expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_delete_campaign_webhook.riskTier)
+      .toBe(TOOL_RISK_TIERS.DESTRUCTIVE);
+    expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_cancel_delayed_referral.riskTier)
+      .toBe(TOOL_RISK_TIERS.DESTRUCTIVE);
+    expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_create_campaign_reward.riskTier)
+      .toBe(TOOL_RISK_TIERS.MONEY);
+    expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_update_campaign_reward.riskTier)
+      .toBe(TOOL_RISK_TIERS.MONEY);
+    expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_delete_campaign_reward.riskTier)
+      .toBe(TOOL_RISK_TIERS.MONEY);
+    expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_trigger_referral.riskTier).toBe(TOOL_RISK_TIERS.MONEY);
+    expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_record_sale.riskTier).toBe(TOOL_RISK_TIERS.MONEY);
+    expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_refund_transaction.riskTier).toBe(TOOL_RISK_TIERS.MONEY);
+  });
+
+  it.each(["growsurf_record_sale", "growsurf_refund_transaction"])(
+    "advertises both participant and transaction identifier requirements for %s",
+    async (toolName) => {
+      const tool = (await listTools()).find((candidate) => candidate.name === toolName);
+      const allOf = (tool?.inputSchema as { allOf?: Array<{ anyOf?: unknown[] }> } | undefined)?.allOf;
+
+      expect(allOf).toHaveLength(2);
+      expect(allOf?.[0]?.anyOf).toEqual([
+        { required: ["participantId"] },
+        { required: ["participantEmail"] },
+      ]);
+      expect(allOf?.[1]?.anyOf).toEqual([
+        { required: ["externalId"] },
+        { required: ["transactionId"] },
+        { required: ["orderId"] },
+        { required: ["paymentId"] },
+        { required: ["invoiceId"] },
+        { required: ["paymentIntentId"] },
+        { required: ["chargeId"] },
+      ]);
+    },
+  );
+
   it("filters tools by scopes and credential type while retaining unrestricted tools", () => {
     const tools = [
       { name: "growsurf_integration_guide" },
@@ -96,7 +216,7 @@ describe("MCP tool authorization", () => {
           credentialType,
           scopes: ["api_key:rotate"],
         }).map((tool) => tool.name),
-      ).toEqual(["growsurf_integration_guide", "growsurf_create_account", "growsurf_rotate_api_key"]);
+      ).toEqual(["growsurf_integration_guide", "growsurf_create_account"]);
     }
 
     expect(filterToolsForCredential(tools, null).map((tool) => tool.name)).toEqual([
@@ -115,7 +235,7 @@ describe("MCP tool authorization", () => {
       }),
     });
 
-    expect(unfiltered).toContain("growsurf_rotate_api_key");
+    expect(unfiltered).not.toContain("growsurf_rotate_api_key");
     expect(unfiltered).toContain("growsurf_update_campaign");
     expect(filtered).toContain("growsurf_integration_guide");
     expect(filtered).toContain("growsurf_create_account");
