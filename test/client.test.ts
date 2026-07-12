@@ -352,11 +352,10 @@ describe("GrowSurfClient", () => {
     );
   });
 
-  // ---- Account ----
+  // ---- Account onboarding and Team ----
 
   it("creates an account with a POST to /accounts and NO Authorization header (keyless)", async () => {
     const fetchMock = mockJson({
-      id: "acct_1",
       email: "richard@piedpiper.com",
       apiKey: "new_key",
       verificationStatus: "NOT_REQUESTED",
@@ -373,7 +372,6 @@ describe("GrowSurfClient", () => {
     });
 
     expect(result).toEqual({
-      id: "acct_1",
       email: "richard@piedpiper.com",
       apiKey: "new_key",
       verificationStatus: "NOT_REQUESTED",
@@ -395,7 +393,11 @@ describe("GrowSurfClient", () => {
   });
 
   it("never sends Authorization for createAccount even when an API key is configured", async () => {
-    const fetchMock = mockJson({ id: "acct_1", apiKey: "new_key", verificationStatus: "NOT_REQUESTED" });
+    const fetchMock = mockJson({
+      email: "richard@piedpiper.com",
+      apiKey: "new_key",
+      verificationStatus: "NOT_REQUESTED",
+    });
     globalThis.fetch = fetchMock as typeof fetch;
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
@@ -405,15 +407,19 @@ describe("GrowSurfClient", () => {
     expect(headers.Authorization).toBeUndefined();
   });
 
-  it("gets the account with a GET on /account and the bearer token", async () => {
-    const fetchMock = mockJson({ id: "acct_1", email: "richard@piedpiper.com" });
+  it("gets the bound team with a GET on /team and the bearer token", async () => {
+    const fetchMock = mockJson({
+      name: "Pied Piper",
+      verificationStatus: "VERIFIED",
+      verificationRequestedAt: 1719792000000,
+    });
     globalThis.fetch = fetchMock as typeof fetch;
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
-    await client.getAccount();
+    await client.getTeam();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.growsurf.com/v2/account",
+      "https://api.growsurf.com/v2/team",
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({ Authorization: "Bearer api_key" }),
@@ -421,23 +427,40 @@ describe("GrowSurfClient", () => {
     );
   });
 
-  it("updates the account with a PATCH on /account and a partial body", async () => {
-    const fetchMock = mockJson({ id: "acct_1" });
+  it("constructs non-campaign Team clients without a campaign id", async () => {
+    const fetchMock = mockJson({
+      name: "Pied Piper",
+      verificationStatus: "VERIFIED",
+      verificationRequestedAt: null,
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key" });
+    await client.getTeam();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.growsurf.com/v2/team",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("updates the bound team name with a PATCH on /team", async () => {
+    const fetchMock = mockJson({ name: "Pied Piper Labs" });
     globalThis.fetch = fetchMock as typeof fetch;
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
-    await client.updateAccount({ firstName: "Richard", company: "Pied Piper" });
+    await client.updateTeam({ name: "Pied Piper Labs" });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.growsurf.com/v2/account",
+      "https://api.growsurf.com/v2/team",
       expect.objectContaining({
         method: "PATCH",
-        body: JSON.stringify({ firstName: "Richard", company: "Pied Piper" }),
+        body: JSON.stringify({ name: "Pied Piper Labs" }),
       }),
     );
   });
 
-  it("rotates the API key with a POST on /account/api-key and no body", async () => {
+  it("rotates the API key with a POST on /api-key/rotate and no body", async () => {
     const fetchMock = mockJson({ apiKey: "rotated_key" });
     globalThis.fetch = fetchMock as typeof fetch;
 
@@ -446,7 +469,7 @@ describe("GrowSurfClient", () => {
 
     expect(result).toEqual({ apiKey: "rotated_key" });
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.growsurf.com/v2/account/api-key",
+      "https://api.growsurf.com/v2/api-key/rotate",
       expect.objectContaining({ method: "POST" }),
     );
     const init = fetchMock.mock.calls[0][1] as RequestInit;
@@ -455,28 +478,73 @@ describe("GrowSurfClient", () => {
       .toMatch(/^growsurf-mcp-rotation-[0-9a-f-]{36}$/);
   });
 
-  it("requests account verification with a POST on /account/verification-request", async () => {
+  it("retries an ambiguous rotation failure with the caller's stable idempotency key", async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new TypeError("connection closed after request was sent"))
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({ apiKey: "rotated_key" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ));
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key" });
+    const result = await client.rotateApiKey({ idempotencyKey: "caller-stable-rotation-key" });
+
+    expect(result).toEqual({ apiKey: "rotated_key" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(new Headers((init as RequestInit).headers).get("Idempotency-Key"))
+        .toBe("caller-stable-rotation-key");
+    }
+  });
+
+  it("retries an interrupted successful rotation response with the same idempotency key", async () => {
+    const interruptedResponse = {
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: vi.fn().mockRejectedValue(new TypeError("response body was interrupted")),
+    } as unknown as Response;
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(interruptedResponse)
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({ apiKey: "rotated_key" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ));
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key" });
+    await client.rotateApiKey({ idempotencyKey: "caller-stable-response-key" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(new Headers((init as RequestInit).headers).get("Idempotency-Key"))
+        .toBe("caller-stable-response-key");
+    }
+  });
+
+  it("requests team verification with a POST on /team/verification-request", async () => {
     const fetchMock = mockJson({ verificationStatus: "REQUESTED" });
     globalThis.fetch = fetchMock as typeof fetch;
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
-    await client.requestAccountVerification();
+    await client.requestTeamVerification();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.growsurf.com/v2/account/verification-request",
+      "https://api.growsurf.com/v2/team/verification-request",
       expect.objectContaining({ method: "POST" }),
     );
   });
 
-  it("resends the verification email with a POST on /account/verification-email", async () => {
+  it("resends the owner verification email with a POST on /team/owner/verification-email", async () => {
     const fetchMock = mockJson({ success: true, status: "SENT" });
     globalThis.fetch = fetchMock as typeof fetch;
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
-    await client.resendVerificationEmail();
+    await client.resendTeamOwnerVerificationEmail();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.growsurf.com/v2/account/verification-email",
+      "https://api.growsurf.com/v2/team/owner/verification-email",
       expect.objectContaining({ method: "POST" }),
     );
   });

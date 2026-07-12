@@ -10,7 +10,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.7.0";
+export const GROWSURF_MCP_VERSION = "0.8.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient, type GrowSurfRequestError } from "./growsurf/client.js";
@@ -101,7 +101,7 @@ const requireGrowSurfClient = (env: Env): GrowSurfClient => {
 };
 
 // Listing/creating campaigns (`GET/POST /campaigns`) has no campaign id, so those only need the API key.
-// Account-level reads/writes (get/update account, rotate key, verification) are also key-only.
+// Team reads/writes and verification are also key-only.
 const requireGrowSurfApiKey = (env: Env): GrowSurfClient => {
   if (!env.GROWSURF_API_KEY) {
     throw new Error("Missing GrowSurf REST credentials. Set GROWSURF_API_KEY to use this tool.");
@@ -127,7 +127,7 @@ const getKeylessGrowSurfClient = (env: Env): GrowSurfClient =>
 // resolveCampaignClient), so an agent can create a program and immediately operate on the returned
 // id. The list-time loop below injects the shared campaignId input-schema property into exactly
 // these tools, and each handler resolves its client with resolveCampaignClient(env, toolArgs).
-// Account-level, keyless, and static guidance tools are intentionally excluded, as are the tools
+// Team-level, keyless, and static guidance tools are intentionally excluded, as are the tools
 // that already declare their own campaignId (create_campaign has none; the guide/snippet and
 // integration-connect-link tools carry their own bespoke campaignId param).
 const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
@@ -479,7 +479,7 @@ const integrationConnectLinkSchema = z.object({
   campaignId: z.string().min(1).optional(),
 });
 
-// ---- Account tools ----
+// ---- Account onboarding and Team tools ----
 
 const createAccountSchema = z.object({
   email: z.string().min(3),
@@ -488,15 +488,9 @@ const createAccountSchema = z.object({
   company: z.string().min(1).max(255).optional(),
 });
 
-const updateAccountSchema = z
-  .object({
-    firstName: z.string().max(255).optional(),
-    lastName: z.string().max(255).optional(),
-    company: z.string().max(255).optional(),
-  })
-  .refine((v) => Object.values(v).some((x) => x !== undefined), {
-    message: "Provide at least one field to update.",
-  });
+const updateTeamSchema = z.object({
+  name: z.string().min(1).max(255),
+});
 
 // ---- Campaign webhook tools ----
 
@@ -829,13 +823,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_list_campaigns",
           description:
-            "List the GrowSurf programs available to your account. Use this first when you need to choose a `campaignId` before calling campaign-scoped tools. Deleted programs are not returned. Does NOT require GROWSURF_CAMPAIGN_ID.",
+            "List the GrowSurf programs available to the bound team. Use this first when you need to choose a `campaignId` before calling campaign-scoped tools. Deleted programs are not returned. Does NOT require GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_create_campaign",
           description:
-            "Create a new GrowSurf program (campaign) pre-populated with type-appropriate starter content, optionally with inline rewards. Starter content includes Design, Emails, Options, Installation, and GrowSurf Window defaults. Only `type` is required; the program is created in `DRAFT` status owned by your API key's account. `currencyISO` sets the program's currency (defaults to `USD`) and is immutable after creation. Editor-tab config (design, emails, options, installation) is not accepted here. Fetch and review those config sub-resources after creation, then patch only what needs to change. Does NOT require GROWSURF_CAMPAIGN_ID. The response includes the new program `id`; pass it as `campaignId` to the other tools (or set GROWSURF_CAMPAIGN_ID) to configure and operate the program.",
+            "Create a new GrowSurf program (campaign) pre-populated with type-appropriate starter content, optionally with inline rewards. Starter content includes Design, Emails, Options, Installation, and GrowSurf Window defaults. Only `type` is required; the program is created in `DRAFT` status owned by the credential's bound team. `currencyISO` sets the program's currency (defaults to `USD`) and is immutable after creation. Editor-tab config (design, emails, options, installation) is not accepted here. Fetch and review those config sub-resources after creation, then patch only what needs to change. Does NOT require GROWSURF_CAMPAIGN_ID. The response includes the new program `id`; pass it as `campaignId` to the other tools (or set GROWSURF_CAMPAIGN_ID) to configure and operate the program.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1081,7 +1075,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_account",
           description:
-            "Create a brand-new GrowSurf account and return an API key. This is the ONLY tool that does NOT require GROWSURF_API_KEY to be configured. The endpoint is unauthenticated and returns the new key once in `apiKey`. The key is LOCKED until the account's email address is verified: until then, authenticated endpoints outside the Account tools return a `403` with error code `EMAIL_NOT_VERIFIED_ERROR`. Practical flow: create the account, tell the user to click the link in the verification email GrowSurf sends, then retry/poll until the `EMAIL_NOT_VERIFIED_ERROR` clears and continue with the returned key (use `growsurf_resend_verification_email` if the email was lost). The account is created passwordless; the welcome email contains the verification link and a set-password link for dashboard access. Accounts whose email is never verified are deleted automatically after 7 days. For security, the API key is rotated the first time the account owner signs in to the GrowSurf dashboard. Some actions (such as emailing participants) additionally require the GrowSurf team to verify the account first. Personal email and disposable email addresses are not accepted. By creating an account you agree, on behalf of the account holder, to GrowSurf's Terms of Service (https://growsurf.com/terms) and Privacy Policy (https://growsurf.com/privacy).",
+            "Create a brand-new GrowSurf account and return an API key. This is the only tool that does not require `GROWSURF_API_KEY`. The endpoint returns the new key once in `apiKey`. The key is locked until the account owner's email address is verified. Until then, program and resource endpoints return a `403` with error code `EMAIL_NOT_VERIFIED_ERROR`. Create the account, tell the owner to click the link in the verification email, then retry until that error clears. Use `growsurf_resend_team_owner_verification_email` if the email was lost. The welcome email also contains a set-password link for dashboard access. Accounts whose email is never verified are deleted automatically after 7 days. The API key is rotated the first time the account owner signs in to the GrowSurf dashboard. Some actions, such as emailing participants, also require GrowSurf to verify the team. Personal and disposable email addresses are not accepted. By creating an account you agree, on behalf of the account holder, to GrowSurf's Terms of Service (https://growsurf.com/terms) and Privacy Policy (https://growsurf.com/privacy).",
           inputSchema: {
             type: "object",
             properties: {
@@ -1095,35 +1089,39 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           },
         },
         {
-          name: "growsurf_get_account",
+          name: "growsurf_get_team",
           description:
-            "Fetch the GrowSurf account that owns the API key: profile and GrowSurf-team verification state. `verificationStatus` is VERIFIED once the team has verified the account — required before a program can email participants. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+            "Fetch the team bound to the API key or OAuth connection. `verificationStatus` is `VERIFIED` once GrowSurf has verified the team, which is required before a program can email participants. Personal profiles and internal identifiers are not returned. Requires `GROWSURF_API_KEY`; does not require `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
-          name: "growsurf_update_account",
+          name: "growsurf_update_team",
           description:
-            "Update your own GrowSurf account profile (`firstName`, `lastName`, `company`). Only the fields you send are changed. The account `email` cannot be changed via the API and billing/subscription is not editable here — any unknown field is rejected with a 400. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+            "Update the display name of the team bound to the API key or OAuth connection. Personal profiles, billing, and team ownership are not editable here. Requires `GROWSURF_API_KEY`; does not require `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
-              firstName: { type: "string" },
-              lastName: { type: "string" },
-              company: { type: "string" },
+              name: {
+                type: "string",
+                minLength: 1,
+                maxLength: 255,
+                description: "The team's display name.",
+              },
             },
+            required: ["name"],
             additionalProperties: false,
           },
         },
         {
-          name: "growsurf_request_account_verification",
+          name: "growsurf_request_team_verification",
           description:
-            "Request GrowSurf-team verification of your account (required before a program can email its participants). Idempotent — calling it again while a request is pending does not create a duplicate. Returns the account with its updated `verificationStatus`. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+            "Ask GrowSurf to verify the team bound to the API key or OAuth connection. Verification is required before a program can email participants. Calling this again while a request is pending does not create a duplicate. Returns the team with its updated `verificationStatus`. Requires `GROWSURF_API_KEY`; does not require `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
-          name: "growsurf_resend_verification_email",
+          name: "growsurf_resend_team_owner_verification_email",
           description:
-            "Resend the email-verification email to the account's email address. A 200 with status SENT is only returned when an email was actually dispatched. Returns a 400 if the email is already verified, or a 429 if a verification email was sent too recently — wait a moment, then retry. Requires GROWSURF_API_KEY; does NOT require GROWSURF_CAMPAIGN_ID.",
+            "Resend the email-verification message to the bound team's owner. The response never reveals the owner's email address. A `200` with `status: SENT` is returned only when an email was sent. Returns `400` if the email is already verified and `429` if one was sent too recently. Requires `GROWSURF_API_KEY`; does not require `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -1328,7 +1326,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_email_participant",
           description:
-            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). Free-form emails are sent with the same compliance handling (company name, postal address, and an unsubscribe link are added automatically, and unsubscribed participants are suppressed). Sending requires the account to be verified by the GrowSurf team and a verified custom email domain on the program (set up in *Campaign Editor > 3. Emails > Email Settings*). Returns 400 until one is verified. The email is accepted for delivery. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). Free-form emails are sent with the same compliance handling (company name, postal address, and an unsubscribe link are added automatically, and unsubscribed participants are suppressed). Sending requires the team to be verified by GrowSurf and a verified custom email domain on the program (set up in *Campaign Editor > 3. Emails > Email Settings*). Returns 400 until one is verified. The email is accepted for delivery. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1614,7 +1612,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
     ];
     // Inject the optional campaignId argument into every campaign-scoped tool so an agent can target
     // a program by id (for example one just returned by growsurf_create_campaign) without a server
-    // restart. Keyless, account-level, and static tools are left untouched.
+    // restart. Keyless, Team-level, and static tools are left untouched.
     for (const tool of tools) {
       if (!CAMPAIGN_SCOPED_TOOL_NAMES.has(tool.name)) continue;
       const inputSchema = tool.inputSchema as { properties?: Record<string, unknown> };
@@ -1814,30 +1812,25 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = await growsurf.createAccount(body);
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
-        case "growsurf_get_account": {
+        case "growsurf_get_team": {
           const growsurf = requireGrowSurfApiKey(env);
-          const result = await growsurf.getAccount();
+          const result = await growsurf.getTeam();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
-        case "growsurf_update_account": {
+        case "growsurf_update_team": {
           const growsurf = requireGrowSurfApiKey(env);
-          const input = updateAccountSchema.parse(request.params.arguments ?? {});
-          const fields = omitUndefined({
-            firstName: input.firstName,
-            lastName: input.lastName,
-            company: input.company,
-          }) as Record<string, unknown>;
-          const result = await growsurf.updateAccount(fields);
+          const input = updateTeamSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.updateTeam({ name: input.name });
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
-        case "growsurf_request_account_verification": {
+        case "growsurf_request_team_verification": {
           const growsurf = requireGrowSurfApiKey(env);
-          const result = await growsurf.requestAccountVerification();
+          const result = await growsurf.requestTeamVerification();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
-        case "growsurf_resend_verification_email": {
+        case "growsurf_resend_team_owner_verification_email": {
           const growsurf = requireGrowSurfApiKey(env);
-          const result = await growsurf.resendVerificationEmail();
+          const result = await growsurf.resendTeamOwnerVerificationEmail();
           return { content: [{ type: "text", text: safeJson(result) }] };
         }
         case "growsurf_get_campaign_analytics": {

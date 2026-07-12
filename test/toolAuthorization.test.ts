@@ -76,9 +76,11 @@ describe("MCP tool authorization", () => {
 
   it("derives the hosted OAuth request scope union from OAuth-compatible tools", () => {
     expect(MACHINE_SCOPES).not.toHaveProperty("API_KEY_ROTATE");
+    expect(MACHINE_SCOPES).not.toHaveProperty("ACCOUNT_READ");
+    expect(MACHINE_SCOPES).not.toHaveProperty("ACCOUNT_WRITE");
     expect(HOSTED_MCP_REQUESTED_SCOPES).toEqual([
-      "account:read",
-      "account:write",
+      "team:read",
+      "team:write",
       "program:read",
       "program:write",
       "participant:read",
@@ -92,6 +94,80 @@ describe("MCP tool authorization", () => {
     expect(HOSTED_MCP_REQUESTED_SCOPES).not.toContain("reward:read");
     expect(HOSTED_MCP_REQUESTED_SCOPES).not.toContain("reward:delete");
     expect(HOSTED_MCP_REQUESTED_SCOPES).not.toContain("reward:fulfill");
+  });
+
+  it("exposes Team tools only to credentials bound to one team", () => {
+    const tools = [
+      { name: "growsurf_get_team" },
+      { name: "growsurf_update_team" },
+      { name: "growsurf_request_team_verification" },
+      { name: "growsurf_resend_team_owner_verification_email" },
+    ];
+
+    for (const credentialType of [CREDENTIAL_TYPES.MCP_OAUTH, CREDENTIAL_TYPES.TEAM_API_KEY]) {
+      expect(
+        filterToolsForCredential(tools, {
+          credentialType,
+          scopes: ["team:read", "team:write"],
+        }).map((tool) => tool.name),
+      ).toEqual(tools.map((tool) => tool.name));
+    }
+
+    expect(
+      filterToolsForCredential(tools, {
+        credentialType: CREDENTIAL_TYPES.LEGACY_API_KEY,
+        scopes: ["team:read", "team:write"],
+      }),
+    ).toEqual([]);
+
+    expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_get_team.allowedCredentialTypes)
+      .not.toContain(CREDENTIAL_TYPES.LEGACY_API_KEY);
+  });
+
+  it("removes authenticated personal Account tools while keeping keyless account creation", async () => {
+    const listedToolNames = await listToolNames();
+
+    expect(listedToolNames).toContain("growsurf_create_account");
+    expect(listedToolNames).toEqual(expect.arrayContaining([
+      "growsurf_get_team",
+      "growsurf_update_team",
+      "growsurf_request_team_verification",
+      "growsurf_resend_team_owner_verification_email",
+    ]));
+    expect(listedToolNames).not.toEqual(expect.arrayContaining([
+      "growsurf_get_account",
+      "growsurf_update_account",
+      "growsurf_request_account_verification",
+      "growsurf_resend_verification_email",
+    ]));
+  });
+
+  it("advertises only the public Team name on the update tool", async () => {
+    const updateTeam = (await listTools()).find((tool) => tool.name === "growsurf_update_team");
+
+    expect(updateTeam?.inputSchema).toEqual({
+      type: "object",
+      properties: {
+        name: {
+          type: "string",
+          minLength: 1,
+          maxLength: 255,
+          description: "The team's display name.",
+        },
+      },
+      required: ["name"],
+      additionalProperties: false,
+    });
+  });
+
+  it("describes programs and email permissions in terms of the bound team", async () => {
+    const tools = await listTools();
+    const descriptions = tools.map((tool) => tool.description ?? "").join("\n");
+
+    expect(descriptions).not.toMatch(/programs available to your account|API key's account|account to be verified by the GrowSurf team/);
+    expect(descriptions).toContain("programs available to the bound team");
+    expect(descriptions).toContain("owned by the credential's bound team");
+    expect(descriptions).toContain("team to be verified by GrowSurf");
   });
 
   it("does not make analytics tools depend on unrelated program or participant scopes", () => {
@@ -246,7 +322,11 @@ describe("MCP tool authorization", () => {
 
   it("leaves tools/call authorization to the REST API", async () => {
     const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify({ id: "account_id" }), {
+      new Response(JSON.stringify({
+        name: "Pied Piper",
+        verificationStatus: "VERIFIED",
+        verificationRequestedAt: 1719792000000,
+      }), {
         status: 200,
         headers: { "content-type": "application/json" },
       }),
@@ -266,9 +346,9 @@ describe("MCP tool authorization", () => {
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
     try {
       const listedTools = await client.listTools();
-      expect(listedTools.tools.map((tool) => tool.name)).not.toContain("growsurf_get_account");
+      expect(listedTools.tools.map((tool) => tool.name)).not.toContain("growsurf_get_team");
 
-      const result = await client.callTool({ name: "growsurf_get_account", arguments: {} });
+      const result = await client.callTool({ name: "growsurf_get_team", arguments: {} });
       expect(result.isError).not.toBe(true);
       expect(fetchMock).toHaveBeenCalledOnce();
     } finally {

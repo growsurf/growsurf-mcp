@@ -9,8 +9,8 @@ export const CREDENTIAL_TYPES = {
 export type CredentialType = (typeof CREDENTIAL_TYPES)[keyof typeof CREDENTIAL_TYPES];
 
 export const MACHINE_SCOPES = {
-  ACCOUNT_READ: "account:read",
-  ACCOUNT_WRITE: "account:write",
+  TEAM_READ: "team:read",
+  TEAM_WRITE: "team:write",
   PROGRAM_READ: "program:read",
   PROGRAM_WRITE: "program:write",
   PARTICIPANT_READ: "participant:read",
@@ -58,6 +58,10 @@ export type ToolAuthorizationRequirement = ToolBehavior & {
 };
 
 const ALL_CREDENTIAL_TYPES = Object.values(CREDENTIAL_TYPES);
+const SINGLE_TEAM_CREDENTIAL_TYPES: readonly CredentialType[] = [
+  CREDENTIAL_TYPES.MCP_OAUTH,
+  CREDENTIAL_TYPES.TEAM_API_KEY,
+];
 
 // Standard MCP hints and hosted-agent risk tiers stay paired so every tool declares one reusable
 // behavior profile instead of maintaining separate safety maps that can drift.
@@ -118,6 +122,17 @@ const requiresScopes = (behavior: ToolBehavior, ...scopes: MachineScope[]): Tool
   allowedCredentialTypes: ALL_CREDENTIAL_TYPES,
 });
 
+// Team resources exist only for credentials bound to exactly one team. Legacy API keys retain
+// their cross-membership compatibility behavior and therefore cannot identify one Team resource.
+const requiresSingleTeamScopes = (
+  behavior: ToolBehavior,
+  ...scopes: MachineScope[]
+): ToolAuthorizationRequirement => ({
+  ...behavior,
+  scopes,
+  allowedCredentialTypes: SINGLE_TEAM_CREDENTIAL_TYPES,
+});
+
 // Every listed MCP tool is represented here so new tools fail the completeness test until their
 // discoverability rules are deliberate. REST remains the authorization enforcement boundary.
 export const TOOL_AUTHORIZATION_MANIFEST = {
@@ -144,10 +159,16 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_update_campaign_installation: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_capture_referral_flow_screenshots: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_create_account: unrestricted(TOOL_BEHAVIOR.CONTENT_EXTERNAL),
-  growsurf_get_account: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.ACCOUNT_READ),
-  growsurf_update_account: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.ACCOUNT_WRITE),
-  growsurf_request_account_verification: requiresScopes(TOOL_BEHAVIOR.CONTENT_IDEMPOTENT, MACHINE_SCOPES.ACCOUNT_WRITE),
-  growsurf_resend_verification_email: requiresScopes(TOOL_BEHAVIOR.CONTENT_EXTERNAL, MACHINE_SCOPES.ACCOUNT_WRITE),
+  growsurf_get_team: requiresSingleTeamScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.TEAM_READ),
+  growsurf_update_team: requiresSingleTeamScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.TEAM_WRITE),
+  growsurf_request_team_verification: requiresSingleTeamScopes(
+    TOOL_BEHAVIOR.CONTENT_IDEMPOTENT,
+    MACHINE_SCOPES.TEAM_WRITE,
+  ),
+  growsurf_resend_team_owner_verification_email: requiresSingleTeamScopes(
+    TOOL_BEHAVIOR.CONTENT_EXTERNAL,
+    MACHINE_SCOPES.TEAM_WRITE,
+  ),
   growsurf_get_campaign_analytics: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.ANALYTICS_READ),
   growsurf_list_campaign_webhooks: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_create_campaign_webhook: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_WRITE),

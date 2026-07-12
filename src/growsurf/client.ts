@@ -5,8 +5,14 @@ export type GrowSurfClientOptions = {
   // Optional: the unauthenticated createAccount endpoint runs without a key, so the client can be
   // constructed keyless. All other methods require a key (enforced by the caller before use).
   apiKey?: string | undefined;
-  campaignId: string;
+  campaignId?: string | undefined;
   baseUrl?: string; // defaults to https://api.growsurf.com/v2
+};
+
+type GrowSurfRequestOptions = {
+  auth?: boolean;
+  idempotencyKey?: string;
+  retryNetworkErrors?: boolean;
 };
 
 export type GrowSurfRequestError = {
@@ -97,7 +103,7 @@ export class GrowSurfClient {
 
   constructor(options: GrowSurfClientOptions) {
     this.apiKey = options.apiKey ?? "";
-    this.campaignId = options.campaignId;
+    this.campaignId = options.campaignId ?? "";
     this.baseUrl = normalizeBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
     this.mcpBaseUrl = toMcpBaseUrl(this.baseUrl);
   }
@@ -281,8 +287,8 @@ export class GrowSurfClient {
     );
   }
 
-  // Account (account-level, not campaign-scoped). See the GrowSurf REST API reference for the
-  // full field-level schemas. Every method except createAccount authenticates with the API key.
+  // Account onboarding and Team operations are not campaign-scoped. See the GrowSurf REST API
+  // reference for the full field-level schemas. Every method except createAccount authenticates.
 
   // createAccount is the ONLY unauthenticated endpoint. It creates a new account and returns a
   // one-time API key (locked with 403 EMAIL_NOT_VERIFIED_ERROR until the account's email is
@@ -292,26 +298,32 @@ export class GrowSurfClient {
     return this.requestJson("POST", `/accounts`, body, { auth: false });
   }
 
-  async getAccount(): Promise<unknown> {
-    return this.requestJson("GET", `/account`);
+  async getTeam(): Promise<unknown> {
+    return this.requestJson("GET", `/team`);
   }
 
-  async updateAccount(fields: Record<string, unknown>): Promise<unknown> {
-    return this.requestJson("PATCH", `/account`, fields);
+  async updateTeam(fields: { name: string }): Promise<unknown> {
+    return this.requestJson("PATCH", `/team`, fields);
   }
 
-  async rotateApiKey(): Promise<unknown> {
-    return this.requestJson("POST", `/account/api-key`, undefined, {
-      idempotencyKey: `growsurf-mcp-rotation-${randomUUID()}`,
+  /**
+   * Rotates the current API key. A caller can supply an idempotency key to recover the same
+   * result across separate attempts; otherwise one stable key is generated for this invocation.
+   */
+  async rotateApiKey(options: { idempotencyKey?: string } = {}): Promise<unknown> {
+    const idempotencyKey = options.idempotencyKey ?? `growsurf-mcp-rotation-${randomUUID()}`;
+    return this.requestJson("POST", `/api-key/rotate`, undefined, {
+      idempotencyKey,
+      retryNetworkErrors: true,
     });
   }
 
-  async requestAccountVerification(): Promise<unknown> {
-    return this.requestJson("POST", `/account/verification-request`);
+  async requestTeamVerification(): Promise<unknown> {
+    return this.requestJson("POST", `/team/verification-request`);
   }
 
-  async resendVerificationEmail(): Promise<unknown> {
-    return this.requestJson("POST", `/account/verification-email`);
+  async resendTeamOwnerVerificationEmail(): Promise<unknown> {
+    return this.requestJson("POST", `/team/owner/verification-email`);
   }
 
   // Campaign analytics. Pass `interval` (day|week|month) to also receive a per-period `series`
@@ -442,7 +454,7 @@ export class GrowSurfClient {
     method: "GET" | "POST" | "PATCH" | "DELETE",
     path: string,
     body?: unknown,
-    options?: { auth?: boolean; idempotencyKey?: string },
+    options?: GrowSurfRequestOptions,
   ): Promise<unknown> {
     const url = `${this.baseUrl}${path}`;
     return this.requestUrlJson(method, url, body, options);
@@ -452,7 +464,7 @@ export class GrowSurfClient {
     method: "GET" | "POST" | "PATCH" | "DELETE",
     path: string,
     body?: unknown,
-    options?: { auth?: boolean; idempotencyKey?: string },
+    options?: GrowSurfRequestOptions,
   ): Promise<unknown> {
     const url = `${this.mcpBaseUrl}${path}`;
     return this.requestUrlJson(method, url, body, options);
@@ -462,7 +474,7 @@ export class GrowSurfClient {
     method: "GET" | "POST" | "PATCH" | "DELETE",
     url: string,
     body?: unknown,
-    options?: { auth?: boolean; idempotencyKey?: string },
+    options?: GrowSurfRequestOptions,
   ): Promise<unknown> {
     const headers: Record<string, string> = {
       Accept: "application/json",
@@ -486,8 +498,30 @@ export class GrowSurfClient {
     // Keep retries low to avoid worsening rate limits.
     const maxAttempts = 3;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const response = await fetch(url, init);
-      if (response.ok) return response.json();
+      let response: Response;
+      try {
+        response = await fetch(url, init);
+      } catch (error) {
+        // Rotation is idempotent only when every retry carries the same Idempotency-Key. Other
+        // writes retain the conservative no-network-retry behavior because their outcome may be
+        // ambiguous after a transport failure.
+        if (options?.retryNetworkErrors && options.idempotencyKey && attempt < maxAttempts) {
+          continue;
+        }
+        throw error;
+      }
+      if (response.ok) {
+        try {
+          return await response.json();
+        } catch (error) {
+          // A rotation may have committed even when its successful response body was interrupted.
+          // Replaying with the same key recovers the original replacement instead of rotating again.
+          if (options?.retryNetworkErrors && options.idempotencyKey && attempt < maxAttempts) {
+            continue;
+          }
+          throw error;
+        }
+      }
 
       if ((response.status === 429 || response.status === 503) && attempt < maxAttempts) {
         const retryAfterMs =
