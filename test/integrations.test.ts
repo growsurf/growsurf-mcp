@@ -16,6 +16,19 @@ describe("integrations registry", () => {
     expect(tango?.referralOnly).toBe(true);
   });
 
+  it("includes the Resend and Loops dashboard integration keys verbatim", () => {
+    expect(getIntegration("resenddotcom")).toEqual({
+      key: "resenddotcom",
+      label: "Resend",
+      category: "Email & ESP",
+    });
+    expect(getIntegration("loopsdotso")).toEqual({
+      key: "loopsdotso",
+      label: "Loops",
+      category: "Email & ESP",
+    });
+  });
+
   it("excludes integrations whose dashboard cards are commented out", () => {
     // XTRM (internal payout rail), Chargify, and Pipedrive are not user-connectable.
     expect(getIntegration("xtrm")).toBeUndefined();

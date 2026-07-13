@@ -65,6 +65,8 @@ export const INTEGRATIONS: readonly Integration[] = [
   { key: "activecampaign", label: "ActiveCampaign", category: "Email & ESP" },
   { key: "bentonow", label: "Bento", category: "Email & ESP" },
   { key: "mailerlite", label: "MailerLite", category: "Email & ESP" },
+  { key: "resenddotcom", label: "Resend", category: "Email & ESP" },
+  { key: "loopsdotso", label: "Loops", category: "Email & ESP" },
   { key: "convertkit", label: "ConvertKit", category: "Email & ESP" },
   { key: "constantContact", label: "Constant Contact", category: "Email & ESP" },
   { key: "campaignMonitor", label: "Campaign Monitor", category: "Email & ESP" },
