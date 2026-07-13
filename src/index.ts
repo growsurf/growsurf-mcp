@@ -10,10 +10,10 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.8.0";
+export const GROWSURF_MCP_VERSION = "0.8.1";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
-import { GrowSurfClient, type GrowSurfRequestError } from "./growsurf/client.js";
+import { GrowSurfClient } from "./growsurf/client.js";
 import {
   clientSnippetsSchema,
   embeddableElementSchema,
@@ -37,6 +37,7 @@ import {
 } from "./growsurf/programCreationEval.js";
 import { normalizeWebhook } from "./growsurf/webhooks.js";
 import { getGrowSurfPrompt, listGrowSurfPrompts } from "./prompts.js";
+import { toToolErrorText } from "./toolError.js";
 import {
   filterToolsForCredential,
   withToolAuthorizationMetadata,
@@ -177,18 +178,6 @@ const CAMPAIGN_ID_JSON_PROP = {
 } as const;
 
 const safeJson = (value: unknown): string => JSON.stringify(value, null, 2);
-
-const toToolErrorText = (err: unknown): string => {
-  if (!err) return "Unknown error.";
-  if (typeof err === "string") return err;
-  if (err instanceof Error) return err.message;
-  if (typeof err === "object") {
-    const maybe = err as GrowSurfRequestError;
-    if (typeof maybe.message === "string") return safeJson(maybe);
-    return safeJson(err);
-  }
-  return String(err);
-};
 
 const omitUndefined = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
   const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
