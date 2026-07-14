@@ -942,6 +942,57 @@ const WEBHOOK_NORMALIZATION_RESULT: ToolOutputSchema = {
   },
 };
 
+// The guidance and snippet tools return a markdown document. They still advertise a schema so
+// hosts know what the result is: a single markdown string, not a record to read fields off.
+const markdownDocument = (description: string): ToolOutputSchema => ({
+  type: "object",
+  description,
+  properties: {
+    markdown: { type: "string", description: "The generated guidance as a markdown document." },
+  },
+});
+
+const REFERRAL_FLOW_SCREENSHOTS: ToolOutputSchema = {
+  type: "object",
+  description:
+    "Private, temporary screenshots of the program's referral flow. The URLs are signed and expire, so fetch or show them promptly.",
+  properties: {
+    generatedAt: { type: "string", description: "When the screenshots were captured (ISO 8601)." },
+    expiresAt: { type: "string", description: "When the signed URLs stop working (ISO 8601)." },
+    screenshots: {
+      type: "array",
+      description: "One entry per captured view.",
+      items: {
+        type: "object",
+        properties: {
+          view: {
+            type: "string",
+            enum: ["referrer", "referredFriend"],
+            description: "Which side of the referral flow the screenshot shows.",
+          },
+          label: { type: "string", description: "Human-readable name for the view." },
+          url: { type: "string", description: "Signed URL for the screenshot image. Expires at `expiresAt`." },
+          expiresAt: { type: "string", description: "When this screenshot's URL expires (ISO 8601)." },
+          width: { type: "integer", description: "Image width in pixels." },
+          height: { type: "integer", description: "Image height in pixels." },
+          contentType: { type: "string", description: "Image MIME type (e.g. `image/jpeg`)." },
+        },
+      },
+    },
+  },
+};
+
+const PARTICIPANT_AUTH_HASH: ToolOutputSchema = {
+  type: "object",
+  description: "The participant authentication hash for the given email.",
+  properties: {
+    hash: {
+      type: "string",
+      description: "The computed hash. Pass it to the GrowSurf client as the participant's `hash` value.",
+    },
+  },
+};
+
 const INTEGRATION_CONNECT_LINK: ToolOutputSchema = {
   type: "object",
   properties: {
@@ -954,11 +1005,32 @@ const INTEGRATION_CONNECT_LINK: ToolOutputSchema = {
   },
 };
 
-// Tool name -> output schema for every MCP tool that returns structured JSON. Tools that return
-// markdown or plain text (guides, snippets, the participant auth hash) are intentionally absent:
-// declaring an output schema obligates the tool to return matching `structuredContent` on every
-// success, which only makes sense for JSON results.
+// Tool name -> output schema. EVERY tool is listed: the REST-backed tools advertise their JSON
+// response shape, and the guidance/snippet tools advertise the markdown envelope they return.
+// A tool that declares an output schema must return matching `structuredContent` on every
+// success, so any new tool must be added here and to its handler at the same time.
 export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
+  growsurf_integration_guide: markdownDocument(
+    "A guided, happy-path GrowSurf integration plan, as a markdown document.",
+  ),
+  growsurf_agent_program_creation_eval: markdownDocument(
+    "Program-creation eval prompts and acceptance checks, as a markdown document.",
+  ),
+  growsurf_mobile_sdk_guide: markdownDocument("Native iOS/Android SDK guidance, as a markdown document."),
+  growsurf_api_library_snippets: markdownDocument(
+    "REST API integration snippets for the official libraries, as a markdown document.",
+  ),
+  growsurf_client_snippets: markdownDocument(
+    "JavaScript SDK, GrowSurf window, and embeddable examples, as a markdown document.",
+  ),
+  growsurf_embeddable_element_snippet: markdownDocument(
+    "The snippet for one embeddable GrowSurf element, as a markdown document.",
+  ),
+  growsurf_grsf_config_snippet: markdownDocument(
+    "The `window.grsfConfig` head snippet, as a markdown document.",
+  ),
+  growsurf_participant_auth_hash: PARTICIPANT_AUTH_HASH,
+  growsurf_capture_referral_flow_screenshots: REFERRAL_FLOW_SCREENSHOTS,
   growsurf_get_campaign: CAMPAIGN,
   growsurf_list_campaigns: CAMPAIGN_LIST_RESPONSE,
   growsurf_create_campaign: sameShapeAs("The created program. Same shape as the `growsurf_get_campaign` result."),

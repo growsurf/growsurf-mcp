@@ -241,7 +241,7 @@ node dist/index.js
 
 ## MCP tools
 
-Tools that return JSON declare an MCP output schema and return the result as `structuredContent` (plus a JSON text block for older clients), so hosts know each tool's result shape.
+Every tool declares an MCP output schema and returns `structuredContent`, so hosts know each tool's result shape. REST tools return the API response (plus a JSON text block for older clients); the guidance and snippet tools return their markdown document under `markdown`.
 
 ### Guided Integration
 

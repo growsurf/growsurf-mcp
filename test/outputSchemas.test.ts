@@ -6,19 +6,21 @@ import { createGrowSurfMcpServer } from "../src/index.js";
 
 const originalFetch = globalThis.fetch;
 
-// Tools that return markdown or plain text and therefore must NOT advertise an output schema
-// (declaring one obligates every success result to carry matching structuredContent).
-const TEXT_ONLY_TOOLS = [
+// Tools whose output is a markdown document rather than a REST response body. They still declare
+// an output schema, so their results must carry the same document as `structuredContent.markdown`.
+const MARKDOWN_TOOLS = [
   "growsurf_integration_guide",
   "growsurf_agent_program_creation_eval",
   "growsurf_mobile_sdk_guide",
   "growsurf_api_library_snippets",
-  "growsurf_capture_referral_flow_screenshots",
-  "growsurf_participant_auth_hash",
   "growsurf_client_snippets",
   "growsurf_embeddable_element_snippet",
   "growsurf_grsf_config_snippet",
 ];
+
+const MARKDOWN_TOOL_ARGS: Record<string, Record<string, unknown>> = {
+  growsurf_embeddable_element_snippet: { element: "form" },
+};
 
 const connectClient = async () => {
   const server = createGrowSurfMcpServer({
@@ -39,23 +41,52 @@ describe("tool output schemas", () => {
     vi.restoreAllMocks();
   });
 
-  it("advertises an output schema for every JSON tool and none for text-only tools", async () => {
+  it("advertises an output schema for every listed tool", async () => {
     const client = await connectClient();
     const { tools } = await client.listTools();
-    const byName = new Map(tools.map((tool) => [tool.name, tool]));
 
+    for (const tool of tools) {
+      expect(tool.outputSchema, `${tool.name} must advertise an outputSchema`).toMatchObject({ type: "object" });
+    }
+    // A new tool has to land in the schema map too, or this fails.
     for (const name of Object.keys(TOOL_OUTPUT_SCHEMAS)) {
-      expect(byName.has(name), `schema map entry ${name} is not a listed tool`).toBe(true);
-      expect(byName.get(name)?.outputSchema, `${name} should advertise an outputSchema`).toMatchObject({
-        type: "object",
-      });
+      expect(
+        tools.some((tool) => tool.name === name),
+        `schema map entry ${name} is not a listed tool`,
+      ).toBe(true);
     }
-    for (const name of TEXT_ONLY_TOOLS) {
-      expect(byName.has(name), `expected text-only tool ${name} to be listed`).toBe(true);
-      expect(byName.get(name)?.outputSchema, `${name} should not advertise an outputSchema`).toBeUndefined();
+    expect(Object.keys(TOOL_OUTPUT_SCHEMAS).length).toBe(tools.length);
+  });
+
+  it("returns the markdown document as structuredContent for every guidance tool", async () => {
+    const client = await connectClient();
+    // Arms the SDK client's structured-output validation against each advertised schema.
+    await client.listTools();
+
+    for (const name of MARKDOWN_TOOLS) {
+      const result = await client.callTool({ name, arguments: MARKDOWN_TOOL_ARGS[name] ?? {} });
+      expect(result.isError, `${name} should succeed`).toBeFalsy();
+
+      const text = Array.isArray(result.content) && result.content[0]?.type === "text" ? result.content[0].text : "";
+      expect(text.length, `${name} should return a document`).toBeGreaterThan(0);
+      // The text block stays raw markdown, and structuredContent repeats it for the schema.
+      expect(result.structuredContent, `${name} should carry structuredContent`).toEqual({ markdown: text });
     }
-    // Every listed tool is accounted for, so a new tool must choose one bucket or the other.
-    expect(new Set([...Object.keys(TOOL_OUTPUT_SCHEMAS), ...TEXT_ONLY_TOOLS]).size).toBe(tools.length);
+  });
+
+  it("returns the participant auth hash as structuredContent", async () => {
+    const client = await connectClient();
+    await client.listTools();
+
+    const result = await client.callTool({
+      name: "growsurf_participant_auth_hash",
+      arguments: { email: "richard@piedpiper.com", participantAuthSecret: "shhh" },
+    });
+
+    expect(result.isError).toBeFalsy();
+    const text = Array.isArray(result.content) && result.content[0]?.type === "text" ? result.content[0].text : "";
+    expect(text).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.structuredContent).toEqual({ hash: text });
   });
 
   it("keeps every output schema drift-tolerant (no required lists, no closed objects)", () => {

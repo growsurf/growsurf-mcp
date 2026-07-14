@@ -10,7 +10,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.9.0";
+export const GROWSURF_MCP_VERSION = "0.10.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -180,19 +180,29 @@ const CAMPAIGN_ID_JSON_PROP = {
 
 const safeJson = (value: unknown): string => JSON.stringify(value, null, 2);
 
+type ToolResult = {
+  content: Array<{ type: "text"; text: string }>;
+  structuredContent?: Record<string, unknown>;
+};
+
 // Build the result for a tool that returns JSON: the serialized text block (kept for clients that
 // only read text) plus `structuredContent`, which must accompany every success result once a tool
 // declares an output schema. Non-object results fall back to text only.
-const jsonToolResult = (
-  result: unknown,
-  appendText = "",
-): { content: Array<{ type: "text"; text: string }>; structuredContent?: Record<string, unknown> } => {
+const jsonToolResult = (result: unknown, appendText = ""): ToolResult => {
   const content = [{ type: "text" as const, text: safeJson(result) + appendText }];
   if (result && typeof result === "object" && !Array.isArray(result)) {
     return { content, structuredContent: result as Record<string, unknown> };
   }
   return { content };
 };
+
+// Build the result for a tool whose output is a markdown document. The text block stays the raw
+// markdown, which is what a reader and a model want to see, and the same document is repeated in
+// `structuredContent` to satisfy the tool's advertised output schema.
+const markdownToolResult = (markdown: string): ToolResult => ({
+  content: [{ type: "text", text: markdown }],
+  structuredContent: { markdown },
+});
 
 const omitUndefined = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
   const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
@@ -1646,22 +1656,22 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         case "growsurf_integration_guide": {
           const input = integrationGuideInputSchema.parse(request.params.arguments ?? {});
           const text = renderIntegrationGuide(input, installKitEnv);
-          return { content: [{ type: "text", text }] };
+          return markdownToolResult(text);
         }
         case "growsurf_agent_program_creation_eval": {
           const input = agentProgramCreationEvalInputSchema.parse(request.params.arguments ?? {});
           const text = renderAgentProgramCreationEval(input);
-          return { content: [{ type: "text", text }] };
+          return markdownToolResult(text);
         }
         case "growsurf_mobile_sdk_guide": {
           const input = mobileSdkGuideInputSchema.parse(request.params.arguments ?? {});
           const text = renderMobileSdkGuide(input, { campaignId: env.GROWSURF_CAMPAIGN_ID });
-          return { content: [{ type: "text", text }] };
+          return markdownToolResult(text);
         }
         case "growsurf_api_library_snippets": {
           const input = apiLibrarySnippetsInputSchema.parse(request.params.arguments ?? {});
           const text = renderApiLibrarySnippets(input, { campaignId: env.GROWSURF_CAMPAIGN_ID });
-          return { content: [{ type: "text", text }] };
+          return markdownToolResult(text);
         }
         case "growsurf_get_campaign": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -2106,7 +2116,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             };
           }
           const hash = computeParticipantAuthHash({ email: input.email, participantAuthSecret: secret });
-          return { content: [{ type: "text", text: hash }] };
+          return { content: [{ type: "text", text: hash }], structuredContent: { hash } };
         }
         case "growsurf_webhook_normalize": {
           const input = webhookNormalizeSchema.parse(request.params.arguments ?? {});
@@ -2116,17 +2126,17 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         case "growsurf_client_snippets": {
           const input = clientSnippetsSchema.parse(request.params.arguments ?? {});
           const text = renderClientSnippets(input, installKitEnv);
-          return { content: [{ type: "text", text }] };
+          return markdownToolResult(text);
         }
         case "growsurf_embeddable_element_snippet": {
           const input = embeddableElementSchema.parse(request.params.arguments ?? {});
           const text = renderEmbeddableElementSnippet(input);
-          return { content: [{ type: "text", text }] };
+          return markdownToolResult(text);
         }
         case "growsurf_grsf_config_snippet": {
           const input = grsfConfigSnippetSchema.parse(request.params.arguments ?? {});
           const text = renderGrsfConfigSnippet(input, installKitEnv);
-          return { content: [{ type: "text", text }] };
+          return markdownToolResult(text);
         }
         case "growsurf_get_integration_connect_link": {
           const input = integrationConnectLinkSchema.parse(request.params.arguments ?? {});
