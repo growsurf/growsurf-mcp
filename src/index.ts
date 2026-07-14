@@ -10,7 +10,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.8.1";
+export const GROWSURF_MCP_VERSION = "0.9.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -30,6 +30,7 @@ import {
   INTEGRATION_KEYS,
 } from "./growsurf/integrations.js";
 import { mobileSdkGuideInputSchema, renderMobileSdkGuide } from "./growsurf/mobileSdkGuide.js";
+import { TOOL_OUTPUT_SCHEMAS, type ToolOutputSchema } from "./growsurf/outputSchemas.js";
 import { computeParticipantAuthHash } from "./growsurf/participantAuth.js";
 import {
   agentProgramCreationEvalInputSchema,
@@ -178,6 +179,20 @@ const CAMPAIGN_ID_JSON_PROP = {
 } as const;
 
 const safeJson = (value: unknown): string => JSON.stringify(value, null, 2);
+
+// Build the result for a tool that returns JSON: the serialized text block (kept for clients that
+// only read text) plus `structuredContent`, which must accompany every success result once a tool
+// declares an output schema. Non-object results fall back to text only.
+const jsonToolResult = (
+  result: unknown,
+  appendText = "",
+): { content: Array<{ type: "text"; text: string }>; structuredContent?: Record<string, unknown> } => {
+  const content = [{ type: "text" as const, text: safeJson(result) + appendText }];
+  if (result && typeof result === "object" && !Array.isArray(result)) {
+    return { content, structuredContent: result as Record<string, unknown> };
+  }
+  return { content };
+};
 
 const omitUndefined = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
   const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
@@ -1607,6 +1622,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
       const inputSchema = tool.inputSchema as { properties?: Record<string, unknown> };
       inputSchema.properties = { ...(inputSchema.properties ?? {}), campaignId: CAMPAIGN_ID_JSON_PROP };
     }
+    // Advertise an output schema for every tool that returns structured JSON, so clients know the
+    // result shape. Tools that return markdown or plain text are not in the map and stay as-is.
+    for (const tool of tools) {
+      const outputSchema = TOOL_OUTPUT_SCHEMAS[tool.name];
+      if (outputSchema) (tool as { outputSchema?: ToolOutputSchema }).outputSchema = outputSchema;
+    }
     const toolsWithMetadata = tools.map(withToolAuthorizationMetadata);
     // Hosted transports can hide tools that a verified credential cannot use. Omitting the
     // resolver preserves the local/stdio server's existing all-tools discovery behavior.
@@ -1645,12 +1666,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         case "growsurf_get_campaign": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaign();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_list_campaigns": {
           const growsurf = requireGrowSurfApiKey(env);
           const result = await growsurf.listCampaigns();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_create_campaign": {
           const growsurf = requireGrowSurfApiKey(env);
@@ -1671,7 +1692,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const hint = newProgramId
             ? `\n\nNew program id: ${newProgramId}. Pass it as campaignId to the other tools (or set GROWSURF_CAMPAIGN_ID) to configure and operate this program.`
             : "";
-          return { content: [{ type: "text", text: safeJson(result) + hint }] };
+          return jsonToolResult(result, hint);
         }
         case "growsurf_update_campaign": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1683,17 +1704,17 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             status: input.status,
           }) as Record<string, unknown>;
           const result = await growsurf.updateCampaign(fields);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_clone_campaign": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.cloneCampaign();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_list_campaign_rewards": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.listCampaignRewards();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_create_campaign_reward": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1722,7 +1743,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             referredValue: input.referredValue,
           }) as Record<string, unknown>;
           const result = await growsurf.createCampaignReward(reward);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_update_campaign_reward": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1730,62 +1751,62 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const { campaignRewardId, ...rest } = input;
           const fields = omitUndefined(rest) as Record<string, unknown>;
           const result = await growsurf.updateCampaignReward(campaignRewardId, fields);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_delete_campaign_reward": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = deleteCampaignRewardSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.deleteCampaignReward(input.campaignRewardId);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_get_campaign_design": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaignDesign();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_update_campaign_design": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.updateCampaignDesign(input.fields);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_get_campaign_emails": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaignEmails();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_update_campaign_emails": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.updateCampaignEmails(input.fields);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_get_campaign_options": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaignOptions();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_update_campaign_options": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.updateCampaignOptions(input.fields);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_get_campaign_installation": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaignInstallation();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_update_campaign_installation": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.updateCampaignInstallation(input.fields);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_capture_referral_flow_screenshots": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.captureReferralFlowScreenshots();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_create_account": {
           // Keyless exception: works without GROWSURF_API_KEY and returns a new key (locked
@@ -1799,28 +1820,28 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             company: input.company,
           }) as Record<string, unknown>;
           const result = await growsurf.createAccount(body);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_get_team": {
           const growsurf = requireGrowSurfApiKey(env);
           const result = await growsurf.getTeam();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_update_team": {
           const growsurf = requireGrowSurfApiKey(env);
           const input = updateTeamSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.updateTeam({ name: input.name });
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_request_team_verification": {
           const growsurf = requireGrowSurfApiKey(env);
           const result = await growsurf.requestTeamVerification();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_resend_team_owner_verification_email": {
           const growsurf = requireGrowSurfApiKey(env);
           const result = await growsurf.resendTeamOwnerVerificationEmail();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_get_campaign_analytics": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1833,12 +1854,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             endDate: input.endDate,
           }) as { interval?: string; include?: string; days?: number; startDate?: number; endDate?: number };
           const result = await growsurf.getCampaignAnalytics(query);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_list_campaign_webhooks": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.listWebhooks();
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_create_campaign_webhook": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1850,7 +1871,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             isEnabled: input.isEnabled,
           }) as Record<string, unknown>;
           const result = await growsurf.createWebhook(webhook);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_update_campaign_webhook": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1858,13 +1879,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const { webhookId, ...rest } = input;
           const fields = omitUndefined(rest) as Record<string, unknown>;
           const result = await growsurf.updateWebhook(webhookId, fields);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_delete_campaign_webhook": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = deleteWebhookSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.deleteWebhook(input.webhookId);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_test_campaign_webhook": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1874,7 +1895,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             input.webhookId,
             Object.keys(body).length ? body : undefined,
           );
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_list_participants": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1884,7 +1905,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             nextId?: string;
           };
           const result = await growsurf.listParticipants(query);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_get_participant": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1892,7 +1913,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = input.participantId
             ? await growsurf.getParticipantById(input.participantId)
             : await growsurf.getParticipantByEmail(input.participantEmail!);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_add_participant": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1910,7 +1931,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             };
           }
           const result = await growsurf.addParticipant(omitUndefined(input) as Parameters<GrowSurfClient["addParticipant"]>[0]);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_update_participant": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1932,13 +1953,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = participantId
             ? await growsurf.updateParticipantById(participantId, fields)
             : await growsurf.updateParticipantByEmail(participantEmail!, fields);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_bulk_delete_participants": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = bulkDeleteParticipantsSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.bulkDeleteParticipants(input.participants);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_email_participant": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1952,7 +1973,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = input.participantId
             ? await growsurf.emailParticipantById(input.participantId, body)
             : await growsurf.emailParticipantByEmail(input.participantEmail!, body);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_get_participant_analytics": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1967,7 +1988,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = input.participantId
             ? await growsurf.getParticipantAnalyticsById(input.participantId, query)
             : await growsurf.getParticipantAnalyticsByEmail(input.participantEmail!, query);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_get_participant_activity_logs": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1979,7 +2000,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = input.participantId
             ? await growsurf.listParticipantActivityLogsById(input.participantId, query)
             : await growsurf.listParticipantActivityLogsByEmail(input.participantEmail!, query);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_trigger_referral": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1987,7 +2008,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = input.participantId
             ? await growsurf.triggerReferralByParticipantId(input.participantId, input.delayInDays)
             : await growsurf.triggerReferralByParticipantEmail(input.participantEmail!, input.delayInDays);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_cancel_delayed_referral": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -1995,7 +2016,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = input.participantId
             ? await growsurf.cancelDelayedReferralByParticipantId(input.participantId)
             : await growsurf.cancelDelayedReferralByParticipantEmail(input.participantEmail!);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_record_sale": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -2022,7 +2043,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = input.participantId
             ? await growsurf.recordSaleByParticipantId(input.participantId, sale)
             : await growsurf.recordSaleByParticipantEmail(input.participantEmail!, sale);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_refund_transaction": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -2047,7 +2068,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = input.participantId
             ? await growsurf.refundTransactionByParticipantId(input.participantId, amendment)
             : await growsurf.refundTransactionByParticipantEmail(input.participantEmail!, amendment);
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_create_mobile_participant_token": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -2067,7 +2088,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = await growsurf.createMobileParticipantToken(
             omitUndefined(input) as Parameters<GrowSurfClient["createMobileParticipantToken"]>[0],
           );
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         case "growsurf_participant_auth_hash": {
           const input = participantAuthHashSchema.parse(request.params.arguments ?? {});
@@ -2090,7 +2111,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         case "growsurf_webhook_normalize": {
           const input = webhookNormalizeSchema.parse(request.params.arguments ?? {});
           const normalized = normalizeWebhook(input.payload);
-          return { content: [{ type: "text", text: safeJson(normalized) }] };
+          return jsonToolResult(normalized);
         }
         case "growsurf_client_snippets": {
           const input = clientSnippetsSchema.parse(request.params.arguments ?? {});
@@ -2136,7 +2157,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             url: buildIntegrationConnectUrl(campaignId, integration.key),
             note: `Open this link and connect ${integration.label} from the Program Editor. Connecting an integration happens in the GrowSurf dashboard, not through the API.`,
           };
-          return { content: [{ type: "text", text: safeJson(result) }] };
+          return jsonToolResult(result);
         }
         default:
           return { content: [{ type: "text", text: `Unknown tool: ${request.params.name}` }], isError: true };

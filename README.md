@@ -241,6 +241,8 @@ node dist/index.js
 
 ## MCP tools
 
+Tools that return JSON declare an MCP output schema and return the result as `structuredContent` (plus a JSON text block for older clients), so hosts know each tool's result shape.
+
 ### Guided Integration
 
 - `growsurf_integration_guide`

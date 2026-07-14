@@ -7,6 +7,7 @@ export * from "./secretDenyList.js";
 export * from "./client.js";
 export * from "./apiLibrarySnippets.js";
 export * from "./mobileSdkGuide.js";
+export * from "./outputSchemas.js";
 export * from "./participantAuth.js";
 export * from "./webhooks.js";
 export * from "./programCreationEval.js";
