@@ -77,7 +77,7 @@ This MCP server is NOT for:
 
 ## Supported MCP Hosts
 
-The recommended path is GrowSurf's hosted OAuth endpoint at `https://mcp.growsurf.com` when your host supports remote Streamable HTTP with OAuth. Use the local `npx` server when your host needs a stdio process or manual API-key setup.
+The recommended path is GrowSurf's hosted OAuth endpoint at `https://mcp.growsurf.com` when your host supports remote Streamable HTTP with OAuth. Use the local `npx` server when your host needs a stdio process or manual API-key setup. No GrowSurf account yet? An agent can connect to the hosted onboarding endpoint `https://mcp.growsurf.com/onboard` with no credentials and call `growsurf_create_account` to sign up.
 
 The GrowSurf MCP server works with any MCP-compatible host. The examples below cover a few config-based and CLI hosts. For the complete, current list of supported clients (including ChatGPT web, Claude.ai, Claude Desktop, GitHub Copilot, Gemini CLI, Devin Desktop, and Cline) with step-by-step setup, see https://docs.growsurf.com/build-with-ai#mcp.
 
