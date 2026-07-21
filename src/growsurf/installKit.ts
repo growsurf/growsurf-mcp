@@ -310,6 +310,7 @@ export const grsfConfigSnippetSchema = z
     enableParticipantAutoAuth: z.boolean().default(false),
     email: z.string().min(3).optional(),
     hash: z.string().min(32).optional(),
+    affiliateJoin: z.boolean().default(false),
     /**
      * GrowSurf's docs snippet includes the comment header above the auto-auth block.
      */
@@ -534,7 +535,10 @@ export const renderGrsfConfigSnippet = (input: z.infer<typeof grsfConfigSnippetS
   if (input.enableParticipantAutoAuth) {
     lines.push("  window.grsfConfig = {");
     lines.push(`    email: ${JSON.stringify(input.email)},// Replace this with the participant's email address`);
-    lines.push(`    hash: ${JSON.stringify(input.hash)} // Replace this with the SHA-256 HMAC value`);
+    lines.push(`    hash: ${JSON.stringify(input.hash)}${input.affiliateJoin ? "," : ""} // Replace this with the SHA-256 HMAC value`);
+    if (input.affiliateJoin) {
+      lines.push("    affiliateJoin: true");
+    }
     lines.push("  };");
   } else {
     lines.push("  /*");
@@ -566,7 +570,7 @@ export const renderEmbeddableElementSnippet = (input: z.infer<typeof embeddableE
     invite: { title: "Embedded Invite", attr: "data-grsf-block-invite", note: "Lets signed-in participants send bulk email invites." },
     rewards: { title: "Embedded Rewards", attr: "data-grsf-block-rewards", note: "Shows participant rewards (signed-in participants)." },
     referral_status: { title: "Embedded Referral Status", attr: "data-grsf-block-referral-status", note: "Shows referral status (signed-in participants)." },
-    referral_summary: { title: "Embedded Referral Summary", attr: "data-grsf-block-referral-summary", note: "Shows referral summary stats (referral programs; signed-in participants; opt-in via Campaign Editor)." },
+    referral_summary: { title: "Embedded Referral Summary", attr: "data-grsf-block-referral-summary", note: "Shows referral summary stats (referral programs; signed-in participants; enabled in the Program Editor)." },
     affiliate_summary: { title: "Embedded Affiliate Summary", attr: "data-grsf-block-affiliate-summary", note: "Shows affiliate summary stats (affiliate programs; signed-in participants)." },
     commissions: { title: "Embedded Commissions", attr: "data-grsf-block-commissions", note: "Shows commission list (affiliate programs; signed-in participants)." },
     payouts: { title: "Embedded Payouts", attr: "data-grsf-block-payouts", note: "Shows payout list (affiliate programs; signed-in participants)." },

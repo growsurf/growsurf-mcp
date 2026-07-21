@@ -42,7 +42,7 @@ This MCP server is NOT for:
   - Create an account and get an API key with no existing credentials
   - Read and rename the bound team, request team verification, and resend the team owner's verification email
   - List and get campaigns
-  - Get campaign analytics (totals, plus an optional per-period time-series and optional previous-period, status-count, and rate enrichments)
+  - Get campaign analytics (totals, optional per-period time series, email metrics, previous-period totals, status counts, and rates)
   - Create, update, and clone programs (campaigns)
   - List, create, update, and delete campaign rewards
   - Get/update Design, Emails, Options, and Installation config
@@ -296,7 +296,7 @@ Every tool declares an MCP output schema and returns `structuredContent`, so hos
   List programs available to the credential. Use this to find a `campaignId` before calling campaign-scoped tools.
 
 - `growsurf_get_campaign_analytics`
-  Fetch program analytics (totals, plus an optional per-period `series` via `interval`, and optional `previousPeriod`/`statusCounts`/`rates` enrichments via `include`).
+  Fetch program analytics, with optional per-period `series`, comparison, status, rate, and email delivery and engagement data via `include=email`.
 
 - `growsurf_create_campaign`
   Create a new program (campaign) with type-appropriate starter content and optional inline rewards (only needs `GROWSURF_API_KEY`, not `GROWSURF_CAMPAIGN_ID`). Review the seeded Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching.
@@ -371,7 +371,7 @@ Every tool declares an MCP output schema and returns `structuredContent`, so hos
   Email a participant using a configured template or a free-form subject/body.
 
 - `growsurf_get_participant_analytics`
-  Fetch a single participant's analytics (engagement, ranks, shares, affiliate money metrics), plus an optional per-period `series` of their own activity via `include=series` (`interval`/`days`/`startDate`/`endDate`).
+  Fetch one participant's engagement, rank, share, affiliate revenue, commission, payout, and optional email metrics. Use `include=series`, `include=email`, or both comma-separated.
 
 - `growsurf_get_participant_activity_logs`
   List a participant's activity logs (offset/limit paginated).
@@ -381,6 +381,12 @@ Every tool declares an MCP output schema and returns `structuredContent`, so hos
 
 - `growsurf_cancel_delayed_referral`
   Cancel a pending delayed referral trigger before the delay elapses (e.g. on refund/cancellation).
+
+- `growsurf_get_participant_payout_destination`
+  Get a participant's payout-destination status across every provider enabled for the program (PayPal and/or Wise): per-provider status, confirmed payout email, legal recipient type, and repair reason.
+
+- `growsurf_request_participant_payout_destination_confirmation`
+  Ask a participant to confirm their payout destination for a provider — sends them a one-time confirmation link (only the participant can confirm).
 
 - `growsurf_record_sale`
   Record affiliate sales or transactions (for affiliate programs only).

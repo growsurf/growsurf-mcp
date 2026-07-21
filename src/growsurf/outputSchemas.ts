@@ -175,9 +175,18 @@ const TAX_VALUATION = {
       type: ["number", "null"],
       description: "Manual fair-market value in USD (major units). `null` when no manual value is set.",
     },
-    isTaxReportable: {
-      type: ["boolean", "null"],
-      description: "Whether the reward's value counts toward 1099 thresholds. `null` uses the smart default.",
+    taxCharacter: {
+      type: ["string", "null"],
+      enum: [
+        "NONEMPLOYEE_SERVICES",
+        "PRIZE_OR_AWARD",
+        "PURCHASE_REBATE",
+        "OTHER_INCOME",
+        "REVIEW_REQUIRED",
+        null,
+      ],
+      description:
+        "The reward's U.S. federal tax character. `null` means no override is configured and the program's confirmed default applies.",
     },
   },
 } as const;
@@ -325,6 +334,26 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     stats: { type: "object", description: "The participant's referral-progress stats panel. Only `title` is editable." },
     share: { type: "object", description: "Share channels, invite settings, and share-button styling." },
     signup: { type: "object", description: "Signup form fields, GDPR consent, and button and login text." },
+    login: {
+      type: "object",
+      description: "The returning-participant sign-in form plus its success, resend, validation, and error text.",
+      properties: {
+        heading: { type: "string", description: "Heading shown at the top of the sign-in form." },
+        description: { type: "string", description: "Instructions shown below the sign-in heading." },
+        fieldLabel: { type: "string", description: "Label for the participant email field." },
+        fieldPlaceholder: { type: "string", description: "Placeholder for the participant email field." },
+        buttonText: { type: "string", description: "Text on the button that requests a sign-in link." },
+        successHeading: { type: "string", description: "Heading shown after a sign-in link is requested." },
+        successBody: { type: "string", description: "Message shown after a sign-in link is requested." },
+        resendPrompt: { type: "string", description: "Prompt shown beside the resend action." },
+        resend: { type: "string", description: "Text for the resend action." },
+        resent: { type: "string", description: "Confirmation shown after another link is requested." },
+        invalidEmail: { type: "string", description: "Validation message shown for an invalid email address." },
+        cooldown: { type: "string", description: "Message shown when another link cannot be requested yet." },
+        serverError: { type: "string", description: "Message shown when GrowSurf cannot request a sign-in link." },
+        invalidLink: { type: "string", description: "Message shown when a sign-in link is invalid or expired." },
+      },
+    },
     referralStatus: {
       type: "object",
       description: "The section listing who a participant invited and each invite's progress.",
@@ -433,6 +462,31 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
       type: "object",
       description: "Tells a participant their tax information needs to be resubmitted. Transactional; its toggle cannot be changed.",
     },
+    affiliateApplicationReceived: {
+      type: "object",
+      description:
+        "Confirms an affiliate application was received and is under review. Affiliate programs only. Transactional; its toggle cannot be changed.",
+    },
+    affiliateApplicationApproved: {
+      type: "object",
+      description:
+        "Tells an applicant their affiliate application was approved. Affiliate programs only. Transactional; its toggle cannot be changed.",
+    },
+    affiliateApplicationDenied: {
+      type: "object",
+      description:
+        "Tells an applicant their affiliate application was not approved. Affiliate programs only. Transactional; its toggle cannot be changed.",
+    },
+    affiliateApplicationEmailCorrection: {
+      type: "object",
+      description:
+        "Asks an applicant to confirm a corrected email address. Its body must contain `{{identityVerificationLink}}`. Affiliate programs only. Transactional; its toggle cannot be changed.",
+    },
+    affiliateEmailChangeVerification: {
+      type: "object",
+      description:
+        "Asks an affiliate to confirm a new account email address. Its body must contain `{{identityVerificationLink}}`. Affiliate programs only. Transactional; its toggle cannot be changed.",
+    },
     settings: {
       type: "object",
       description: "Sender (`sender`), physical contact address (`contact`), and shared design (`design`) settings.",
@@ -480,6 +534,28 @@ const CAMPAIGN_OPTIONS: ToolOutputSchema = {
       enum: [1, 3, 7, 14, 30, 60, 90, 180, 365, null],
       description:
         "How long a referred friend has to complete the qualifying action, in days. `null` means the credit never expires.",
+    },
+    affiliateApplicationMode: {
+      type: "string",
+      enum: ["OPEN_ENROLLMENT", "MANUAL_REVIEW", "AUTO_APPROVE"],
+      description:
+        "Affiliate programs only. How public signups join the program. `OPEN_ENROLLMENT` enrolls them directly; `MANUAL_REVIEW` collects an application you approve or deny; `AUTO_APPROVE` collects the application and approves it immediately. A reviewed mode requires the program's published application page. Enrollment through the API, CSV import, dashboard, or invites is never blocked by this setting.",
+    },
+    affiliateReapplicationPolicy: {
+      type: "string",
+      enum: ["AFTER_COOLDOWN", "DISABLED"],
+      description:
+        "Affiliate programs only. Whether a denied applicant may apply again. `AFTER_COOLDOWN` (the default) allows a new application once `affiliateReapplicationCooldownDays` has passed; `DISABLED` never allows one.",
+    },
+    affiliateReapplicationCooldownDays: {
+      type: "integer",
+      description:
+        "Affiliate programs only. How many days a denied applicant waits before they can apply again (1-365, default 30). Only used when `affiliateReapplicationPolicy` is `AFTER_COOLDOWN`.",
+    },
+    affiliateApplicationReviewEstimateBusinessDays: {
+      type: ["integer", "null"],
+      description:
+        "Affiliate programs only. Optional review-time expectation shown to pending applicants, in business days (1-60). `null` clears it.",
     },
     payoutThreshold: {
       type: ["integer", "null"],
@@ -605,6 +681,50 @@ const CAMPAIGN_ANALYTICS_TOTALS = {
   additionalProperties: { type: "integer" },
 } as const;
 
+const EMAIL_ANALYTICS_COUNT_PROPERTIES = {
+  sent: { type: "integer", description: "Emails accepted for delivery." },
+  delivered: { type: "integer", description: "Emails delivered or subsequently opened or clicked." },
+  opened: { type: "integer", description: "Emails opened at least once." },
+  clicked: { type: "integer", description: "Emails with at least one tracked link click." },
+  bounced: { type: "integer", description: "Emails that bounced." },
+  spamComplaints: { type: "integer", description: "Emails reported as spam." },
+} as const;
+
+const EMAIL_ANALYTICS_METRIC_PROPERTIES = {
+  ...EMAIL_ANALYTICS_COUNT_PROPERTIES,
+  deliveryRate: { type: "number", description: "Delivered divided by sent, from 0 to 1." },
+  openRate: { type: "number", description: "Opened divided by delivered, from 0 to 1." },
+  clickRate: { type: "number", description: "Clicked divided by delivered, from 0 to 1." },
+  bounceRate: { type: "number", description: "Bounced divided by sent, from 0 to 1." },
+} as const;
+
+const EMAIL_ANALYTICS_RESPONSE = {
+  type: "object",
+  description: "Sent, delivered, opened, clicked, bounced, and spam complaint metrics for program emails in the requested window.",
+  properties: {
+    ...EMAIL_ANALYTICS_METRIC_PROPERTIES,
+    byType: {
+      type: "array",
+      description: "Metrics grouped by configured email type, ordered by `emailType`.",
+      items: {
+        type: "object",
+        properties: {
+          emailType: { type: "string", description: "Configured program email type or step." },
+          ...EMAIL_ANALYTICS_METRIC_PROPERTIES,
+        },
+      },
+    },
+    coverageStartDate: {
+      type: ["integer", "null"],
+      description: "Earliest expected complete coverage date (Unix ms), or `null` when unavailable.",
+    },
+    isPartial: {
+      type: "boolean",
+      description: "Whether the requested window starts before `coverageStartDate`.",
+    },
+  },
+} as const;
+
 const CAMPAIGN_ANALYTICS_RESPONSE: ToolOutputSchema = {
   type: "object",
   properties: {
@@ -613,13 +733,31 @@ const CAMPAIGN_ANALYTICS_RESPONSE: ToolOutputSchema = {
     endDate: { type: "integer", description: "End of the analytics timeframe, as a Unix timestamp in milliseconds." },
     series: {
       type: "array",
-      items: { type: "object", description: "Per-period analytics totals plus `periodStart` (Unix ms, UTC)." },
+      items: {
+        type: "object",
+        description: "Per-period analytics totals plus `periodStart` (Unix ms, UTC).",
+        properties: {
+          periodStart: { type: "integer", description: "Start of the period (Unix ms, UTC)." },
+          email: {
+            type: "object",
+            description: "Per-period email counts. Present only when `include` contains `email`.",
+            properties: EMAIL_ANALYTICS_COUNT_PROPERTIES,
+          },
+        },
+      },
       description: "Per-period totals in ascending order. Present only when `interval` is `day`, `week`, or `month`.",
     },
+    email: EMAIL_ANALYTICS_RESPONSE,
     previousPeriod: {
       type: "object",
       description:
         "Totals for the equal-length window immediately before the requested one (`analytics`, `startDate`, `endDate`). Present only when `include` contains `previousPeriod`.",
+      properties: {
+        email: {
+          ...EMAIL_ANALYTICS_RESPONSE,
+          description: "Previous-window email metrics when `include` contains both `previousPeriod` and `email`.",
+        },
+      },
     },
     statusCounts: {
       type: "object",
@@ -684,11 +822,23 @@ const PARTICIPANT_ANALYTICS_RESPONSE: ToolOutputSchema = {
     },
     series: {
       type: "array",
-      items: { type: "object", description: "Per-period activity totals plus `periodStart` (Unix ms, UTC)." },
-      description: "This participant's referral-link activity per period. Present only when `include` is `series`.",
+      items: {
+        type: "object",
+        description: "Per-period activity totals plus `periodStart` (Unix ms, UTC).",
+        properties: {
+          periodStart: { type: "integer", description: "Start of the period (Unix ms, UTC)." },
+          email: {
+            type: "object",
+            description: "Per-period email counts when both optional values are requested.",
+            properties: EMAIL_ANALYTICS_COUNT_PROPERTIES,
+          },
+        },
+      },
+      description: "This participant's per-period activity. Present when `include` contains `series`.",
     },
-    startDate: { type: "integer", description: "Window start (Unix ms). Present only with `include=series`." },
-    endDate: { type: "integer", description: "Window end (Unix ms). Present only with `include=series`." },
+    email: EMAIL_ANALYTICS_RESPONSE,
+    startDate: { type: "integer", description: "Window start (Unix ms). Present with `series` or `email`." },
+    endDate: { type: "integer", description: "Window end (Unix ms). Present with `series` or `email`." },
   },
 };
 
@@ -1005,6 +1155,66 @@ const INTEGRATION_CONNECT_LINK: ToolOutputSchema = {
   },
 };
 
+const PAYOUT_DESTINATION_STATUS_RESPONSE: ToolOutputSchema = {
+  type: "object",
+  description: "A participant's payout-destination status across every enabled payout provider.",
+  properties: {
+    participantId: { type: "string", description: "The participant's ID." },
+    activeProvider: {
+      type: ["string", "null"],
+      description: "The provider that currently gets paid (`PAYPAL` or `WISECOM`), or `null` until the participant confirms one.",
+    },
+    enabledProviders: {
+      type: "array",
+      description: "The payout providers enabled for this program (`PAYPAL`, `WISECOM`).",
+      items: { type: "string" },
+    },
+    destinations: {
+      type: "array",
+      description: "One entry per enabled payout provider describing the participant's destination for it.",
+      items: {
+        type: "object",
+        properties: {
+          provider: { type: "string", description: "The payout provider this entry describes (`PAYPAL` or `WISECOM`)." },
+          providerDisplayName: { type: "string", description: 'The customer-facing provider name (e.g. "PayPal", "Wise").' },
+          status: {
+            type: "string",
+            description:
+              "The destination's current status: `NONE`, `PENDING_CONFIRMATION`, `CONFIRMED`, `ACTIVE`, `NEEDS_REPAIR`, `EXPIRED`, `SUPERSEDED`, or `REVOKED`.",
+          },
+          claimEmail: { type: ["string", "null"], description: "The confirmed payout email for this provider." },
+          legalEntityType: {
+            type: ["string", "null"],
+            description: "The legal recipient type the participant confirmed (`INDIVIDUAL` or `BUSINESS`), if any.",
+          },
+          confirmedAt: {
+            type: ["integer", "null"],
+            description: "When the destination was confirmed, as a Unix timestamp in milliseconds.",
+          },
+          needsRepairReason: {
+            type: ["string", "null"],
+            description: "When status is `NEEDS_REPAIR`, why (e.g. a bounced delivery).",
+          },
+        },
+      },
+    },
+  },
+};
+
+const PAYOUT_DESTINATION_CONFIRMATION_REQUEST_RESPONSE: ToolOutputSchema = {
+  type: "object",
+  description: "Confirmation that a payout-destination confirmation message was requested for the participant.",
+  properties: {
+    status: { type: "string", description: "Confirms the message was requested (`CONFIRMATION_REQUESTED`)." },
+    provider: { type: "string", description: "The provider the participant was asked to confirm (`PAYPAL` or `WISECOM`)." },
+    providerDisplayName: { type: "string", description: 'The customer-facing provider name (e.g. "PayPal", "Wise").' },
+    expiresAt: {
+      type: ["integer", "null"],
+      description: "When the confirmation link expires, as a Unix timestamp in milliseconds.",
+    },
+  },
+};
+
 // Tool name -> output schema. EVERY tool is listed: the REST-backed tools advertise their JSON
 // response shape, and the guidance/snippet tools advertise the markdown envelope they return.
 // A tool that declares an output schema must return matching `structuredContent` on every
@@ -1089,6 +1299,8 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
   growsurf_get_participant_activity_logs: PARTICIPANT_ACTIVITY_LOGS_RESPONSE,
   growsurf_trigger_referral: REFERRAL_TRIGGER_RESPONSE,
   growsurf_cancel_delayed_referral: REFERRAL_TRIGGER_RESPONSE,
+  growsurf_get_participant_payout_destination: PAYOUT_DESTINATION_STATUS_RESPONSE,
+  growsurf_request_participant_payout_destination_confirmation: PAYOUT_DESTINATION_CONFIRMATION_REQUEST_RESPONSE,
   growsurf_record_sale: RECORD_TRANSACTION_RESPONSE,
   growsurf_refund_transaction: REFUND_TRANSACTION_RESPONSE,
   growsurf_create_mobile_participant_token: MOBILE_PARTICIPANT_TOKEN_RESPONSE,

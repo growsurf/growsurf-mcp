@@ -46,6 +46,13 @@ Applies to anything an MCP consumer reads: tool names/descriptions, guidance tex
 - **Never describe internal mechanics on this public surface.** Tool and field descriptions state the contract and the behavior a consumer can observe or act on, never how GrowSurf implements it. Cut queue/job phrasing, cache/TTL details, the names of backend services that power a feature, and anti-abuse mechanics. Preserve any consumer-visible consequence. (See "This Repo Is Public" above.)
 - Do not mass-rewrite existing tool text for style; apply this to new copy and to text you are already changing.
 
+## Product Language Consistency
+
+- Before introducing wording in a plan or customer-facing surface, check nearby GrowSurf copy, localization, docs, and other current public surfaces. Reuse established role names, feature names, capitalization, and verbs instead of inventing synonyms.
+- Use **Program/program** in general customer-facing prose. Keep **Campaign/campaign** where an exact API resource, schema, path, code identifier, or established term such as **Campaign Reward** requires it.
+- Describe text a customer can change as **customizable** and saved values as **configured**. Refer to the GrowSurf account holder as the customer, business, team, or program owner; use participant, referrer, or affiliate for the end user. Use **merchant** only when it is a fixed legal or payment-processing term, such as **Merchant of Record**.
+- Translate internal architecture and implementation language into what the reader can observe or do. If there is no clear precedent, ask Kevin before choosing terminology.
+
 ## Releases Are Push-Button, Not Hand-Run
 
 **Never run `npm publish` from a laptop, and never tell the user to.** GitHub Actions owns publishing:

@@ -10,6 +10,7 @@ This repo owns the public GrowSurf Model Context Protocol server package `@grows
 - Exports `createGrowSurfMcpServer` so hosted MCP runtimes can embed the same server without starting the stdio CLI.
 - Implements public GrowSurf API client helpers and customer-facing integration snippets.
 - Publishes standard MCP safety annotations for every tool. Scoped business writes remain available; API-key rotation remains a client helper but is intentionally not an MCP tool.
+- Exposes a deliberately curated subset of the REST API. Affiliate application review, affiliate invites, commissions, and payouts stay REST-only and are intentionally not MCP tools. Program settings those features rely on — such as the affiliate enrollment fields in `CAMPAIGN_OPTIONS` — are still readable and writable through the campaign options tools.
 - Builds TypeScript from `src/` into `dist/` for the published package.
 - Lists MCP prompts with short names like `set_rewards` and `read_analytics` because clients already namespace them by server (for example `/growsurf:set_rewards`). Legacy `growsurf_*` prompt aliases may still resolve for compatibility, but should not be listed to clients.
 

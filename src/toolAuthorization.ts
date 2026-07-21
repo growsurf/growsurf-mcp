@@ -185,6 +185,11 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_get_participant_activity_logs: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PARTICIPANT_READ),
   growsurf_trigger_referral: requiresScopes(TOOL_BEHAVIOR.MONEY_EXTERNAL, MACHINE_SCOPES.PARTICIPANT_WRITE),
   growsurf_cancel_delayed_referral: requiresScopes(TOOL_BEHAVIOR.DESTRUCTIVE, MACHINE_SCOPES.PARTICIPANT_WRITE),
+  growsurf_get_participant_payout_destination: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PARTICIPANT_READ),
+  growsurf_request_participant_payout_destination_confirmation: requiresScopes(
+    TOOL_BEHAVIOR.CONTENT_EXTERNAL,
+    MACHINE_SCOPES.PARTICIPANT_WRITE,
+  ),
   growsurf_record_sale: requiresScopes(TOOL_BEHAVIOR.MONEY_IDEMPOTENT, MACHINE_SCOPES.REWARD_WRITE),
   growsurf_refund_transaction: requiresScopes(TOOL_BEHAVIOR.MONEY_SET, MACHINE_SCOPES.REWARD_WRITE),
   growsurf_create_mobile_participant_token: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PARTICIPANT_WRITE),

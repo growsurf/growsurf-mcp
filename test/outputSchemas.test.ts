@@ -104,6 +104,42 @@ describe("tool output schemas", () => {
     for (const [name, schema] of Object.entries(TOOL_OUTPUT_SCHEMAS)) walk(schema, name);
   });
 
+  it("advertises optional email analytics on campaign and participant responses", () => {
+    const campaign = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_analytics;
+    const participant = TOOL_OUTPUT_SCHEMAS.growsurf_get_participant_analytics;
+
+    expect(campaign.properties).toHaveProperty("email");
+    expect(participant.properties).toHaveProperty("email");
+    expect((campaign.properties?.series as { items?: { properties?: object } }).items?.properties).toHaveProperty(
+      "email",
+    );
+    expect((participant.properties?.series as { items?: { properties?: object } }).items?.properties).toHaveProperty(
+      "email",
+    );
+  });
+
+  it("advertises every participant sign-in field on the campaign Design response", () => {
+    const design = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_design;
+    const login = design.properties?.login as { properties?: Record<string, unknown> };
+
+    expect(Object.keys(login.properties ?? {})).toEqual([
+      "heading",
+      "description",
+      "fieldLabel",
+      "fieldPlaceholder",
+      "buttonText",
+      "successHeading",
+      "successBody",
+      "resendPrompt",
+      "resend",
+      "resent",
+      "invalidEmail",
+      "cooldown",
+      "serverError",
+      "invalidLink",
+    ]);
+  });
+
   it("returns structuredContent matching the JSON text for REST-backed tools", async () => {
     const participant = {
       id: "part_1",

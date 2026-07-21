@@ -327,7 +327,8 @@ export class GrowSurfClient {
   }
 
   // Campaign analytics. Pass `interval` (day|week|month) to also receive a per-period `series`
-  // alongside the totals; pass `include` (comma-separated: previousPeriod, statusCounts, rates) to
+  // alongside the totals; pass `include` (comma-separated: previousPeriod, statusCounts, rates,
+  // email) to
   // enrich the response; scope the timeframe with `days` or an explicit startDate/endDate window.
   async getCampaignAnalytics(
     query: { interval?: string; include?: string; days?: number; startDate?: number; endDate?: number } = {},
@@ -386,8 +387,8 @@ export class GrowSurfClient {
     return this.requestJson("POST", this.participantPath(participantEmail, "/email"), body);
   }
 
-  // Pass `include=series` to also receive a per-period `series` of this participant's own activity;
-  // bucket it with `interval` (day|week|month) and scope it with `days` or a startDate/endDate window.
+  // Pass `include=series` to receive per-period referral activity, `include=email` for sent,
+  // delivery, and engagement metrics, or both values; scope either type of optional data with the window parameters.
   async getParticipantAnalyticsById(
     participantId: string,
     query: { include?: string; interval?: string; days?: number; startDate?: number; endDate?: number } = {},
@@ -422,6 +423,39 @@ export class GrowSurfClient {
 
   async updateParticipantByEmail(participantEmail: string, fields: Record<string, unknown>): Promise<unknown> {
     return this.requestJson("POST", this.participantPath(participantEmail), fields);
+  }
+
+  // Payout-destination status across every provider enabled for the program (PayPal and/or Wise).
+  async getPayoutDestinationById(participantId: string): Promise<unknown> {
+    return this.requestJson("GET", this.participantPath(participantId, "/payout-destination"));
+  }
+
+  async getPayoutDestinationByEmail(participantEmail: string): Promise<unknown> {
+    return this.requestJson("GET", this.participantPath(participantEmail, "/payout-destination"));
+  }
+
+  // Sends the participant a one-time link to confirm their payout destination for the chosen
+  // provider. Only the participant can open the link and confirm; this just triggers the message.
+  async requestPayoutDestinationConfirmationById(
+    participantId: string,
+    body: Record<string, unknown>,
+  ): Promise<unknown> {
+    return this.requestJson(
+      "POST",
+      this.participantPath(participantId, "/payout-destination/request-confirmation"),
+      body,
+    );
+  }
+
+  async requestPayoutDestinationConfirmationByEmail(
+    participantEmail: string,
+    body: Record<string, unknown>,
+  ): Promise<unknown> {
+    return this.requestJson(
+      "POST",
+      this.participantPath(participantEmail, "/payout-destination/request-confirmation"),
+      body,
+    );
   }
 
   // Bulk-deletes up to 200 participants in one request. Each entry is a GrowSurf participant ID or

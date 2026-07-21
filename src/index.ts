@@ -165,6 +165,8 @@ const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
   "growsurf_get_participant_activity_logs",
   "growsurf_trigger_referral",
   "growsurf_cancel_delayed_referral",
+  "growsurf_get_participant_payout_destination",
+  "growsurf_request_participant_payout_destination_confirmation",
   "growsurf_record_sale",
   "growsurf_refund_transaction",
   "growsurf_create_mobile_participant_token",
@@ -372,11 +374,20 @@ const campaignConfigUpdateSchema = z.object({
 });
 
 // Tax valuation settings shared by the reward `value` and `referredValue` fields
-// (openapi RewardTaxValuation). `null` on either sub-field means "clear / use the smart default".
+// (openapi RewardTaxValuation). `null` clears the field-level override.
 const rewardTaxValuationSchema = z.object({
-  fairMarketValueUSD: z.number().min(0).nullable().optional(),
-  isTaxReportable: z.boolean().nullable().optional(),
-});
+  fairMarketValueUSD: z.number().min(0).max(90071992547409.9).nullable().optional(),
+  taxCharacter: z
+    .enum([
+      "NONEMPLOYEE_SERVICES",
+      "PRIZE_OR_AWARD",
+      "PURCHASE_REBATE",
+      "OTHER_INCOME",
+      "REVIEW_REQUIRED",
+    ])
+    .nullable()
+    .optional(),
+}).strict();
 
 // Affiliate commission structure (openapi CommissionStructure) — a CLOSED object. The API rejects
 // unknown keys, so the MCP mirrors that exact shape instead of advertising an open `{[key]: any}`
@@ -480,6 +491,7 @@ const createMobileParticipantTokenSchema = addParticipantSchema;
 const participantAuthHashSchema = z.object({
   email: z.string().min(3),
   participantAuthSecret: z.string().min(1).optional(),
+  affiliateJoin: z.boolean().default(false),
 });
 
 const webhookNormalizeSchema = z.object({
@@ -557,9 +569,9 @@ const testWebhookSchema = z.object({
 
 const getCampaignAnalyticsSchema = z.object({
   interval: z.enum(["day", "week", "month", "total"]).optional(),
-  // Comma-separated opt-in enrichments (previousPeriod, statusCounts, rates). Modeled as a free
-  // string like the openapi `include` param — the API validates the individual tokens, and new
-  // enrichments can be added server-side without a schema bump here.
+  // Comma-separated optional data (previousPeriod, statusCounts, rates, email). Modeled as a free
+  // string like the openapi `include` param — the API validates the individual values, and new
+  // values can be added server-side without a schema bump here.
   include: z.string().optional(),
   days: z.number().int().min(1).max(1825).optional(),
   startDate: z.number().int().optional(),
@@ -603,10 +615,8 @@ const emailParticipantSchema = z
 const getParticipantAnalyticsSchema = z
   .object({
     ...participantIdentityFields,
-    // include=series adds a per-period `series` of this participant's own activity. `interval`,
-    // `days`, `startDate`, and `endDate` mirror the campaign-analytics window params (interval has
-    // no "total" here — the series is only produced when include=series).
-    include: z.enum(["series"]).optional(),
+    // Keep this open so new server-supported include tokens do not require an MCP release.
+    include: z.string().min(1).optional(),
     interval: z.enum(["day", "week", "month"]).optional(),
     days: z.number().int().min(1).max(1825).optional(),
     startDate: z.number().int().optional(),
@@ -619,6 +629,19 @@ const getParticipantActivityLogsSchema = z
     ...participantIdentityFields,
     limit: z.number().int().min(1).max(100).optional(),
     offset: z.number().int().min(0).optional(),
+  })
+  .refine(hasParticipantIdentity, { message: PARTICIPANT_IDENTITY_HINT });
+
+const getParticipantPayoutDestinationSchema = z
+  .object({
+    ...participantIdentityFields,
+  })
+  .refine(hasParticipantIdentity, { message: PARTICIPANT_IDENTITY_HINT });
+
+const requestParticipantPayoutDestinationConfirmationSchema = z
+  .object({
+    ...participantIdentityFields,
+    provider: z.enum(["PAYPAL", "WISECOM"]),
   })
   .refine(hasParticipantIdentity, { message: PARTICIPANT_IDENTITY_HINT });
 
@@ -918,20 +941,40 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               value: {
                 type: "object",
                 description:
-                  "Tax valuation for the reward (the referrer's side of a double-sided reward). fairMarketValueUSD = manual fair-market value in USD (major units); isTaxReportable = whether it counts toward 1099 thresholds (null = smart default).",
+                  "Tax valuation for the reward (the referrer's side of a double-sided reward). `fairMarketValueUSD` is the manual fair-market value in USD (major units). `taxCharacter` is the U.S. federal tax character; `null` clears the reward-level override.",
                 properties: {
                   fairMarketValueUSD: { type: ["number", "null"], minimum: 0 },
-                  isTaxReportable: { type: ["boolean", "null"] },
+                  taxCharacter: {
+                    type: ["string", "null"],
+                    enum: [
+                      "NONEMPLOYEE_SERVICES",
+                      "PRIZE_OR_AWARD",
+                      "PURCHASE_REBATE",
+                      "OTHER_INCOME",
+                      "REVIEW_REQUIRED",
+                      null,
+                    ],
+                  },
                 },
                 additionalProperties: false,
               },
               referredValue: {
                 type: "object",
                 description:
-                  "Tax valuation for the referred friend's side of a double-sided reward. Defaults to not tax-reportable (a purchase rebate).",
+                  "Tax valuation for the referred friend's side of a double-sided reward. Use `PURCHASE_REBATE` only when that is the correct tax character.",
                 properties: {
                   fairMarketValueUSD: { type: ["number", "null"], minimum: 0 },
-                  isTaxReportable: { type: ["boolean", "null"] },
+                  taxCharacter: {
+                    type: ["string", "null"],
+                    enum: [
+                      "NONEMPLOYEE_SERVICES",
+                      "PRIZE_OR_AWARD",
+                      "PURCHASE_REBATE",
+                      "OTHER_INCOME",
+                      "REVIEW_REQUIRED",
+                      null,
+                    ],
+                  },
                 },
                 additionalProperties: false,
               },
@@ -969,20 +1012,40 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               value: {
                 type: "object",
                 description:
-                  "Tax valuation for the reward (the referrer's side of a double-sided reward). fairMarketValueUSD = manual fair-market value in USD (major units); isTaxReportable = whether it counts toward 1099 thresholds (null = smart default).",
+                  "Tax valuation for the reward (the referrer's side of a double-sided reward). `fairMarketValueUSD` is the manual fair-market value in USD (major units). `taxCharacter` is the U.S. federal tax character; `null` clears the reward-level override.",
                 properties: {
                   fairMarketValueUSD: { type: ["number", "null"], minimum: 0 },
-                  isTaxReportable: { type: ["boolean", "null"] },
+                  taxCharacter: {
+                    type: ["string", "null"],
+                    enum: [
+                      "NONEMPLOYEE_SERVICES",
+                      "PRIZE_OR_AWARD",
+                      "PURCHASE_REBATE",
+                      "OTHER_INCOME",
+                      "REVIEW_REQUIRED",
+                      null,
+                    ],
+                  },
                 },
                 additionalProperties: false,
               },
               referredValue: {
                 type: "object",
                 description:
-                  "Tax valuation for the referred friend's side of a double-sided reward. Defaults to not tax-reportable (a purchase rebate).",
+                  "Tax valuation for the referred friend's side of a double-sided reward. Use `PURCHASE_REBATE` only when that is the correct tax character.",
                 properties: {
                   fairMarketValueUSD: { type: ["number", "null"], minimum: 0 },
-                  isTaxReportable: { type: ["boolean", "null"] },
+                  taxCharacter: {
+                    type: ["string", "null"],
+                    enum: [
+                      "NONEMPLOYEE_SERVICES",
+                      "PRIZE_OR_AWARD",
+                      "PURCHASE_REBATE",
+                      "OTHER_INCOME",
+                      "REVIEW_REQUIRED",
+                      null,
+                    ],
+                  },
                 },
                 additionalProperties: false,
               },
@@ -1045,7 +1108,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_options",
           description:
-            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, notifications, and other behavior options). Returns the full object with every field and its current value — the same shape you send back on update. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, affiliate enrollment and application review, notifications, and other behavior options). Returns the full object with every field and its current value — the same shape you send back on update. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -1141,7 +1204,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_analytics",
           description:
-            "Fetch analytics for your GrowSurf program — participants, referrals, impressions, per-channel shares, plus affiliate revenue/commissions for affiliate programs. Pass `interval` (day, week, or month) to also receive a `series` array of per-period totals for trend detection (defaults to `total`, no series). Pass `include` (comma-separated: previousPeriod, statusCounts, rates) to enrich the response — previousPeriod adds totals for the equal-length window immediately before the requested one; statusCounts adds reward (and, for affiliate programs, affiliate/commission/payout) status breakdowns; rates adds derived referral rates. Scope the timeframe with `days` (last N days, default 365, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch analytics for your GrowSurf program: participants, referrals, impressions, per-channel shares, and affiliate revenue, commission, and payout metrics when applicable. Pass `interval` (`day`, `week`, or `month`) for a per-period `series`. Pass comma-separated `include` values for `previousPeriod`, `statusCounts`, `rates`, or `email`. The `email` data reports sent, delivered, opened, clicked, bounced, and spam-complaint counts, rates, and per-email-type metrics. Scope the timeframe with `days` (default 365, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1153,7 +1216,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               include: {
                 type: "string",
                 description:
-                  "Comma-separated opt-in enrichments (keeps the default response lean): `previousPeriod` (totals for the equal-length prior window), `statusCounts` (reward and, for affiliate programs, affiliate/commission/payout status breakdowns), `rates` (derived referral rates).",
+                  "Comma-separated optional data: `previousPeriod`, `statusCounts`, `rates`, and `email`. Combine `email` with `previousPeriod` or a non-total `interval` to receive matching email metrics for those windows.",
               },
               days: { type: "integer", minimum: 1, maximum: 1825 },
               startDate: { type: "integer", description: "Start of the timeframe, Unix timestamp in ms. Use with endDate instead of days." },
@@ -1361,7 +1424,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_participant_analytics",
           description:
-            "Fetch all-time analytics for a single participant (by GrowSurf participant ID or email): engagement counters, leaderboard ranks, and per-channel share counts, plus affiliate money metrics (referral revenue, commissions, paid out, upcoming payout) for affiliate programs. Pass `include=series` to also receive a `series` array of this participant's own activity per period; bucket it with `interval` (day, week, or month; default day) and scope the timeframe with `days` (last N days, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). Useful for segmenting and re-engaging participants. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch analytics for one participant by GrowSurf participant ID or email. The base response includes engagement, rank, share, and applicable affiliate revenue, commission, and payout metrics. Set `include` to `series`, `email`, or both comma-separated. `email` reports sent, delivered, opened, clicked, bounced, and spam-complaint metrics attributed to this participant, including invitations they sent; `series` returns per-period activity. Bucket with `interval` (`day`, `week`, or `month`, default `day`) and scope the window with `days` (max 1825) or `startDate`/`endDate` (Unix ms). Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1369,13 +1432,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               participantEmail: { type: "string" },
               include: {
                 type: "string",
-                enum: ["series"],
-                description: "Set to `series` to also return this participant's own activity per period.",
+                description: "Comma-separated optional data. Current values are `series` and `email`; the API returns `400` for unknown values.",
               },
               interval: {
                 type: "string",
                 enum: ["day", "week", "month"],
-                description: "Bucket size for the `series` (only used with include=series). Defaults to day.",
+                description: "Bucket size for `series` and email series. Defaults to `day`.",
               },
               days: { type: "integer", minimum: 1, maximum: 1825 },
               startDate: { type: "integer", description: "Start of the timeframe, Unix timestamp in ms. Use with endDate instead of days." },
@@ -1426,6 +1488,40 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               participantId: { type: "string" },
               participantEmail: { type: "string" },
             },
+            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_get_participant_payout_destination",
+          description:
+            "Get a participant's payout-destination status (by GrowSurf participant ID or email) across every payout provider enabled for the program (PayPal and/or Wise). For each provider it reports the current `status`, the confirmed payout email, the legal recipient type, and — when a delivery bounced or a recipient was invalidated — the repair reason. `activeProvider` is the provider that currently gets paid, or null until the participant confirms one. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participantId: { type: "string" },
+              participantEmail: { type: "string" },
+            },
+            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_request_participant_payout_destination_confirmation",
+          description:
+            "Ask a participant to confirm their payout destination for a provider (by GrowSurf participant ID or email). Sends them a one-time confirmation link for the chosen `provider`; only the participant can open the link and confirm — this just triggers the message, and the provider must be enabled for the program. Returns { status, provider, providerDisplayName, expiresAt }. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participantId: { type: "string" },
+              participantEmail: { type: "string" },
+              provider: {
+                type: "string",
+                enum: ["PAYPAL", "WISECOM"],
+                description: "The payout provider the participant should confirm a destination for.",
+              },
+            },
+            required: ["provider"],
             anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
             additionalProperties: false,
           },
@@ -1514,12 +1610,14 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         },
         {
           name: "growsurf_participant_auth_hash",
-          description: "Compute SHA-256 HMAC hash used for GrowSurf participant auto-auth (server-side helper).",
+          description:
+            "Compute the server-side SHA-256 HMAC for GrowSurf Participant Auto Authentication. Set affiliateJoin only when this signed-in user may join the affiliate program directly.",
           inputSchema: {
             type: "object",
             properties: {
               email: { type: "string" },
               participantAuthSecret: { type: "string" },
+              affiliateJoin: { type: "boolean", default: false },
             },
             required: ["email"],
             additionalProperties: false,
@@ -1595,6 +1693,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               enableParticipantAutoAuth: { type: "boolean", default: false },
               email: { type: "string" },
               hash: { type: "string" },
+              affiliateJoin: { type: "boolean", default: false },
               includeAutoAuthCommentHeader: { type: "boolean", default: true }
             },
             required: [],
@@ -2028,6 +2127,23 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             : await growsurf.cancelDelayedReferralByParticipantEmail(input.participantEmail!);
           return jsonToolResult(result);
         }
+        case "growsurf_get_participant_payout_destination": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = getParticipantPayoutDestinationSchema.parse(request.params.arguments ?? {});
+          const result = input.participantId
+            ? await growsurf.getPayoutDestinationById(input.participantId)
+            : await growsurf.getPayoutDestinationByEmail(input.participantEmail!);
+          return jsonToolResult(result);
+        }
+        case "growsurf_request_participant_payout_destination_confirmation": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = requestParticipantPayoutDestinationConfirmationSchema.parse(request.params.arguments ?? {});
+          const body = { provider: input.provider };
+          const result = input.participantId
+            ? await growsurf.requestPayoutDestinationConfirmationById(input.participantId, body)
+            : await growsurf.requestPayoutDestinationConfirmationByEmail(input.participantEmail!, body);
+          return jsonToolResult(result);
+        }
         case "growsurf_record_sale": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = recordSaleSchema.parse(request.params.arguments ?? {});
@@ -2115,7 +2231,11 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               isError: true,
             };
           }
-          const hash = computeParticipantAuthHash({ email: input.email, participantAuthSecret: secret });
+          const hash = computeParticipantAuthHash({
+            email: input.email,
+            participantAuthSecret: secret,
+            affiliateJoin: input.affiliateJoin,
+          });
           return { content: [{ type: "text", text: hash }], structuredContent: { hash } };
         }
         case "growsurf_webhook_normalize": {

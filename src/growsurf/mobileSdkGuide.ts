@@ -234,6 +234,20 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
     );
   }
 
+  if (input.participantState === "existing_signed_in_user" || input.participantState === "both") {
+    sections.push(
+      "For a returning participant who is not signed in, request a magic-link email from the SDK. The link opens the secure GrowSurf-hosted portal. Known and unknown emails receive the same confirmation. The customizable form and status text comes from `window.campaign.design.login`.",
+      codeBlock(
+        "swift",
+        [
+          "try await growsurf.requestParticipantLogin(",
+          "    email: \"person@example.com\"",
+          ")",
+        ].join("\n"),
+      ),
+    );
+  }
+
   sections.push(
     "Recommended sharing path: present the native GrowSurf Window from your own app button or menu. Use a backend-minted token for signed-in users, or `result.participantToken` from a just-created SDK participant if opening the window immediately. The SDK already stores returned participant tokens; keep one yourself only when you need this explicit window handoff.",
     codeBlock(
@@ -322,6 +336,16 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
     );
   }
 
+  if (input.participantState === "existing_signed_in_user" || input.participantState === "both") {
+    sections.push(
+      "For a returning participant who is not signed in, request a magic-link email from the SDK. The link opens the secure GrowSurf-hosted portal. Known and unknown emails receive the same confirmation. The customizable form and status text comes from `window.campaign.design.login`.",
+      codeBlock(
+        "kotlin",
+        "growsurf.requestParticipantLogin(email = \"person@example.com\")",
+      ),
+    );
+  }
+
   sections.push(
     "Recommended sharing path: present the native GrowSurf Window from your own app button or menu. Use a backend-minted token for signed-in users, or `result.participantToken` from a just-created SDK participant if opening the window immediately. The SDK already stores returned participant tokens; keep one yourself only when you need this explicit window handoff.",
     codeBlock(
@@ -355,6 +379,7 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
     "- Native apps use a public Mobile SDK key, not the secret REST API key.",
     "- The recommended mobile referral portal is the native GrowSurf Window opened from your own app UI.",
     "- For signed-in users, mint a participant-scoped mobile token on your backend and pass it to the SDK.",
+    "- For returning users who are not signed in, `requestParticipantLogin` sends a magic-link email. Known and unknown emails receive the same response, and the link opens the secure GrowSurf-hosted portal.",
     "- Use `validateReferrer()` when you only need to check referral attribution. Use `recordAttribution()` only when you intentionally want to record an impression.",
     "- Use `addReferredParticipant()` for referral-only signup tracking.",
     "- When `addReferredParticipant()` or `addParticipant()` returns a `participantToken`, the SDK stores it automatically.",

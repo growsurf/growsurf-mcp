@@ -275,7 +275,7 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
         `Timeframe: ${timeframe}.`,
         `Question: ${question}.`,
         "",
-        "Use growsurf_get_campaign_analytics with interval and include values that fit the question. Start with totals, then request series data when trend or pacing matters.",
+        "Use growsurf_get_campaign_analytics with interval and include values that fit the question. Request `email` for delivery and engagement metrics, and series data when trend or pacing matters.",
         "When diagnosing one participant, use growsurf_get_participant_analytics and growsurf_get_participant_activity_logs.",
         "Report plain-language findings, likely causes, and the next concrete action. Separate measured facts from hypotheses.",
       ].join("\n");

@@ -179,6 +179,20 @@ describe("MCP tool authorization", () => {
     ]);
   });
 
+  it("keeps participant analytics include open for future comma-separated tokens", async () => {
+    const participantAnalytics = (await listTools())
+      .find((tool) => tool.name === "growsurf_get_participant_analytics");
+
+    expect(participantAnalytics?.inputSchema).toMatchObject({
+      properties: {
+        include: {
+          type: "string",
+        },
+      },
+    });
+    expect(participantAnalytics?.inputSchema).not.toHaveProperty("properties.include.enum");
+  });
+
   it("publishes standard safety annotations and one control-plane risk tier for every tool", async () => {
     const tools = await listTools();
     const byName = new Map(tools.map((tool) => [tool.name, tool]));

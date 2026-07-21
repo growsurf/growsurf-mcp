@@ -91,7 +91,7 @@ Use `growsurf_list_campaign_webhooks`, then create or update with the exact even
 
 ### Read Analytics
 
-Use `growsurf_get_campaign_analytics`. Add `include=rates,statusCounts` when the user asks "how is it performing?" Add an interval only when a trend is needed.
+Use `growsurf_get_campaign_analytics`. Add `include=rates,statusCounts` for overall performance, and add `email` when the question covers email delivery or engagement. Request an interval only for trend or pacing questions. For one participant, use `growsurf_get_participant_analytics` with `include=email`, adding `series` only when a time trend is needed.
 
 ## Final Response Checklist
 

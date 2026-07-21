@@ -202,8 +202,8 @@ describe("GrowSurfClient", () => {
       type: "SINGLE_SIDED",
       title: "Reward",
       referralCouponCode: "FRIEND10",
-      value: { fairMarketValueUSD: 25, isTaxReportable: true },
-      referredValue: { fairMarketValueUSD: null, isTaxReportable: false },
+      value: { fairMarketValueUSD: 25, taxCharacter: "PRIZE_OR_AWARD" },
+      referredValue: { fairMarketValueUSD: null, taxCharacter: "PURCHASE_REBATE" },
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -214,8 +214,8 @@ describe("GrowSurfClient", () => {
           type: "SINGLE_SIDED",
           title: "Reward",
           referralCouponCode: "FRIEND10",
-          value: { fairMarketValueUSD: 25, isTaxReportable: true },
-          referredValue: { fairMarketValueUSD: null, isTaxReportable: false },
+          value: { fairMarketValueUSD: 25, taxCharacter: "PRIZE_OR_AWARD" },
+          referredValue: { fairMarketValueUSD: null, taxCharacter: "PURCHASE_REBATE" },
         }),
       }),
     );
@@ -228,7 +228,7 @@ describe("GrowSurfClient", () => {
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
     await client.updateCampaignReward("crew_1", {
       referralCouponCode: null,
-      value: { fairMarketValueUSD: 10, isTaxReportable: null },
+      value: { fairMarketValueUSD: 10, taxCharacter: null },
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -237,7 +237,7 @@ describe("GrowSurfClient", () => {
         method: "PATCH",
         body: JSON.stringify({
           referralCouponCode: null,
-          value: { fairMarketValueUSD: 10, isTaxReportable: null },
+          value: { fairMarketValueUSD: 10, taxCharacter: null },
         }),
       }),
     );
@@ -564,7 +564,7 @@ describe("GrowSurfClient", () => {
     );
   });
 
-  it("gets campaign analytics with the include enrichment query param", async () => {
+  it("gets campaign analytics with optional data in the include query param", async () => {
     const fetchMock = mockJson({ analytics: {}, previousPeriod: {}, statusCounts: {}, rates: {} });
     globalThis.fetch = fetchMock as typeof fetch;
 
@@ -573,6 +573,19 @@ describe("GrowSurfClient", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://api.growsurf.com/v2/campaign/abc123/analytics?include=statusCounts&days=30",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("gets campaign email analytics with the email include token", async () => {
+    const fetchMock = mockJson({ analytics: {}, email: { sent: 2, delivered: 1 } });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+    await client.getCampaignAnalytics({ include: "email", days: 30 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.growsurf.com/v2/campaign/abc123/analytics?include=email&days=30",
       expect.objectContaining({ method: "GET" }),
     );
   });
@@ -788,6 +801,23 @@ describe("GrowSurfClient", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://api.growsurf.com/v2/campaign/abc123/participant/part_1/analytics?include=series&interval=week&days=30",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("passes future participant analytics include tokens through unchanged", async () => {
+    const fetchMock = mockJson({ analytics: {}, email: { sent: 2 }, series: [], startDate: 1, endDate: 2 });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+    await client.getParticipantAnalyticsById("part_1", {
+      include: "email,futureValue",
+      interval: "week",
+      days: 30,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.growsurf.com/v2/campaign/abc123/participant/part_1/analytics?include=email%2CfutureValue&interval=week&days=30",
       expect.objectContaining({ method: "GET" }),
     );
   });
