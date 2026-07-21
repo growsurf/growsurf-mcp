@@ -238,12 +238,12 @@ const REWARD: ToolOutputSchema = {
     couponCode: {
       type: ["string", "null"],
       description:
-        "Static coupon code shown to the referrer in the reward-won email and webhook. Display text only; superseded by a connected billing integration's issued coupon.",
+        "Legacy static coupon code shown to the referrer in the reward-won email and webhook. Display text only; superseded by a connected billing integration's issued coupon.",
     },
     referralCouponCode: {
       type: ["string", "null"],
       description:
-        "Static coupon code shown to the referred friend (double-sided rewards). Display text only; superseded by a connected billing integration's issued coupon.",
+        "Legacy static coupon code shown to the referred friend (double-sided rewards). Display text only; superseded by a connected billing integration's issued coupon.",
     },
     order: { type: ["integer", "null"], description: "Display order when there are multiple rewards." },
     nextMilestonePrefix: {
