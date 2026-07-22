@@ -323,7 +323,7 @@ Every tool declares an MCP output schema and returns `structuredContent`, so hos
   Delete a campaign reward by its reward key.
 
 - `growsurf_get_campaign_design` / `growsurf_update_campaign_design`
-  Read or patch the Program Editor Design tab config.
+  Read or patch design configuration, including the Program Editor Design tab and payout-destination confirmation page copy.
 
 - `growsurf_get_campaign_emails` / `growsurf_update_campaign_emails`
   Read or patch the Program Editor Emails tab config.
@@ -362,7 +362,7 @@ Every tool declares an MCP output schema and returns `structuredContent`, so hos
   Fetch one participant by GrowSurf participant ID or email address.
 
 - `growsurf_update_participant`
-  Update a participant by ID or email (including `notes` and `paypalEmail`).
+  Update a participant by ID or email (including internal `notes`).
 
 - `growsurf_bulk_delete_participants`
   Permanently delete up to 200 participants (by ID and/or email, mixed lists allowed) in one request, with per-row `DELETED`/`NOT_FOUND`/`DUPLICATE`/`ERROR` results. Irreversible — removes the participants' referrals, rewards, commissions, and payout records.

@@ -835,21 +835,20 @@ describe("GrowSurfClient", () => {
     );
   });
 
-  it("updates a participant with a POST including notes and paypalEmail", async () => {
+  it("updates a participant with a POST including notes", async () => {
     const fetchMock = mockJson({ id: "part_1" });
     globalThis.fetch = fetchMock as typeof fetch;
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
     await client.updateParticipantById("part_1", {
       notes: "VIP affiliate",
-      paypalEmail: "richard@piedpiper.com",
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://api.growsurf.com/v2/campaign/abc123/participant/part_1",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ notes: "VIP affiliate", paypalEmail: "richard@piedpiper.com" }),
+        body: JSON.stringify({ notes: "VIP affiliate" }),
       }),
     );
   });

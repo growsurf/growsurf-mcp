@@ -65,6 +65,21 @@ const PARTICIPANT: ToolOutputSchema = {
     firstName: { type: ["string", "null"], description: "The participant's first name." },
     lastName: { type: ["string", "null"], description: "The participant's last name." },
     email: { type: "string", description: "The participant's email address." },
+    isAffiliate: {
+      type: "boolean",
+      description:
+        "Affiliate programs only. Whether this participant is an enrolled affiliate. A referred customer who has not joined the program is `false`.",
+    },
+    affiliateStatus: {
+      type: ["string", "null"],
+      description:
+        "Affiliate programs only. The enrolled affiliate's status (`APPROVED`, `SUSPENDED`, or `BANNED`). `null` for participants who are not affiliates.",
+    },
+    affiliateEnrollmentSource: {
+      type: ["string", "null"],
+      description:
+        "Affiliate programs only. How the affiliate enrolled (`OPEN_ENROLLMENT`, `APPLICATION`, `PARTICIPANT_AUTH`, `INVITE`, `REST_API`, `CSV`, or `DASHBOARD`). `null` when not recorded.",
+    },
     paypalEmailAddress: {
       type: "string",
       description: "PayPal email address on file, used for affiliate or PayPal reward payouts.",
@@ -327,7 +342,7 @@ const DELETE_REWARD_RESPONSE: ToolOutputSchema = {
 const CAMPAIGN_DESIGN: ToolOutputSchema = {
   type: "object",
   description:
-    "A program's design configuration, organized by section. The sections available depend on the program type. `GET` returns the full object with every field; `PATCH` back only the sections or fields you want to change.",
+    "A program's design configuration, organized by section. The sections available depend on the program type. `GET` returns configured fields; `payoutDestinationConfirmation` is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. `PATCH` back only the sections or fields you want to change.",
   properties: {
     window: { type: "object", description: "Layout of the GrowSurf window (`navigationMode`: `TABS` or `LIST`)." },
     header: { type: "object", description: "Header content for participants (`postText`) and non-participants (`preText`)." },
@@ -352,6 +367,39 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         cooldown: { type: "string", description: "Message shown when another link cannot be requested yet." },
         serverError: { type: "string", description: "Message shown when GrowSurf cannot request a sign-in link." },
         invalidLink: { type: "string", description: "Message shown when a sign-in link is invalid or expired." },
+      },
+    },
+    payoutDestinationConfirmation: {
+      type: "object",
+      description:
+        "Customizable text for the payout-destination confirmation page opened from payout integration cards. One shared set applies to every enabled payout provider. Provider-aware text may use `{{payoutProvider}}`; omitted and `null` fields use localized defaults.",
+      properties: {
+        headline: { type: ["string", "null"], maxLength: 255, description: "Page heading above the confirmation form." },
+        description: { type: ["string", "null"], maxLength: 500, description: "Instructions below the page heading." },
+        emailLabel: { type: ["string", "null"], maxLength: 255, description: "Label for the participant's payout email field." },
+        emailPlaceholder: { type: ["string", "null"], maxLength: 255, description: "Placeholder inside the payout email field." },
+        emailAgainLabel: { type: ["string", "null"], maxLength: 255, description: "Label for confirming the payout email." },
+        emailAgainPlaceholder: { type: ["string", "null"], maxLength: 255, description: "Placeholder inside the payout-email confirmation field." },
+        legalNameLabel: { type: ["string", "null"], maxLength: 255, description: "Label for the payout recipient's legal name." },
+        legalNamePlaceholder: { type: ["string", "null"], maxLength: 255, description: "Placeholder inside the legal-name field." },
+        legalTypeLabel: { type: ["string", "null"], maxLength: 255, description: "Label for choosing the payout recipient type." },
+        legalTypeIndividual: { type: ["string", "null"], maxLength: 255, description: "Option text for an individual payout recipient." },
+        legalTypeBusiness: { type: ["string", "null"], maxLength: 255, description: "Option text for a business payout recipient." },
+        button: { type: ["string", "null"], maxLength: 255, description: "Text on the confirmation form's submit button." },
+        success: { type: ["string", "null"], maxLength: 500, description: "Message shown after payout details are confirmed." },
+        claimPending: { type: ["string", "null"], maxLength: 500, description: "Message shown while GrowSurf finishes confirming the payout destination." },
+        errorMessages: {
+          type: "object",
+          description: "Custom validation and confirmation-link status messages.",
+          properties: {
+            invalidEmail: { type: ["string", "null"], maxLength: 255, description: "Message shown for an invalid email address." },
+            emailMismatch: { type: ["string", "null"], maxLength: 255, description: "Message shown when the email entries do not match." },
+            tokenExpired: { type: ["string", "null"], maxLength: 255, description: "Message shown when the confirmation link expired." },
+            tokenUsed: { type: ["string", "null"], maxLength: 255, description: "Message shown when the confirmation link was already used." },
+            alreadyConfirmed: { type: ["string", "null"], maxLength: 255, description: "Message shown when the destination is no longer awaiting confirmation." },
+            generic: { type: ["string", "null"], maxLength: 255, description: "Provider-neutral fallback message for another unusable-link state." },
+          },
+        },
       },
     },
     referralStatus: {
@@ -442,9 +490,15 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
       type: "object",
       description: "One-time sign-in link for returning participants. Transactional; its toggle cannot be changed.",
     },
-    paypalEmailConfirmation: {
+    payoutDestinationConfirmation: {
       type: "object",
-      description: "Asks a participant to confirm their PayPal payout email. Transactional; its toggle cannot be changed.",
+      description:
+        "Asks a participant to confirm the payout destination where they will receive payouts, such as a PayPal or Wise email address. Its body may use `{{payoutProvider}}` and must keep `{{payoutDestinationConfirmationLink}}`. Referral and affiliate programs. Transactional; its toggle cannot be changed.",
+    },
+    payoutDestinationChanged: {
+      type: "object",
+      description:
+        "Tells a participant their payout destination changed. Its body must keep `{{payoutDestinationMaskedEmail}}`. Referral and affiliate programs. Transactional; its toggle cannot be changed.",
     },
     taxInfoMissing: {
       type: "object",
@@ -477,6 +531,16 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
       description:
         "Tells an applicant their affiliate application was not approved. Affiliate programs only. Transactional; its toggle cannot be changed.",
     },
+    inviteAffiliate: {
+      type: "object",
+      description:
+        "Invites a prospective affiliate to join the program. Its body must keep `{{affiliateInviteLink}}`. Affiliate programs only. Promotional; its toggle can be changed.",
+    },
+    affiliateApplicationStatusLink: {
+      type: "object",
+      description:
+        "Sends an applicant a secure link to view their application status. Its body must keep `{{applicationStatusLink}}`. Affiliate programs only. Transactional; its toggle cannot be changed.",
+    },
     affiliateApplicationEmailCorrection: {
       type: "object",
       description:
@@ -489,7 +553,8 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
     },
     settings: {
       type: "object",
-      description: "Sender (`sender`), physical contact address (`contact`), and shared design (`design`) settings.",
+      description:
+        "Sender (`sender`), physical contact address (`contact`), and shared design (`design`) settings. The design object includes `unsubscribeAffiliateInvite` for direct affiliate invitation emails.",
     },
   },
 };
