@@ -32,6 +32,7 @@ import {
 import { mobileSdkGuideInputSchema, renderMobileSdkGuide } from "./growsurf/mobileSdkGuide.js";
 import { TOOL_OUTPUT_SCHEMAS, type ToolOutputSchema } from "./growsurf/outputSchemas.js";
 import { computeParticipantAuthHash } from "./growsurf/participantAuth.js";
+import { PAYOUT_DESTINATION_PROVIDER_INPUTS } from "./growsurf/payoutProviders.js";
 import {
   agentProgramCreationEvalInputSchema,
   renderAgentProgramCreationEval,
@@ -641,7 +642,7 @@ const getParticipantPayoutDestinationSchema = z
 const requestParticipantPayoutDestinationConfirmationSchema = z
   .object({
     ...participantIdentityFields,
-    provider: z.enum(["PAYPAL", "WISECOM"]),
+    provider: z.enum(PAYOUT_DESTINATION_PROVIDER_INPUTS),
   })
   .refine(hasParticipantIdentity, { message: PARTICIPANT_IDENTITY_HINT });
 
@@ -1511,7 +1512,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               participantEmail: { type: "string" },
               provider: {
                 type: "string",
-                enum: ["PAYPAL", "WISECOM"],
+                enum: [...PAYOUT_DESTINATION_PROVIDER_INPUTS],
                 description: "The payout provider the participant should confirm a destination for.",
               },
             },
