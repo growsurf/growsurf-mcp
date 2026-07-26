@@ -48,7 +48,7 @@ const renderTypeScript = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = ["### TypeScript (`growsurf-typescript` 0.2.0+)"];
+  const sections: string[] = ["### TypeScript (`growsurf-typescript` 1.2.0+)"];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
       codeBlock(
@@ -147,7 +147,7 @@ const renderPython = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = ["### Python (`growsurf-python` 0.2.0+)"];
+  const sections: string[] = ["### Python (`growsurf-python` 1.2.0+)"];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
       codeBlock("sh", "pip install growsurf-python"),
@@ -237,7 +237,7 @@ const renderPhp = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = ["### PHP (`growsurf/growsurf-php` 0.3.0+)"];
+  const sections: string[] = ["### PHP (`growsurf/growsurf-php` 1.2.0+)"];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
       codeBlock(
@@ -332,10 +332,10 @@ const renderRuby = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = ["### Ruby (`growsurf-ruby` 0.2.0+)"];
+  const sections: string[] = ["### Ruby (`growsurf-ruby` 1.2.0+)"];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
-      codeBlock("ruby", "gem \"growsurf-ruby\", \"~> 0.2.0\""),
+      codeBlock("ruby", "gem \"growsurf-ruby\", \"~> 1.2.0\""),
       codeBlock(
         "ruby",
         [
@@ -419,10 +419,10 @@ const renderJava = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = ["### Java (`com.growsurf.api:growsurf-java` 0.3.0+)"];
+  const sections: string[] = ["### Java (`com.growsurf.api:growsurf-java` 1.2.0+)"];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
-      codeBlock("kotlin", "implementation(\"com.growsurf.api:growsurf-java:0.3.0\")"),
+      codeBlock("kotlin", "implementation(\"com.growsurf.api:growsurf-java:1.2.0\")"),
       codeBlock(
         "java",
         [

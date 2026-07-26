@@ -118,6 +118,39 @@ describe("tool output schemas", () => {
     );
   });
 
+  it("describes reward tax character without overriding Commission treatment", async () => {
+    const rewardList = TOOL_OUTPUT_SCHEMAS.growsurf_list_campaign_rewards;
+    const reward = (rewardList.properties?.rewards as { items?: { properties?: Record<string, unknown> } }).items;
+    const value = reward?.properties?.value as {
+      properties?: Record<string, { description?: string }>;
+    };
+    const outputDescription = value.properties?.taxCharacter.description ?? "";
+
+    expect(outputDescription).toMatch(/reason the recipient earns the reward/i);
+    expect(outputDescription).toMatch(/configurable non-commission rewards/i);
+    expect(outputDescription).toMatch(/inherits the program's confirmed treatment/i);
+    expect(outputDescription).toMatch(/Commission rewards always use `NONEMPLOYEE_SERVICES`/);
+    expect(outputDescription).not.toMatch(/no override is configured/i);
+
+    const client = await connectClient();
+    try {
+      const { tools } = await client.listTools();
+      for (const name of ["growsurf_create_campaign_reward", "growsurf_update_campaign_reward"]) {
+        const tool = tools.find((candidate) => candidate.name === name);
+        const advertised = JSON.stringify(tool?.inputSchema);
+        expect(advertised).toMatch(/reason the recipient earns the reward/i);
+        expect(advertised).toMatch(/configurable non-commission rewards/i);
+        expect(advertised).toMatch(/inherits the program's confirmed treatment/i);
+        expect(advertised).toMatch(/Commission rewards always use `NONEMPLOYEE_SERVICES`/);
+        expect(advertised).toMatch(/Commission rewards have no referred-friend side/i);
+        expect(advertised).toMatch(/GrowSurf clears these settings/i);
+        expect(advertised).not.toMatch(/clears the reward-level override/i);
+      }
+    } finally {
+      await client.close();
+    }
+  });
+
   it("advertises every participant sign-in field on the campaign Design response", () => {
     const design = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_design;
     const login = design.properties?.login as { properties?: Record<string, unknown> };

@@ -33,6 +33,7 @@ Anything the GrowSurf team needs to track that is not safe to publish belongs in
   - `src/growsurf/mobileSdkGuide.ts` — constant `MOBILE_SDK_GUIDANCE_VERSION`.
   - `src/index.ts` — inline `iOS/Android SDK X.Y.Z` references in the capabilities overview and the `growsurf_mobile_sdk_guide` tool description. The `Server({ version })` argument is read from `package.json` (this MCP server's own version) and is NOT the mobile SDK version — do not point it at the mobile SDK literal.
   - `test/mobileSdkGuide.test.ts` — version assertions and test names that embed the version.
+- When a new version of a GrowSurf API library (`growsurf-typescript`, `growsurf-python`, `growsurf-ruby`, `growsurf/growsurf-php`, `com.growsurf.api:growsurf-java`) is published, update `src/growsurf/apiLibrarySnippets.ts` to match: the version floor in each language section heading, and any install line that embeds a version (the Ruby `gem "growsurf-ruby", "~> X.Y.Z"` constraint and the Java Gradle `implementation(...:X.Y.Z)` coordinate). Mirror each library README's own install line rather than inventing a different constraint.
 
 ## Writing Style For User-Facing Copy
 

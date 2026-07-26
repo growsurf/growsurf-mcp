@@ -375,7 +375,8 @@ const campaignConfigUpdateSchema = z.object({
 });
 
 // Tax valuation settings shared by the reward `value` and `referredValue` fields
-// (openapi RewardTaxValuation). `null` clears the field-level override.
+// (openapi RewardTaxValuation). For configurable non-commission rewards, a null `taxCharacter`
+// inherits the program's confirmed treatment; Commission always uses `NONEMPLOYEE_SERVICES`.
 const rewardTaxValuationSchema = z.object({
   fairMarketValueUSD: z.number().min(0).max(90071992547409.9).nullable().optional(),
   taxCharacter: z
@@ -940,7 +941,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               value: {
                 type: "object",
                 description:
-                  "Tax valuation for the reward (the referrer's side of a double-sided reward). `fairMarketValueUSD` is the manual fair-market value in USD (major units). `taxCharacter` is the U.S. federal tax character; `null` clears the reward-level override.",
+                  "Tax valuation for the reward (the referrer's side of a double-sided reward). `fairMarketValueUSD` is the manual fair-market value in USD (major units). `taxCharacter` is the reason the recipient earns the reward. For configurable non-commission rewards, `null` inherits the program's confirmed treatment. Commission rewards always use `NONEMPLOYEE_SERVICES`.",
                 properties: {
                   fairMarketValueUSD: { type: ["number", "null"], minimum: 0 },
                   taxCharacter: {
@@ -960,7 +961,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               referredValue: {
                 type: "object",
                 description:
-                  "Tax valuation for the referred friend's side of a double-sided reward. Use `PURCHASE_REBATE` only when that is the correct tax character.",
+                  "Tax valuation for the referred friend's side of a double-sided reward. `taxCharacter` is the reason the recipient earns the reward. For configurable non-commission rewards, `null` inherits the program's confirmed treatment. Commission rewards have no referred-friend side, so GrowSurf clears these settings. Use `PURCHASE_REBATE` only when that is the correct tax character.",
                 properties: {
                   fairMarketValueUSD: { type: ["number", "null"], minimum: 0 },
                   taxCharacter: {
@@ -1011,7 +1012,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               value: {
                 type: "object",
                 description:
-                  "Tax valuation for the reward (the referrer's side of a double-sided reward). `fairMarketValueUSD` is the manual fair-market value in USD (major units). `taxCharacter` is the U.S. federal tax character; `null` clears the reward-level override.",
+                  "Tax valuation for the reward (the referrer's side of a double-sided reward). `fairMarketValueUSD` is the manual fair-market value in USD (major units). `taxCharacter` is the reason the recipient earns the reward. For configurable non-commission rewards, `null` inherits the program's confirmed treatment. Commission rewards always use `NONEMPLOYEE_SERVICES`.",
                 properties: {
                   fairMarketValueUSD: { type: ["number", "null"], minimum: 0 },
                   taxCharacter: {
@@ -1031,7 +1032,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               referredValue: {
                 type: "object",
                 description:
-                  "Tax valuation for the referred friend's side of a double-sided reward. Use `PURCHASE_REBATE` only when that is the correct tax character.",
+                  "Tax valuation for the referred friend's side of a double-sided reward. `taxCharacter` is the reason the recipient earns the reward. For configurable non-commission rewards, `null` inherits the program's confirmed treatment. Commission rewards have no referred-friend side, so GrowSurf clears these settings. Use `PURCHASE_REBATE` only when that is the correct tax character.",
                 properties: {
                   fairMarketValueUSD: { type: ["number", "null"], minimum: 0 },
                   taxCharacter: {

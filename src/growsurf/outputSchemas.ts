@@ -201,7 +201,7 @@ const TAX_VALUATION = {
         null,
       ],
       description:
-        "The reward's U.S. federal tax character. `null` means no override is configured and the program's confirmed default applies.",
+        "The reason the recipient earns the reward. For configurable non-commission rewards, `null` inherits the program's confirmed treatment. Commission rewards always use `NONEMPLOYEE_SERVICES`.",
     },
   },
 } as const;
@@ -424,7 +424,8 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     rewards: { type: "object", description: "Heading, icon, and empty-state text of the rewards panel." },
     participantSettings: {
       type: "object",
-      description: "The participant's account settings area (logout, PayPal payout email, tax details).",
+      description:
+        "The participant's account settings area (logout, PayPal and Wise payout confirmation/status messages, tax details).",
     },
     landingPages: {
       type: "object",
@@ -1224,14 +1225,15 @@ const PAYOUT_DESTINATION_STATUS_RESPONSE: ToolOutputSchema = {
   type: "object",
   description: "A participant's payout-destination status across every enabled payout provider.",
   properties: {
-    participantId: { type: "string", description: "The participant's ID." },
     activeProvider: {
       type: ["string", "null"],
-      description: "The provider that currently gets paid (`PAYPAL` or `WISECOM`), or `null` until the participant confirms one.",
+      description:
+        "The payout provider currently selected, or `null` until the participant confirms one. Provider identifiers are open-ended; current examples include `PAYPAL` and `WISECOM`.",
     },
     enabledProviders: {
       type: "array",
-      description: "The payout providers enabled for this program (`PAYPAL`, `WISECOM`).",
+      description:
+        "Payout provider identifiers enabled for this program. Values are open-ended; current examples include `PAYPAL` and `WISECOM`.",
       items: { type: "string" },
     },
     destinations: {
@@ -1240,12 +1242,16 @@ const PAYOUT_DESTINATION_STATUS_RESPONSE: ToolOutputSchema = {
       items: {
         type: "object",
         properties: {
-          provider: { type: "string", description: "The payout provider this entry describes (`PAYPAL` or `WISECOM`)." },
+          provider: {
+            type: "string",
+            description:
+              "The payout provider identifier for this entry. Values are open-ended; current examples include `PAYPAL` and `WISECOM`.",
+          },
           providerDisplayName: { type: "string", description: 'The customer-facing provider name (e.g. "PayPal", "Wise").' },
           status: {
             type: "string",
             description:
-              "The destination's current status: `NONE`, `PENDING_CONFIRMATION`, `CONFIRMED`, `ACTIVE`, `NEEDS_REPAIR`, `EXPIRED`, `SUPERSEDED`, or `REVOKED`.",
+              "The destination's current status: `NONE`, `PENDING_CONFIRMATION`, `CONFIRMED`, `ACTIVE`, `NEEDS_REPAIR`, or `EXPIRED`. Historical superseded or revoked destinations are projected as `NONE`.",
           },
           claimEmail: { type: ["string", "null"], description: "The confirmed payout email for this provider." },
           legalEntityType: {
@@ -1271,7 +1277,11 @@ const PAYOUT_DESTINATION_CONFIRMATION_REQUEST_RESPONSE: ToolOutputSchema = {
   description: "Confirmation that a payout-destination confirmation message was requested for the participant.",
   properties: {
     status: { type: "string", description: "Confirms the message was requested (`CONFIRMATION_REQUESTED`)." },
-    provider: { type: "string", description: "The provider the participant was asked to confirm (`PAYPAL` or `WISECOM`)." },
+    provider: {
+      type: "string",
+      description:
+        "The payout provider identifier the participant was asked to confirm. Values are open-ended; current examples include `PAYPAL` and `WISECOM`.",
+    },
     providerDisplayName: { type: "string", description: 'The customer-facing provider name (e.g. "PayPal", "Wise").' },
     expiresAt: {
       type: ["integer", "null"],

@@ -22,9 +22,12 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("validateReferrer()");
     expect(text).toContain("the SDK stores it automatically");
     expect(text).toContain("presentGrowSurfWindow");
-    expect(text).toContain("requestParticipantLogin");
-    expect(text).toContain("window.campaign.design.login");
-    expect(text).toContain("Known and unknown emails receive the same");
+    expect(text).not.toContain("requestParticipantLogin");
+    expect(text).not.toContain("window.campaign.design.login");
+    expect(text).toContain("built-in GrowSurf Window");
+    expect(text).toContain("hosted web portal");
+    expect(text).toContain("does not authenticate the native app");
+    expect(text).toContain("participant token on your backend");
     expect(text).not.toContain("mobileShareUrl");
     expect(text).toContain("iosNativeShare");
     expect(text).toContain("androidNativeShare");
