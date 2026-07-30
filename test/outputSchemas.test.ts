@@ -41,6 +41,23 @@ describe("tool output schemas", () => {
     vi.restoreAllMocks();
   });
 
+  it("advertises provider-neutral participant payout actions", () => {
+    const participant = TOOL_OUTPUT_SCHEMAS.growsurf_get_participant as {
+      properties: {
+        payoutSettings: {
+          properties: {
+            requiredActions: { items: { enum: string[] } };
+          };
+        };
+      };
+    };
+
+    expect(participant.properties.payoutSettings.properties.requiredActions.items.enum).toEqual([
+      "PAYOUT_DESTINATION",
+      "TAX_INFO",
+    ]);
+  });
+
   it("advertises an output schema for every listed tool", async () => {
     const client = await connectClient();
     const { tools } = await client.listTools();

@@ -214,6 +214,7 @@ const omitUndefined = <T extends Record<string, unknown>>(obj: T): Partial<T> =>
 
 const addParticipantSchema = z.object({
   email: z.string().min(3),
+  isAffiliate: z.boolean().optional(),
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
   referredBy: z.string().min(1).optional(),
@@ -650,6 +651,7 @@ const requestParticipantPayoutDestinationConfirmationSchema = z
 const updateParticipantSchema = z
   .object({
     ...participantIdentityFields,
+    affiliateStatus: z.enum(["APPROVED", "SUSPENDED", "BANNED"]).optional(),
     referredBy: z.string().max(100).optional(),
     email: z.string().min(3).optional(),
     firstName: z.string().max(255).optional(),
@@ -664,6 +666,7 @@ const updateParticipantSchema = z
   .refine(
     (v) =>
       [
+        v.affiliateStatus,
         v.referredBy,
         v.email,
         v.firstName,
@@ -1323,11 +1326,16 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_add_participant",
           description:
-            "Add or fetch an existing participant by email (GrowSurf REST). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Add or fetch a participant by email. Existing participants are returned unchanged. For affiliate programs, set `isAffiliate` to `true` to enroll a new participant as approved or `false` to create a non-affiliate. If you omit it, a valid `referredBy` creates a referred non-affiliate; without a valid referrer, the new participant is enrolled as approved. A valid `referredBy` can be combined with `isAffiliate: true`. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
               email: { type: "string" },
+              isAffiliate: {
+                type: "boolean",
+                description:
+                  "Affiliate programs only. Controls affiliate enrollment for a new participant. `true` enrolls the participant with `affiliateStatus: APPROVED`; `false` creates a non-affiliate without `affiliateStatus`. Existing participants are returned unchanged.",
+              },
               firstName: { type: "string" },
               lastName: { type: "string" },
               referredBy: { type: "string" },
@@ -1344,12 +1352,18 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_participant",
           description:
-            "Update a participant (by GrowSurf participant ID or email). Only the fields you send are changed; read-only fields (counters, origin, fraud state) are rejected with a 400. `notes` is freeform internal notes (never shown to participants). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update a participant by GrowSurf participant ID or email. Only the fields you send are changed; read-only fields such as counters, `isAffiliate`, `origin`, and fraud state are rejected with a `400`. In affiliate programs, `affiliateStatus` accepts `APPROVED`, `SUSPENDED`, or `BANNED`; `APPROVED` enrolls the participant, while `SUSPENDED` and `BANNED` require an existing affiliate. Affiliate enrollment cannot be removed through REST. `notes` is freeform internal notes (never shown to participants). Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
               participantId: { type: "string" },
               participantEmail: { type: "string" },
+              affiliateStatus: {
+                type: "string",
+                enum: ["APPROVED", "SUSPENDED", "BANNED"],
+                description:
+                  "Affiliate programs only. Sets the affiliate status. `APPROVED` also enrolls a participant who is not yet an affiliate. `SUSPENDED` and `BANNED` are rejected for non-affiliates.",
+              },
               referredBy: { type: "string" },
               email: { type: "string", description: "Change the participant's email address." },
               firstName: { type: "string" },

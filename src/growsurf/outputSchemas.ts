@@ -174,7 +174,7 @@ const PARTICIPANT: ToolOutputSchema = {
       properties: {
         requiredActions: {
           type: "array",
-          items: { type: "string", enum: ["PAYPAL_EMAIL", "TAX_INFO"] },
+          items: { type: "string", enum: ["PAYOUT_DESTINATION", "TAX_INFO"] },
           description: "Actions required before payouts can be sent. Empty when no action is required.",
         },
       },
