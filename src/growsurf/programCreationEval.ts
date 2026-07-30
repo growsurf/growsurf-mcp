@@ -60,6 +60,7 @@ export const renderAgentProgramCreationEval = (
     "- The referrer Window settings keep normal share options available, not QR-only or text-only sharing.",
     "- The GrowSurf Window header, body copy, and button labels match the user's stated goal.",
     "- The referred-friend settings include the visible motivators the program needs, such as the sticky banner, inline heading, and browser tab title when configured.",
+    "- Affiliate programs explicitly review `affiliateApplicationMode` and the configured GrowSurf Program Page. Public applicants in reviewed modes must use the application flow, not trusted REST Add Participant.",
     "- Logo fields are either populated with the supplied logo or left empty. Do not report a broken-image placeholder as acceptable.",
     "- Public copy is clean: no `!!`, rough placeholder copy, duplicate invite lines, or customer-specific scratch text.",
     "",

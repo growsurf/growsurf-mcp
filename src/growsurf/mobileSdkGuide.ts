@@ -169,7 +169,7 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
 
   if (input.includeInstallSnippets) {
     sections.push(
-      "Install via Swift Package Manager or the tag-pinned public podspec:",
+      "Install via Swift Package Manager or CocoaPods:",
       codeBlock(
         "swift",
         [
@@ -188,11 +188,7 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
       ),
       codeBlock(
         "ruby",
-        [
-          `growsurf_podspec = 'https://raw.githubusercontent.com/growsurf/growsurf-ios-sdk-distribution/v${MOBILE_SDK_GUIDANCE_VERSION}/GrowSurfSDK.podspec'`,
-          "",
-          "pod 'GrowSurfSDK', :podspec => growsurf_podspec",
-        ].join("\n"),
+        `pod 'GrowSurfSDK', '~> ${MOBILE_SDK_GUIDANCE_VERSION}'`,
       ),
     );
   }
@@ -229,6 +225,20 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
           "   let participant = result.participant {",
           "    // Use participant",
           "}",
+        ].join("\n"),
+      ),
+      "For a public signup flow that intentionally creates every user, call `addParticipant()`. For direct signup to an `OPEN_ENROLLMENT` affiliate program with configured Terms, show those Terms and set `termsAccepted: true` only after consent. If `affiliateApplicationMode` is `MANUAL_REVIEW` or `AUTO_APPROVE`, send applicants through the configured GrowSurf Program Page instead of direct signup:",
+      codeBlock(
+        "swift",
+        [
+          "let directSignup = try await growsurf.addParticipant(",
+          "    .init(",
+          "        email: \"person@example.com\",",
+          "        firstName: \"Ada\",",
+          "        lastName: \"Lovelace\",",
+          "        termsAccepted: true",
+          "    )",
+          ")",
         ].join("\n"),
       ),
     );
@@ -319,6 +329,20 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
           "}",
         ].join("\n"),
       ),
+      "For a public signup flow that intentionally creates every user, call `addParticipant()`. For direct signup to an `OPEN_ENROLLMENT` affiliate program with configured Terms, show those Terms and set `termsAccepted = true` only after consent. If `affiliateApplicationMode` is `MANUAL_REVIEW` or `AUTO_APPROVE`, send applicants through the configured GrowSurf Program Page instead of direct signup:",
+      codeBlock(
+        "kotlin",
+        [
+          "val directSignup = growsurf.addParticipant(",
+          "    GrowSurfParticipantInput(",
+          "        email = \"person@example.com\",",
+          "        firstName = \"Ada\",",
+          "        lastName = \"Lovelace\",",
+          "        termsAccepted = true,",
+          "    )",
+          ")",
+        ].join("\n"),
+      ),
     );
   }
 
@@ -358,6 +382,7 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
     "- The built-in GrowSurf Window can email a returning participant a sign-in link. The link opens the hosted web portal; it does not authenticate the native app. Continue creating the participant token on your backend for native sessions.",
     "- Use `validateReferrer()` when you only need to check referral attribution. Use `recordAttribution()` only when you intentionally want to record an impression.",
     "- Use `addReferredParticipant()` for referral-only signup tracking.",
+    "- Use `addParticipant()` only when the app intentionally creates every signup. Check `affiliateApplicationMode` first so reviewed affiliate applicants use the configured GrowSurf Program Page.",
     "- When `addReferredParticipant()` or `addParticipant()` returns a `participantToken`, the SDK stores it automatically.",
   ];
 

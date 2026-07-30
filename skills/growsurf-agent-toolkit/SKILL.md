@@ -58,10 +58,12 @@ Use this skill to turn a user goal into a real GrowSurf program, not just API ca
    - `growsurf_list_campaign_rewards`
    - `growsurf_get_campaign_options`
    - `growsurf_get_campaign_design`
-   - Check starter content for the affiliate portal, GrowSurf Window, commissions, payouts, participant settings, and email templates.
+   - Check starter content for the affiliate portal, GrowSurf Window, commissions, payouts, participant settings, email templates, `affiliateApplicationMode`, and the GrowSurf Program Page.
 
 3. Configure carefully:
    - Confirm commission basis, payout threshold, refund/hold period, participant auth, payout instructions, and tax-document collection before enabling anything that can create payable obligations.
+   - Public applicants in `MANUAL_REVIEW` or `AUTO_APPROVE` must use the configured GrowSurf Program Page application flow. Do not use trusted REST Add Participant to bypass review.
+   - Use direct participant enrollment only when the customer intentionally enrolls a known affiliate. Set `isAffiliate` explicitly.
    - Patch Options before publishing if the default payout/tax settings do not match the user's business.
    - Patch Design for affiliate portal sections: affiliate summary, commissions, payouts, participant settings, leaderboard.
 
@@ -69,7 +71,7 @@ Use this skill to turn a user goal into a real GrowSurf program, not just API ca
    - Fetch the campaign, Design, Emails, Options, Installation, and Rewards again.
    - Check that the referrer Window settings keep normal share options, not QR-only sharing.
    - Check that the referred-friend settings include the needed visible motivators, such as sticky banner and inline heading. The browser tab title motivator should be configured when relevant.
-   - Summarize commission defaults, payout/tax readiness, portal sections, and remaining launch blockers.
+   - Summarize the application mode, Program Page readiness, commission defaults, payout/tax readiness, portal sections, and remaining launch blockers.
 
 ## Common Tasks
 

@@ -98,6 +98,9 @@ describe("GrowSurf MCP prompts", () => {
     expect(text).toContain("starter content");
     expect(text).toContain("Do not enable payout exposure");
     expect(text).toContain("growsurf_get_integration_connect_link");
+    expect(text).toContain("affiliateApplicationMode");
+    expect(text).toContain("Program Page");
+    expect(text).toContain("Wise");
     expect(text).toContain("Fetch the campaign, Design, Emails, Options, Installation, and Rewards again");
     expect(text).toContain("referred-friend banner and inline heading");
     expect(text).toContain("browser-visible GrowSurf flow");

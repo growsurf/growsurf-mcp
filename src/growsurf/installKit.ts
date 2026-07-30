@@ -120,15 +120,20 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
       [
         "### 4) Affiliate program flow",
         "",
-        "- **On signup**: add the participant (this generates their share URL).",
+        "- **Before signup**: read `affiliateApplicationMode` with `growsurf_get_campaign_options` and review the configured GrowSurf Program Page and application copy.",
+        "- **Public applicants**:",
+        "  - `OPEN_ENROLLMENT`: use the participant-facing GrowSurf signup flow. For native direct signup with configured Terms, show the Terms and send `termsAccepted` only after consent.",
+        "  - `MANUAL_REVIEW` or `AUTO_APPROVE`: send applicants through the configured GrowSurf Program Page. Do not call trusted REST Add Participant for a public application.",
+        "- **Trusted direct enrollment**: use `growsurf_add_participant` with `isAffiliate: true` only when the customer intentionally enrolls a known affiliate. Set `isAffiliate: false` when intentionally creating a non-affiliate participant.",
         "- **On sale/payment event** for a referred customer: record a transaction via GrowSurf REST.",
         "  - Use `invoiceId` / `chargeId` / `paymentIntentId` / etc. to ensure idempotency.",
         "  - Use webhooks to know when commissions are added.",
         "",
         "- **Automate sale tracking**: if they use Stripe, recommend connecting it so referred sales are recorded automatically instead of you calling record-sale (see the \"Connect integrations\" section below).",
-        "- **Pay commissions**: recommend connecting PayPal (see the \"Connect integrations\" section below).",
+        "- **Pay commissions**: recommend connecting PayPal or Wise based on the customer's payout workflow (see the \"Connect integrations\" section below).",
         "",
         "MCP tools you’ll likely use:",
+        "- `growsurf_get_campaign_options`",
         "- `growsurf_add_participant`",
         "- `growsurf_record_sale`",
         "- `growsurf_webhook_normalize`",
@@ -156,17 +161,16 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
     );
   }
 
-  // Recommend only integrations available on the CURRENT program type. Chargebee, Recurly, and
-  // Tango Card are hidden on affiliate programs (referral-only), so an affiliate guide must not
-  // suggest them; a referral guide drops the affiliate-commission framing. "both" keeps the
-  // general list with explicit "referral programs only" qualifiers.
+  // Recommend only integrations available on the current program type. Chargebee, Recurly, and
+  // Tango Card are referral-only; Wise is affiliate-only. "both" keeps the general list with
+  // explicit program-type qualifiers.
   const isAffiliateOnly = input.programType === "affiliate";
   const isReferralOnly = input.programType === "referral";
 
   const stackMoneyBullets = isAffiliateOnly
     ? [
         "- **Billing / payments**: if the code uses Stripe (SDK, webhooks, checkout), recommend connecting it so referred sales are recorded automatically instead of manual record-sale calls. Raise it at the sale-tracking step.",
-        "- **Payouts**: recommend PayPal to pay affiliate commissions. Raise it once commissions start flowing.",
+        "- **Payouts**: recommend PayPal or Wise to pay affiliate commissions, based on the customer's payout workflow. Raise it once commissions start flowing.",
       ]
     : isReferralOnly
       ? [
@@ -175,14 +179,14 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
         ]
       : [
           "- **Billing / payments**: if the code uses Stripe (any program) or Chargebee / Recurly (referral programs only), recommend connecting it. It tracks referred purchases automatically and, on referral programs, auto-applies upfront-discount coupons. Raise it at the qualifying-action or sale-tracking step.",
-          "- **Payouts & rewards**: recommend PayPal to pay affiliate commissions. For referral programs that send gift-card rewards, recommend Tango Card. Raise it once rewards or commissions start flowing.",
+          "- **Payouts & rewards**: recommend PayPal or Wise for affiliate commissions (Wise is affiliate-only). For referral programs that send gift-card rewards, recommend Tango Card. Raise it once rewards or commissions start flowing.",
         ];
 
   const stackKeyExamples = isAffiliateOnly
-    ? "`stripe`, `paypal`, `mailchimp`, `salesforce`, or `googleanalytics`"
+    ? "`stripe`, `paypal`, `wisecom`, `mailchimp`, `salesforce`, or `googleanalytics`"
     : isReferralOnly
       ? "`stripe`, `tangocard`, `mailchimp`, `salesforce`, or `googleanalytics`"
-      : "`stripe`, `paypal`, `tangocard`, `mailchimp`, `salesforce`, or `googleanalytics`";
+      : "`stripe`, `paypal`, `wisecom`, `tangocard`, `mailchimp`, `salesforce`, or `googleanalytics`";
 
   const connectSection = [
     "### Connect integrations (recommend based on the user's stack)",
@@ -210,6 +214,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
   if (!isAffiliateOnly && !isReferralOnly) {
     connectSection.push(
       "Chargebee, Recurly, and Tango Card apply to referral programs only (they're hidden on affiliate programs).",
+      "Wise applies to affiliate programs only.",
       "",
     );
   }

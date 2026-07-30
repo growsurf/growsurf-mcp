@@ -282,7 +282,7 @@ const recordSaleSchema = z
   .object({
     participantId: z.string().min(1).optional(),
     participantEmail: z.string().min(3).optional(),
-    currency: z.string().min(3),
+    currency: z.string().length(3).regex(/^[A-Za-z]{3}$/),
     grossAmount: z.number().int().positive(),
     invoiceId: z.string().min(1).optional(),
     chargeId: z.string().min(1).optional(),
@@ -293,11 +293,17 @@ const recordSaleSchema = z
     paymentId: z.string().min(1).optional(),
     customerId: z.string().min(1).optional(),
     subscriptionId: z.string().min(1).optional(),
-    netAmount: z.number().int().positive().optional(),
+    netAmount: z.number().int().nonnegative().optional(),
     taxAmount: z.number().int().nonnegative().optional(),
-    amountCashNet: z.number().int().positive().optional(),
-    amountPaid: z.number().int().positive().optional(),
-    paidAt: z.number().int().positive().optional(),
+    amountCashNet: z.number().int().nonnegative().optional(),
+    amountPaid: z.number().int().nonnegative().optional(),
+    invoiceTotal: z.number().int().nonnegative().optional(),
+    invoiceTotalExcludingTax: z.number().int().nonnegative().optional(),
+    invoiceSubtotalExcludingTax: z.number().int().nonnegative().optional(),
+    totalTaxAmount: z.number().int().nonnegative().optional(),
+    totalTaxAmounts: z.array(z.record(z.string(), z.unknown())).optional(),
+    totalTaxes: z.array(z.record(z.string(), z.unknown())).optional(),
+    paidAt: z.number().int().nonnegative().optional(),
     description: z.string().max(500).optional(),
   })
   .refine((v) => Boolean(v.participantId) || Boolean(v.participantEmail), {
@@ -611,9 +617,14 @@ const emailParticipantSchema = z
     preheader: z.string().optional(),
   })
   .refine(hasParticipantIdentity, { message: PARTICIPANT_IDENTITY_HINT })
-  .refine((v) => Boolean(v.emailType) || (Boolean(v.subject) && Boolean(v.body)), {
-    message: "Provide either emailType (template mode) or both subject and body (free-form mode).",
-  });
+  .refine(
+    (v) =>
+      (Boolean(v.emailType) && !Boolean(v.subject) && !Boolean(v.body)) ||
+      (!Boolean(v.emailType) && Boolean(v.subject) && Boolean(v.body)),
+    {
+      message: "Provide either emailType (template mode) or both subject and body (free-form mode).",
+    },
+  );
 
 const getParticipantAnalyticsSchema = z
   .object({
@@ -824,7 +835,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_api_library_snippets",
           description:
-            "Generate REST API integration snippets for TypeScript, Python, PHP, Ruby, and Java, including a raw REST Create Mobile Participant Token fallback.",
+            "Generate official REST API library snippets for TypeScript, Python, PHP, Ruby, and Java, including Create Mobile Participant Token.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1326,7 +1337,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_add_participant",
           description:
-            "Add or fetch a participant by email. Existing participants are returned unchanged. For affiliate programs, set `isAffiliate` to `true` to enroll a new participant as approved or `false` to create a non-affiliate. If you omit it, a valid `referredBy` creates a referred non-affiliate; without a valid referrer, the new participant is enrolled as approved. A valid `referredBy` can be combined with `isAffiliate: true`. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Add or fetch a participant by email. Existing participants are returned unchanged. This is trusted direct enrollment; do not use it for a public application when the program requires affiliate review. For affiliate programs, set `isAffiliate` to `true` to enroll a new participant as approved or `false` to create a non-affiliate. If you omit it, a valid `referredBy` creates a referred non-affiliate; without a valid referrer, the new participant is enrolled as approved. A valid `referredBy` can be combined with `isAffiliate: true`. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1427,7 +1438,23 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               body: { type: "string", description: "Free-form HTML body. You can personalize it with dynamic text, inserting `{{...}}` tokens like `{{firstName}}` or `{{shareUrl}}`. See [Guide to using dynamic text in GrowSurf emails](https://support.growsurf.com/article/213-guide-to-using-dynamic-text-in-growsurf-emails)." },
               preheader: { type: "string" },
             },
-            anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            allOf: [
+              PARTICIPANT_IDENTIFIER_JSON_REQUIREMENT,
+              {
+                oneOf: [
+                  {
+                    required: ["emailType"],
+                    not: {
+                      anyOf: [{ required: ["subject"] }, { required: ["body"] }],
+                    },
+                  },
+                  {
+                    required: ["subject", "body"],
+                    not: { required: ["emailType"] },
+                  },
+                ],
+              },
+            ],
             additionalProperties: false,
           },
         },
@@ -1545,8 +1572,8 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             properties: {
               participantId: { type: "string" },
               participantEmail: { type: "string" },
-              currency: { type: "string" },
-              grossAmount: { type: "integer" },
+              currency: { type: "string", minLength: 3, maxLength: 3, pattern: "^[A-Za-z]{3}$" },
+              grossAmount: { type: "integer", minimum: 1 },
               invoiceId: { type: "string" },
               chargeId: { type: "string" },
               paymentIntentId: { type: "string" },
@@ -1556,12 +1583,32 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               paymentId: { type: "string" },
               customerId: { type: "string" },
               subscriptionId: { type: "string" },
-              netAmount: { type: "integer" },
-              taxAmount: { type: "integer" },
-              amountCashNet: { type: "integer" },
-              amountPaid: { type: "integer" },
-              paidAt: { type: "integer" },
-              description: { type: "string" },
+              netAmount: { type: "integer", minimum: 0 },
+              taxAmount: { type: "integer", minimum: 0 },
+              amountCashNet: { type: "integer", minimum: 0 },
+              amountPaid: { type: "integer", minimum: 0 },
+              invoiceTotal: { type: "integer", minimum: 0 },
+              invoiceTotalExcludingTax: { type: "integer", minimum: 0 },
+              invoiceSubtotalExcludingTax: { type: "integer", minimum: 0 },
+              totalTaxAmount: { type: "integer", minimum: 0 },
+              totalTaxAmounts: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: { amount: { type: "integer", minimum: 0 } },
+                  additionalProperties: true,
+                },
+              },
+              totalTaxes: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: { amount: { type: "integer", minimum: 0 } },
+                  additionalProperties: true,
+                },
+              },
+              paidAt: { type: "integer", minimum: 0 },
+              description: { type: "string", maxLength: 500 },
             },
             required: ["currency", "grossAmount"],
             allOf: [PARTICIPANT_IDENTIFIER_JSON_REQUIREMENT, TRANSACTION_IDENTIFIER_JSON_REQUIREMENT],
@@ -1600,11 +1647,16 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_mobile_participant_token",
           description:
-            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST. Participant creation is trusted direct enrollment; do not use it for a public application when the program requires affiliate review. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
               email: { type: "string" },
+              isAffiliate: {
+                type: "boolean",
+                description:
+                  "Sets whether the participant is an affiliate. Use `true` only for trusted direct enrollment. Public applicants should follow the program's configured application flow.",
+              },
               firstName: { type: "string" },
               lastName: { type: "string" },
               referredBy: { type: "string" },
@@ -1713,7 +1765,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_integration_connect_link",
           description:
-            "Return a dashboard link that opens a specific integration's connect panel in the GrowSurf Program Editor (Options > Integrations). Use this whenever a user says they want to connect an integration, for example \"connect Stripe\", \"set up PayPal payouts\", \"send Tango Card gift cards\", or \"sync signups to Mailchimp\": call it with the `integration` key and give the user the returned `url` to open. Connecting an integration happens in the dashboard, not through the API. GrowSurf cannot link a Stripe, PayPal, or other account on the user's behalf, so hand them the link. `integration` must be one of the supported keys (some are camelCase, e.g. `constantContact`, `helpScout`). The link points at GROWSURF_CAMPAIGN_ID; pass `campaignId` to target a different program. Chargebee, Recurly, and Tango Card apply to referral programs only (they are hidden on affiliate programs).",
+            "Return a dashboard link that opens a specific integration's connect panel in the GrowSurf Program Editor (Options > Integrations). Use this whenever a user says they want to connect an integration, for example \"connect Stripe\", \"set up PayPal or Wise payouts\", \"send Tango Card gift cards\", or \"sync signups to Mailchimp\": call it with the `integration` key and give the user the returned `url` to open. Connecting an integration happens in the dashboard, not through the API. GrowSurf cannot link a Stripe, PayPal, Wise, or other account on the user's behalf, so hand them the link. `integration` must be one of the supported keys (some are camelCase, e.g. `constantContact`, `helpScout`). The link points at GROWSURF_CAMPAIGN_ID; pass `campaignId` to target a different program. Chargebee, Recurly, and Tango Card apply to referral programs only. Wise applies to affiliate programs only.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1721,7 +1773,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 type: "string",
                 enum: [...INTEGRATION_KEYS],
                 description:
-                  "The integration to connect. Must exactly match one of the supported keys (some are camelCase, e.g. `constantContact`, `campaignMonitor`, `helpScout`, `pabblyConnect`, `baskHealth`).",
+                  "The integration to connect. Must exactly match one of the supported keys (for example `wisecom`; some are camelCase, e.g. `constantContact`, `campaignMonitor`, `helpScout`, `pabblyConnect`, `baskHealth`).",
               },
               campaignId: {
                 type: "string",
@@ -2173,6 +2225,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             taxAmount: input.taxAmount,
             amountCashNet: input.amountCashNet,
             amountPaid: input.amountPaid,
+            invoiceTotal: input.invoiceTotal,
+            invoiceTotalExcludingTax: input.invoiceTotalExcludingTax,
+            invoiceSubtotalExcludingTax: input.invoiceSubtotalExcludingTax,
+            totalTaxAmount: input.totalTaxAmount,
+            totalTaxAmounts: input.totalTaxAmounts,
+            totalTaxes: input.totalTaxes,
             paidAt: input.paidAt,
             description: input.description,
           }) as Record<string, unknown>;
@@ -2294,6 +2352,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             label: integration.label,
             category: integration.category,
             referralOnly: integration.referralOnly ?? false,
+            affiliateOnly: integration.affiliateOnly ?? false,
             url: buildIntegrationConnectUrl(campaignId, integration.key),
             note: `Open this link and connect ${integration.label} from the Program Editor. Connecting an integration happens in the GrowSurf dashboard, not through the API.`,
           };

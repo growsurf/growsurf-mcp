@@ -16,6 +16,16 @@ describe("integrations registry", () => {
     expect(tango?.referralOnly).toBe(true);
   });
 
+  it("includes Wise as an affiliate-only payout integration", () => {
+    expect(getIntegration("wisecom")).toEqual({
+      key: "wisecom",
+      label: "Wise",
+      category: "Payouts & gift cards",
+      affiliateOnly: true,
+    });
+    expect(INTEGRATION_KEYS).toContain("wisecom");
+  });
+
   it("includes the Resend and Loops dashboard integration keys verbatim", () => {
     expect(getIntegration("resenddotcom")).toEqual({
       key: "resenddotcom",

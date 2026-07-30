@@ -46,6 +46,8 @@ export type Integration = {
    * to referral programs). Mirrors the app's `hideForAffiliatePrograms` flag.
    */
   referralOnly?: boolean;
+  /** True when the integration applies to affiliate programs only. */
+  affiliateOnly?: boolean;
 };
 
 export const INTEGRATIONS: readonly Integration[] = [
@@ -55,6 +57,7 @@ export const INTEGRATIONS: readonly Integration[] = [
   { key: "recurly", label: "Recurly", category: "Payments & billing", referralOnly: true },
   // Payouts & gift cards
   { key: "paypal", label: "PayPal", category: "Payouts & gift cards" },
+  { key: "wisecom", label: "Wise", category: "Payouts & gift cards", affiliateOnly: true },
   { key: "tangocard", label: "Tango Card", category: "Payouts & gift cards", referralOnly: true },
   // CRM & marketing automation
   { key: "hubspot", label: "HubSpot", category: "CRM & marketing automation" },

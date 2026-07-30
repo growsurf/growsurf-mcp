@@ -11,7 +11,7 @@ describe("participant affiliate-control MCP tools", () => {
     vi.restoreAllMocks();
   });
 
-  it("exposes and forwards create isAffiliate and update affiliateStatus", async () => {
+  it("exposes and forwards affiliate controls for participant and mobile-token writes", async () => {
     const fetchMock = vi.fn(async () =>
       new Response(
         JSON.stringify({
@@ -39,10 +39,18 @@ describe("participant affiliate-control MCP tools", () => {
       const tools = await client.listTools();
       const addTool = tools.tools.find((candidate) => candidate.name === "growsurf_add_participant");
       const updateTool = tools.tools.find((candidate) => candidate.name === "growsurf_update_participant");
+      const mobileTokenTool = tools.tools.find(
+        (candidate) => candidate.name === "growsurf_create_mobile_participant_token",
+      );
 
       expect(addTool?.inputSchema.properties).toHaveProperty("isAffiliate");
       expect(updateTool?.inputSchema.properties).toHaveProperty("affiliateStatus");
       expect(updateTool?.inputSchema.properties).not.toHaveProperty("isAffiliate");
+      expect(mobileTokenTool?.inputSchema.properties).toHaveProperty("isAffiliate");
+      expect(addTool?.description).toContain("trusted direct enrollment");
+      expect(addTool?.description).toContain("public application");
+      expect(mobileTokenTool?.description).toContain("trusted direct enrollment");
+      expect(mobileTokenTool?.description).toContain("public application");
 
       await client.callTool({
         name: "growsurf_add_participant",
@@ -57,6 +65,13 @@ describe("participant affiliate-control MCP tools", () => {
         arguments: {
           participantId: "part_1",
           affiliateStatus: "APPROVED",
+        },
+      });
+      await client.callTool({
+        name: "growsurf_create_mobile_participant_token",
+        arguments: {
+          email: "mobile-affiliate@example.com",
+          isAffiliate: true,
         },
       });
 
@@ -78,6 +93,17 @@ describe("participant affiliate-control MCP tools", () => {
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({ affiliateStatus: "APPROVED" }),
+        }),
+      );
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        3,
+        "https://api.growsurf.com/v2/campaign/abc123/mobile-participant-token",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            email: "mobile-affiliate@example.com",
+            isAffiliate: true,
+          }),
         }),
       );
     } finally {

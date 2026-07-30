@@ -29,5 +29,7 @@ describe("GrowSurf Agent Toolkit skill", () => {
     expect(skill).toContain("own installed site");
     expect(skill).toContain("host agent's browser automation tool");
     expect(skill).toContain("read-only lookups");
+    expect(skill).toContain("affiliateApplicationMode");
+    expect(skill).toContain("Program Page");
   });
 });

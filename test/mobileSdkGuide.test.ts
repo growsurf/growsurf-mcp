@@ -19,6 +19,11 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("GrowSurf.configure");
     expect(text).toContain("GrowSurfSdk.configure");
     expect(text).toContain("addReferredParticipant");
+    expect(text).toContain("growsurf.addParticipant");
+    expect(text).toContain("termsAccepted: true");
+    expect(text).toContain("termsAccepted = true");
+    expect(text).toContain("affiliateApplicationMode");
+    expect(text).toContain("Program Page");
     expect(text).toContain("validateReferrer()");
     expect(text).toContain("the SDK stores it automatically");
     expect(text).toContain("presentGrowSurfWindow");
@@ -48,7 +53,8 @@ describe("renderMobileSdkGuide", () => {
     );
 
     expect(text).toContain("growsurf-ios-sdk-distribution");
-    expect(text).toContain("/v0.4.0/GrowSurfSDK.podspec");
+    expect(text).toContain("pod 'GrowSurfSDK', '~> 0.4.0'");
+    expect(text).not.toContain("GrowSurfSDK.podspec");
     expect(text).toContain("com.growsurf:growsurf-android-sdk:0.4.0");
   });
 
@@ -129,6 +135,10 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("referral-only signup tracking");
     expect(text).toContain("let result = try await growsurf.addReferredParticipant");
     expect(text).toContain("val result = growsurf.addReferredParticipant");
+    expect(text).toContain("let directSignup = try await growsurf.addParticipant");
+    expect(text).toContain("val directSignup = growsurf.addParticipant");
+    expect(text).toContain("termsAccepted: true");
+    expect(text).toContain("termsAccepted = true");
   });
 
   it("renders per-provider iOS deferred guidance (LinkMe / UDL / Clipboard-Based DDL)", () => {

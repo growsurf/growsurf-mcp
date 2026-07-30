@@ -116,7 +116,13 @@ describe("renderInstallKit", () => {
     expect(affiliateGuide).not.toContain("Recurly");
     expect(affiliateGuide).toContain("Stripe");
     expect(affiliateGuide).toContain("PayPal");
+    expect(affiliateGuide).toContain("Wise");
+    expect(affiliateGuide).toContain("`wisecom`");
     expect(affiliateGuide).toContain("pay affiliate commissions");
+    expect(affiliateGuide).toContain("affiliateApplicationMode");
+    expect(affiliateGuide).toContain("Program Page");
+    expect(affiliateGuide).toContain("public application");
+    expect(affiliateGuide).toContain("isAffiliate");
   });
 
   it("fully tailors a referral guide: gift cards + billing trio, no affiliate-commission framing", () => {
@@ -134,6 +140,7 @@ describe("renderInstallKit", () => {
     expect(referralGuide).toContain("Tango Card");
     expect(referralGuide).toContain("Chargebee");
     expect(referralGuide).toContain("Recurly");
+    expect(referralGuide).not.toContain("Wise");
     // Affiliate-commission framing must not appear in a referral-only guide.
     expect(referralGuide).not.toContain("pay affiliate commissions");
   });

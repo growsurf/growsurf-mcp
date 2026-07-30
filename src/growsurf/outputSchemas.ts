@@ -1216,6 +1216,7 @@ const INTEGRATION_CONNECT_LINK: ToolOutputSchema = {
     label: { type: "string", description: "Human-readable integration name." },
     category: { type: "string", description: "The integration's category." },
     referralOnly: { type: "boolean", description: "`true` when the integration applies to referral programs only." },
+    affiliateOnly: { type: "boolean", description: "`true` when the integration applies to affiliate programs only." },
     url: { type: "string", description: "Dashboard link that opens the integration's connect panel." },
     note: { type: "string", description: "Instructions to relay to the user." },
   },

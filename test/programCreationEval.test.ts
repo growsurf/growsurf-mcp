@@ -27,6 +27,8 @@ describe("program creation steering eval", () => {
     expect(text).toContain("browser tab title");
     expect(text).toContain("normal share options");
     expect(text).toContain("Window header");
+    expect(text).toContain("affiliateApplicationMode");
+    expect(text).toContain("Program Page");
     expect(text).toContain("frontend-design");
     expect(text).toContain("browser-visible GrowSurf flow");
     expect(text).toContain("growsurf_capture_referral_flow_screenshots");

@@ -14,13 +14,16 @@ describe("renderApiLibrarySnippets", () => {
     );
 
     expect(text).toContain("Create Mobile Participant Token");
-    expect(text).toContain("/mobile-participant-token");
-    expect(text).toContain("GROWSURF_API_KEY");
-    expect(text).toContain("fetch");
-    expect(text).toContain("requests.post");
-    expect(text).toContain("file_get_contents");
-    expect(text).toContain("Net::HTTP::Post");
-    expect(text).toContain("HttpRequest.newBuilder");
+    expect(text).toContain("client.campaign.createMobileParticipantToken");
+    expect(text).toContain("client.campaign.create_mobile_participant_token");
+    expect(text).toContain("$client->campaign->createMobileParticipantToken");
+    expect(text).toContain("growsurf.campaign.create_mobile_participant_token");
+    expect(text).toContain("client.campaign().createMobileParticipantToken");
+    expect(text).not.toContain("/mobile-participant-token");
+    expect(text).not.toContain("requests.post");
+    expect(text).not.toContain("file_get_contents");
+    expect(text).not.toContain("Net::HTTP::Post");
+    expect(text).not.toContain("HttpRequest.newBuilder");
     expect(text).toContain("participantToken");
     expect(text).toContain("person@example.com");
     expect(text).toContain("referredBy");
