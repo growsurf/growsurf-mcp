@@ -90,7 +90,11 @@ const PARTICIPANT: ToolOutputSchema = {
     rank: { type: "integer", description: "All-time leaderboard rank." },
     monthlyRank: { type: "integer", description: "Current-month leaderboard rank (resets monthly)." },
     prevMonthlyRank: { type: "integer", description: "Previous-month leaderboard rank." },
-    shareUrl: { type: "string", description: "The participant's unique referral link." },
+    shareUrl: {
+      type: "string",
+      description:
+        "The participant's unique referral link. Omitted for affiliate program participants who are not approved affiliates.",
+    },
     createdAt: { type: "integer", description: "When the participant joined, as a Unix timestamp in milliseconds." },
     referralSource: {
       type: "string",

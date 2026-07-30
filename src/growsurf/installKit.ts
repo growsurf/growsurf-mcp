@@ -340,7 +340,7 @@ export const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>
   lines.push("```html");
   lines.push("<script>");
   lines.push("  document.addEventListener('grsfReady', async () => {");
-  lines.push("    // 1) On signup/login, create or fetch the participant (generates shareUrl).");
+  lines.push("    // 1) On signup/login, create or fetch the participant (generates shareUrl when eligible).");
   lines.push("    // await growsurf.addParticipant({ email: user.email, firstName: user.firstName, lastName: user.lastName });");
   lines.push("");
   lines.push("    // 2) Referral-only signup tracking: adds only when a valid referrer exists.");
