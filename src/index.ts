@@ -1158,6 +1158,35 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 type: "object",
                 description:
                   "Installation fields to patch. Common keys include `shareUrl`, `allowedUrls`, `signupEvent`, `referralTrigger`, and `signup`. Arrays replace wholesale.",
+                properties: {
+                  shareUrl: {
+                    type: "string",
+                    description:
+                      "The program's Share URL: the landing page referred friends reach after opening a participant's referral link.",
+                  },
+                  allowedUrls: {
+                    type: "array",
+                    items: { type: "string" },
+                    description:
+                      "Every browser origin allowed to use the program, including local and staging origins. Send the full array because arrays replace wholesale.",
+                  },
+                  signup: {
+                    type: "object",
+                    description:
+                      "Custom signup-form settings. `signup.url` is the custom signup form URL, not the program's `shareUrl`.",
+                    properties: {
+                      isCustomForm: { type: "boolean" },
+                      url: {
+                        type: ["string", "null"],
+                        description:
+                          "The custom signup form URL. This is not the program's `shareUrl` (Share URL).",
+                      },
+                      redirectUrl: { type: ["string", "null"] },
+                      trackInputFields: { type: "boolean" },
+                    },
+                    additionalProperties: true,
+                  },
+                },
                 additionalProperties: true,
               },
             },

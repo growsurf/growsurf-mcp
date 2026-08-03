@@ -204,6 +204,18 @@ describe("tool output schemas", () => {
       expect(update?.description).toContain("shareUrl");
       expect(update?.description).toContain("allowedUrls");
       expect(update?.description).toContain("403");
+
+      const fields = update?.inputSchema.properties?.fields as
+        | {
+            properties?: {
+              shareUrl?: { description?: string };
+              signup?: { properties?: { url?: { description?: string } } };
+            };
+          }
+        | undefined;
+      expect(fields?.properties?.shareUrl?.description).toMatch(/Share URL/i);
+      expect(fields?.properties?.signup?.properties?.url?.description).toMatch(/custom signup form/i);
+      expect(fields?.properties?.signup?.properties?.url?.description).toMatch(/not.*shareUrl/i);
     } finally {
       await client.close();
     }
