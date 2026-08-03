@@ -168,6 +168,71 @@ describe("tool output schemas", () => {
     }
   });
 
+  it("documents commission money inputs in minor currency units", async () => {
+    const client = await connectClient();
+    try {
+      const { tools } = await client.listTools();
+      for (const name of ["growsurf_create_campaign_reward", "growsurf_update_campaign_reward"]) {
+        const tool = tools.find((candidate) => candidate.name === name);
+        const commissionStructure = (tool?.inputSchema.properties as Record<string, unknown>)
+          ?.commissionStructure as { properties?: Record<string, { description?: string }> };
+
+        for (const field of ["amount", "maxAmount", "introAmount"]) {
+          expect(commissionStructure.properties?.[field]?.description, `${name}.${field}`).toMatch(
+            /minor currency units/i,
+          );
+          expect(commissionStructure.properties?.[field]?.description, `${name}.${field}`).toContain("10000");
+        }
+      }
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("documents origin authorization on installation tools", async () => {
+    const installation = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_installation;
+    const properties = installation.properties as Record<string, { description?: string }>;
+
+    expect(properties.shareUrl.description).toMatch(/set.*before.*allowedUrls/i);
+    expect(properties.allowedUrls.description).toContain("http://localhost:3000");
+    expect(properties.allowedUrls.description).toContain("403");
+
+    const client = await connectClient();
+    try {
+      const { tools } = await client.listTools();
+      const update = tools.find((candidate) => candidate.name === "growsurf_update_campaign_installation");
+      expect(update?.description).toContain("shareUrl");
+      expect(update?.description).toContain("allowedUrls");
+      expect(update?.description).toContain("403");
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("distinguishes referral-credit and dashboard reward statuses", () => {
+    const campaign = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_analytics;
+    const participant = TOOL_OUTPUT_SCHEMAS.growsurf_get_participant_analytics;
+    const analytics = campaign.properties?.analytics as {
+      properties?: Record<string, { description?: string }>;
+    };
+    const statusCounts = campaign.properties?.statusCounts as {
+      properties?: {
+        rewardStatus?: { properties?: Record<string, { description?: string }> };
+      };
+    };
+    const rewardStatus = statusCounts.properties?.rewardStatus?.properties ?? {};
+    const participantAnalytics = participant.properties?.analytics as {
+      properties?: {
+        rewardStatus?: { properties?: Record<string, { description?: string }> };
+      };
+    };
+    const participantRewardStatus = participantAnalytics.properties?.rewardStatus?.properties ?? {};
+
+    expect(analytics.properties?.referralCreditPendings.description).toMatch(/not yet been awarded/i);
+    expect(Object.keys(rewardStatus)).toEqual(["unapproved", "unfulfilled", "completed"]);
+    expect(Object.keys(participantRewardStatus)).toEqual(["unapproved", "unfulfilled", "completed"]);
+  });
+
   it("advertises every participant sign-in field on the campaign Design response", () => {
     const design = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_design;
     const login = design.properties?.login as { properties?: Record<string, unknown> };

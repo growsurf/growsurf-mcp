@@ -65,6 +65,7 @@ describe("GrowSurf MCP prompts", () => {
       companyName: "Acme",
       websiteUrl: "https://example.com",
       goal: "drive qualified signups",
+      businessType: "B2C subscription app",
     });
 
     const text = result.messages[0]?.content.type === "text" ? result.messages[0].content.text : "";
@@ -83,6 +84,12 @@ describe("GrowSurf MCP prompts", () => {
     expect(text).toContain("GrowSurf preview screenshots");
     expect(text).toContain("own installed site");
     expect(text).toContain("host agent's browser automation tool");
+    expect(text).toContain("Before calling growsurf_create_campaign");
+    expect(text).toContain("at most two short questions");
+    expect(text).toContain("B2C subscription app");
+    expect(text).toContain("share.type.linkedin.isVisible");
+    expect(text).toContain("B2C, FinTech, Online Education, Online Insurance, Newsletter Publisher, and Pre-Launch Waitlist");
+    expect(text).toContain("conflicting reward amounts");
   });
 
   it("renders an affiliate recipe with payout-safety guidance", () => {
@@ -108,6 +115,43 @@ describe("GrowSurf MCP prompts", () => {
     expect(text).toContain("growsurf_capture_referral_flow_screenshots");
     expect(text).toContain("GrowSurf preview screenshots");
     expect(text).toContain("own installed site");
+    expect(text).toContain("Before calling growsurf_create_campaign");
+    expect(text).toContain("at most two short questions");
+  });
+
+  it("explains installation origin authorization and campaign switching", () => {
+    const result = getGrowSurfPrompt("embed_referral_widget", {
+      campaignId: "abc123",
+      websiteUrl: "http://localhost:3000",
+    });
+
+    const text = result.messages[0]?.content.type === "text" ? result.messages[0].content.text : "";
+    expect(text).toContain("growsurf_get_campaign_installation");
+    expect(text).toContain("shareUrl");
+    expect(text).toContain("allowedUrls");
+    expect(text).toContain("http://localhost:3000");
+    expect(text).toContain("403");
+    expect(text).toContain("each campaign");
+  });
+
+  it("keeps analytics and participant reward terms distinct", () => {
+    const analytics = getGrowSurfPrompt("read_analytics", { campaignId: "abc123" });
+    const participant = getGrowSurfPrompt("get_participant", {
+      campaignId: "abc123",
+      participantEmail: "ada@example.com",
+    });
+    const analyticsText = analytics.messages[0]?.content.type === "text" ? analytics.messages[0].content.text : "";
+    const participantText =
+      participant.messages[0]?.content.type === "text" ? participant.messages[0].content.text : "";
+
+    expect(analyticsText).toContain("referralCreditPendings");
+    expect(analyticsText).toContain("unapproved");
+    expect(analyticsText).toContain("unfulfilled");
+    expect(analyticsText).toContain("completed");
+    expect(analyticsText).toMatch(/never equate/i);
+    expect(participantText).toContain("growsurf_list_campaign_rewards");
+    expect(participantText).toContain("rewardId");
+    expect(participantText).toContain("Do not infer a reward amount");
   });
 
   it("throws clearly for an unknown prompt", () => {

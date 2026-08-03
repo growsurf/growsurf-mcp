@@ -26,6 +26,14 @@ describe("renderInstallKit", () => {
     expect(kit).toContain("?grsf=");
   });
 
+  it("documents Share URL and allowed-origin ordering", () => {
+    expect(kit).toContain("Set the program's `shareUrl` first");
+    expect(kit).toContain("`allowedUrls`");
+    expect(kit).toContain("http://localhost:3000");
+    expect(kit).toContain("403");
+    expect(kit).toContain("each program keeps its own");
+  });
+
   it("renders the top-level install-kit title", () => {
     expect(kit).toContain("# GrowSurf install kit");
   });

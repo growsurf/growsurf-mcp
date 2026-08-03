@@ -665,7 +665,11 @@ const CAMPAIGN_INSTALLATION: ToolOutputSchema = {
       description:
         "The signup tracking method: automatic form detection, or participants added via the SDKs and REST API.",
     },
-    shareUrl: { type: "string", description: "The landing page referred friends reach from a referral link." },
+    shareUrl: {
+      type: "string",
+      description:
+        "The landing page referred friends reach from a referral link. Set this before adding other origins to `allowedUrls`.",
+    },
     useGrowSurfHostedLinks: {
       type: "boolean",
       description: "Use GrowSurf-hosted referral links that route clicks by the visitor's device. Mainly for mobile apps.",
@@ -673,7 +677,8 @@ const CAMPAIGN_INSTALLATION: ToolOutputSchema = {
     allowedUrls: {
       type: "array",
       items: { type: "string" },
-      description: "Extra domains, beyond the share URL, where the GrowSurf window and SDK are allowed to run.",
+      description:
+        "Every additional browser origin where the GrowSurf Window or SDK may run, including development origins such as `http://localhost:3000`. Preserve the full array when patching it. An origin absent from both `shareUrl` and this list can return `403`.",
     },
     signup: {
       type: "object",
@@ -748,7 +753,24 @@ const CAMPAIGN_ANALYTICS_TOTALS = {
   description:
     "Analytics totals: `invites`, `impressions`, `uniqueImpressions`, `participants`, `referrals`, `referralCreditPendings`, `referralCreditExpireds`, per-channel share counts (`emailShares`, `twitterShares`, `copyRefLinkShares`, ...), and for affiliate programs `totalRevenue` and `totalCommissions` " +
     `(${MONEY_MINOR_UNITS}) plus \`totalCommissionCount\`.`,
+  properties: {
+    referrals: { type: "integer", description: "Referrals whose credit has been awarded." },
+    referralCreditPendings: {
+      type: "integer",
+      description: "Referred friends whose referral credit has not yet been awarded.",
+    },
+    referralCreditExpireds: {
+      type: "integer",
+      description: "Referred friends whose referral-credit window expired before credit was awarded.",
+    },
+  },
   additionalProperties: { type: "integer" },
+} as const;
+
+const REWARD_STATUS_COUNT_PROPERTIES = {
+  unapproved: { type: "integer", description: "Rewards awaiting customer review." },
+  unfulfilled: { type: "integer", description: "Customer-approved rewards that have not been fulfilled." },
+  completed: { type: "integer", description: "Rewards that have been fulfilled." },
 } as const;
 
 const EMAIL_ANALYTICS_COUNT_PROPERTIES = {
@@ -832,8 +854,15 @@ const CAMPAIGN_ANALYTICS_RESPONSE: ToolOutputSchema = {
     statusCounts: {
       type: "object",
       description:
-        "Status-count breakdowns: `rewardStatus` (`pending`/`approved` counts), and for affiliate programs `affiliateStatus`, `commissionStatus`, and `payoutStatus` " +
+        "Status-count breakdowns: dashboard-aligned reward counts, and for affiliate programs `affiliateStatus`, `commissionStatus`, and `payoutStatus` " +
         `(counts and amounts ${MONEY_MINOR_UNITS}). Present only when \`include\` contains \`statusCounts\`.`,
+      properties: {
+        rewardStatus: {
+          type: "object",
+          description: "Reward counts. These are separate from referral-credit status.",
+          properties: REWARD_STATUS_COUNT_PROPERTIES,
+        },
+      },
     },
     rates: {
       type: "object",
@@ -861,8 +890,11 @@ const PARTICIPANT_ANALYTICS_RESPONSE: ToolOutputSchema = {
         impressions: { type: "integer", description: "Total referral-link views." },
         uniqueImpressions: { type: "integer", description: "Unique referral-link views." },
         invitesSent: { type: "integer", description: "Invites sent by this participant." },
-        rewardsEarned: { type: "integer", description: "Approved rewards earned." },
-        pendingRewards: { type: "integer", description: "Earned rewards awaiting approval." },
+        rewardStatus: {
+          type: "object",
+          description: "This participant's reward counts, separate from referral-credit status.",
+          properties: REWARD_STATUS_COUNT_PROPERTIES,
+        },
         referralRevenue: {
           type: "integer",
           description: `Affiliate only. Revenue attributed to this participant's referrals, ${MONEY_MINOR_UNITS}.`,

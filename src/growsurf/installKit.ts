@@ -684,7 +684,7 @@ export const renderInstallKit = (options: RenderInstallKitOptions): string => {
       "",
       "Referrals are attributed automatically through the GrowSurf cookie and the \`?grsf=\` share-URL parameter that GrowSurf appends to each participant's share link. When a referred visitor lands on your site with \`?grsf=...\` (or returns with the GrowSurf cookie already set), GrowSurf links them to the referrer.",
       "",
-      "For the basic install there is nothing to configure server-side — just make sure your site's origin matches the **Share URL / Signup URL** configured in your GrowSurf program so the cookie is read on the correct domain.",
+      "Set the program's `shareUrl` first. If GrowSurf also runs on another origin, preserve the full `allowedUrls` array and add that origin, including development URLs such as `http://localhost:3000`. A browser origin missing from both settings can return `403`. When switching programs, check again because each program keeps its own Share URL and allowed origins.",
     ].join("\n"),
   );
 

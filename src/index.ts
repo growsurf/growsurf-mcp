@@ -402,11 +402,14 @@ const rewardTaxValuationSchema = z.object({
 // unknown keys, so the MCP mirrors that exact shape instead of advertising an open `{[key]: any}`
 // dictionary. Provide `amount` (+ optional `amountISO`) for a FIXED commission, or `percent` for a
 // PERCENT commission; the remaining fields tune hold/duration, caps, and the intro rate.
+const COMMISSION_MINOR_UNITS_DESCRIPTION =
+  "Amount in minor currency units (the currency's smallest denomination). For USD, $100.00 is `10000`.";
+
 const commissionStructureSchema = z
   .object({
     type: z.enum(["PERCENT", "FIXED"]).optional(),
     event: z.enum(["CLICK", "LEAD", "SALE"]).optional(),
-    amount: z.number().int().nullable().optional(),
+    amount: z.number().int().nullable().optional().describe(COMMISSION_MINOR_UNITS_DESCRIPTION),
     amountISO: z.string().nullable().optional(),
     percent: z.number().nullable().optional(),
     minPaidReferrals: z.number().int().min(1).optional(),
@@ -415,12 +418,12 @@ const commissionStructureSchema = z
     durationInMonths: z.number().int().nullable().optional(),
     approvalRequired: z.boolean().optional(),
     hasMaxAmount: z.boolean().optional(),
-    maxAmount: z.number().int().nullable().optional(),
+    maxAmount: z.number().int().nullable().optional().describe(COMMISSION_MINOR_UNITS_DESCRIPTION),
     maxAmountISO: z.string().nullable().optional(),
     hasIntro: z.boolean().optional(),
     introType: z.enum(["PERCENT", "FIXED"]).nullable().optional(),
     introPercent: z.number().nullable().optional(),
-    introAmount: z.number().int().nullable().optional(),
+    introAmount: z.number().int().nullable().optional().describe(COMMISSION_MINOR_UNITS_DESCRIPTION),
     introAmountISO: z.string().nullable().optional(),
     introDuration: z.enum(["REPEATING", "ONCE"]).nullable().optional(),
     introDurationInMonths: z.number().int().nullable().optional(),
@@ -435,7 +438,7 @@ const commissionStructureJsonSchema = {
   properties: {
     type: { type: "string", enum: ["PERCENT", "FIXED"] },
     event: { type: "string", enum: ["CLICK", "LEAD", "SALE"] },
-    amount: { type: ["integer", "null"] },
+    amount: { type: ["integer", "null"], description: COMMISSION_MINOR_UNITS_DESCRIPTION },
     amountISO: { type: ["string", "null"] },
     percent: { type: ["number", "null"] },
     minPaidReferrals: { type: "integer", minimum: 1 },
@@ -444,12 +447,12 @@ const commissionStructureJsonSchema = {
     durationInMonths: { type: ["integer", "null"] },
     approvalRequired: { type: "boolean" },
     hasMaxAmount: { type: "boolean" },
-    maxAmount: { type: ["integer", "null"] },
+    maxAmount: { type: ["integer", "null"], description: COMMISSION_MINOR_UNITS_DESCRIPTION },
     maxAmountISO: { type: ["string", "null"] },
     hasIntro: { type: "boolean" },
     introType: { type: ["string", "null"] },
     introPercent: { type: ["number", "null"] },
-    introAmount: { type: ["integer", "null"] },
+    introAmount: { type: ["integer", "null"], description: COMMISSION_MINOR_UNITS_DESCRIPTION },
     introAmountISO: { type: ["string", "null"] },
     introDuration: { type: ["string", "null"] },
     introDurationInMonths: { type: ["integer", "null"] },
@@ -1147,11 +1150,16 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_installation",
           description:
-            "Update the Installation tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Pass just the fields you want to change under `fields`. To see the full object with every field and its current value, fetch the tab first, then send back only what you want to change. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update the Installation tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Set `shareUrl` before `allowedUrls`; preserve the full allowed-origin array, including any local or staging origin. A browser origin missing from both can return `403`. Fetch the tab first, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
-              fields: { type: "object", additionalProperties: true },
+              fields: {
+                type: "object",
+                description:
+                  "Installation fields to patch. Common keys include `shareUrl`, `allowedUrls`, `signupEvent`, `referralTrigger`, and `signup`. Arrays replace wholesale.",
+                additionalProperties: true,
+              },
             },
             required: ["fields"],
             additionalProperties: false,
