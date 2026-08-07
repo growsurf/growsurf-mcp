@@ -6,6 +6,7 @@ const originalFetch = globalThis.fetch;
 describe("GrowSurfClient", () => {
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -496,6 +497,69 @@ describe("GrowSurfClient", () => {
       expect(new Headers((init as RequestInit).headers).get("Idempotency-Key"))
         .toBe("caller-stable-rotation-key");
     }
+  });
+
+  it("cancels discarded retry response bodies without changing retry behavior when cleanup fails", async () => {
+    vi.useFakeTimers();
+    const cancel = vi.fn().mockRejectedValue(new Error("body cleanup failed"));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(new ReadableStream({ cancel }), {
+          status: 503,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ campaigns: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key" });
+    const resultPromise = client.listCampaigns();
+    await vi.advanceTimersByTimeAsync(250);
+
+    await expect(resultPromise).resolves.toEqual({ campaigns: [] });
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(cancel.mock.invocationCallOrder[0]).toBeLessThan(fetchMock.mock.invocationCallOrder[1]);
+  });
+
+  it("retries without waiting for response body cancellation to settle", async () => {
+    const cancel = vi.fn(() => new Promise<void>(() => {}));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(new ReadableStream({ cancel }), {
+          status: 503,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ campaigns: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key" });
+    const resultPromise = client.listCampaigns();
+    const timedOut = Symbol("retry timed out");
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<typeof timedOut>((resolve) => {
+      timeoutId = setTimeout(() => resolve(timedOut), 1000);
+    });
+    const result = await Promise.race([resultPromise, timeoutPromise]);
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+
+    expect(result).not.toBe(timedOut);
+    expect(result).toEqual({ campaigns: [] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(cancel).toHaveBeenCalledOnce();
   });
 
   it("retries an interrupted successful rotation response with the same idempotency key", async () => {

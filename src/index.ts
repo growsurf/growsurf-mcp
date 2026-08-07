@@ -128,7 +128,7 @@ const getKeylessGrowSurfClient = (env: Env): GrowSurfClient =>
 // The campaign-scoped tools: every tool that operates on a single program (campaign). Each accepts
 // an optional `campaignId` argument that overrides GROWSURF_CAMPAIGN_ID (resolved per call via
 // resolveCampaignClient), so an agent can create a program and immediately operate on the returned
-// id. The list-time loop below injects the shared campaignId input-schema property into exactly
+// id. The tool-catalog builder below injects the shared campaignId input-schema property into exactly
 // these tools, and each handler resolves its client with resolveCampaignClient(env, toolArgs).
 // Team-level, keyless, and static guidance tools are intentionally excluded, as are the tools
 // that already declare their own campaignId (create_campaign has none; the guide/snippet and
@@ -173,15 +173,16 @@ const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
   "growsurf_create_mobile_participant_token",
 ]);
 
-// Shared JSON-schema property injected into every campaign-scoped tool's input schema (see the loop
-// in the ListTools handler). Keeping it in one place means the campaign-scoped tool schemas cannot drift.
+// Shared JSON-schema property injected into every campaign-scoped tool's input schema (see the
+// tool-catalog builder). Keeping it in one place means the campaign-scoped tool schemas cannot drift.
 const CAMPAIGN_ID_JSON_PROP = {
   type: "string",
   description:
     "Target program (campaign) id for this call. Defaults to GROWSURF_CAMPAIGN_ID when omitted. Pass the `id` returned by growsurf_create_campaign to configure or operate a program you just created, without restarting the server.",
 } as const;
 
-const safeJson = (value: unknown): string => JSON.stringify(value, null, 2);
+// Keep JSON text compact to reduce serialized MCP payload size while preserving valid JSON.
+const safeJson = (value: unknown): string => JSON.stringify(value);
 
 type ToolResult = {
   content: Array<{ type: "text"; text: string }>;
@@ -779,7 +780,8 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
     return getGrowSurfPrompt(request.params.name, request.params.arguments ?? {});
   });
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
+  // Builds the static tool catalog once per server while leaving credential filtering request-scoped.
+  const buildToolsWithMetadata = () => {
     const tools = [
         {
           name: "growsurf_integration_guide",
@@ -1836,7 +1838,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
       const outputSchema = TOOL_OUTPUT_SCHEMAS[tool.name];
       if (outputSchema) (tool as { outputSchema?: ToolOutputSchema }).outputSchema = outputSchema;
     }
-    const toolsWithMetadata = tools.map(withToolAuthorizationMetadata);
+    return tools.map(withToolAuthorizationMetadata);
+  };
+
+  let toolsWithMetadataCache: ReturnType<typeof buildToolsWithMetadata> | undefined;
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    const toolsWithMetadata = (toolsWithMetadataCache ??= buildToolsWithMetadata());
     // Hosted transports can hide tools that a verified credential cannot use. Omitting the
     // resolver preserves the local/stdio server's existing all-tools discovery behavior.
     if (!options.resolveCredentialContext) return { tools: toolsWithMetadata };

@@ -334,6 +334,35 @@ describe("MCP tool authorization", () => {
     expect(filtered).not.toContain("growsurf_rotate_api_key");
   });
 
+  it("re-evaluates credential filtering on every tools/list request", async () => {
+    let resolutionCount = 0;
+    const resolveCredentialContext = vi.fn(async () => ({
+      credentialType: CREDENTIAL_TYPES.MCP_OAUTH,
+      scopes:
+        resolutionCount++ === 0
+          ? [MACHINE_SCOPES.PROGRAM_READ]
+          : [MACHINE_SCOPES.PROGRAM_WRITE],
+    }));
+    const server = createGrowSurfMcpServer({ env, resolveCredentialContext });
+    const client = new Client({ name: "dynamic-authorization-test-client", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const readTools = (await client.listTools()).tools.map((tool) => tool.name);
+      const writeTools = (await client.listTools()).tools.map((tool) => tool.name);
+
+      expect(readTools).toContain("growsurf_get_campaign");
+      expect(readTools).not.toContain("growsurf_update_campaign");
+      expect(writeTools).not.toContain("growsurf_get_campaign");
+      expect(writeTools).toContain("growsurf_update_campaign");
+      expect(resolveCredentialContext).toHaveBeenCalledTimes(2);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it("leaves tools/call authorization to the REST API", async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({

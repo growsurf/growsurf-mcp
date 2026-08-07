@@ -559,6 +559,13 @@ export class GrowSurfClient {
       }
 
       if ((response.status === 429 || response.status === 503) && attempt < maxAttempts) {
+        // Release the discarded body before retrying; cleanup failures must not change retry behavior.
+        try {
+          const cancellation = response.body?.cancel();
+          void cancellation?.catch(() => undefined);
+        } catch {
+          // Best-effort cleanup only.
+        }
         const retryAfterMs =
           Number(response.headers.get("GrowSurf-Retry-After-Second-Milliseconds")) ||
           Number(response.headers.get("GrowSurf-Retry-After-Minute-Milliseconds")) ||

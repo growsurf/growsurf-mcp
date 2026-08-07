@@ -412,6 +412,7 @@ describe("tool output schemas", () => {
     expect(result.isError).toBeFalsy();
     expect(result.structuredContent).toEqual(participant);
     const text = Array.isArray(result.content) && result.content[0]?.type === "text" ? result.content[0].text : "";
+    expect(text).toBe(JSON.stringify(participant));
     expect(JSON.parse(text)).toEqual(participant);
   });
 
