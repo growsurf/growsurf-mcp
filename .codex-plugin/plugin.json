@@ -1,0 +1,44 @@
+{
+  "name": "growsurf",
+  "version": "0.11.1",
+  "description": "Build and manage GrowSurf referral and affiliate programs from ChatGPT.",
+  "author": {
+    "name": "GrowSurf",
+    "email": "support@growsurf.com",
+    "url": "https://growsurf.com"
+  },
+  "homepage": "https://docs.growsurf.com/build-with-ai",
+  "repository": "https://github.com/growsurf/growsurf-mcp",
+  "license": "MIT",
+  "keywords": [
+    "growsurf",
+    "referral-program",
+    "affiliate-program",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "GrowSurf",
+    "shortDescription": "Build and manage GrowSurf programs",
+    "longDescription": "Connect GrowSurf to ChatGPT through MCP. Create referral or affiliate programs, configure rewards and settings, manage participants and webhooks, track referrals and affiliate sales, read analytics, and get implementation guidance.",
+    "developerName": "GrowSurf",
+    "category": "Business & Operations",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://growsurf.com",
+    "privacyPolicyURL": "https://growsurf.com/privacy",
+    "termsOfServiceURL": "https://growsurf.com/terms",
+    "defaultPrompt": [
+      "Create a referral program and keep rewards disabled until I confirm funding.",
+      "Review my GrowSurf program settings and show me what is missing before launch.",
+      "Read my program analytics and explain the largest conversion drop."
+    ],
+    "brandColor": "#5890E7",
+    "composerIcon": "./assets/growsurf-icon.svg",
+    "logo": "./assets/growsurf-icon.svg",
+    "screenshots": []
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.growsurf/growsurf",
+  "title": "GrowSurf",
+  "description": "Build and manage GrowSurf referral and affiliate programs through AI assistants.",
+  "version": "0.11.1",
+  "websiteUrl": "https://docs.growsurf.com/build-with-ai",
+  "icons": [
+    {
+      "src": "https://website-images.growsurf.com/site-images/brand-guidelines/logo/iconmark-blue-padded.png",
+      "mimeType": "image/png",
+      "sizes": ["500x500"]
+    }
+  ],
+  "repository": {
+    "url": "https://github.com/growsurf/growsurf-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@growsurfteam/growsurf-mcp",
+      "version": "0.11.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "GROWSURF_API_KEY",
+          "description": "A GrowSurf API key with access to the programs and actions you want to use.",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "GROWSURF_CAMPAIGN_ID",
+          "description": "The default GrowSurf program ID for program-scoped tools.",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.growsurf.com"
+    }
+  ]
+}

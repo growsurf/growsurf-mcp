@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "growsurf": {
+      "type": "http",
+      "url": "https://mcp.growsurf.com"
+    }
+  }
+}

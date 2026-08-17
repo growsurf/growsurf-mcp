@@ -9,11 +9,13 @@ describe("package distribution", () => {
     ) as {
       exports?: Record<string, string | { types?: string; default?: string }>;
       files?: string[];
+      mcpName?: string;
       types?: string;
       version?: string;
     };
 
-    expect(packageJson.version).toBe("0.11.0");
+    expect(packageJson.version).toBe("0.11.1");
+    expect(packageJson.mcpName).toBe("com.growsurf/growsurf");
     expect(GROWSURF_MCP_VERSION).toBe(packageJson.version);
     expect(packageJson.types).toBe("./dist/index.d.ts");
     expect(packageJson.exports).toMatchObject({

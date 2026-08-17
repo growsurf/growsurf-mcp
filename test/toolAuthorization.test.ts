@@ -220,7 +220,7 @@ describe("MCP tool authorization", () => {
     });
     expect(byName.get("growsurf_create_account")?.annotations).toMatchObject({
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       idempotentHint: false,
       openWorldHint: true,
     });
@@ -240,9 +240,6 @@ describe("MCP tool authorization", () => {
       destructiveHint: true,
       idempotentHint: true,
     });
-    expect(byName.get("growsurf_email_participant")?.annotations).toMatchObject({
-      openWorldHint: true,
-    });
     expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_bulk_delete_participants.riskTier)
       .toBe(TOOL_RISK_TIERS.DESTRUCTIVE);
     expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_delete_campaign_webhook.riskTier)
@@ -258,6 +255,23 @@ describe("MCP tool authorization", () => {
     expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_trigger_referral.riskTier).toBe(TOOL_RISK_TIERS.MONEY);
     expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_record_sale.riskTier).toBe(TOOL_RISK_TIERS.MONEY);
     expect(TOOL_AUTHORIZATION_MANIFEST.growsurf_refund_transaction.riskTier).toBe(TOOL_RISK_TIERS.MONEY);
+  });
+
+  it.each([
+    "growsurf_resend_team_owner_verification_email",
+    "growsurf_test_campaign_webhook",
+    "growsurf_email_participant",
+    "growsurf_request_participant_payout_destination_confirmation",
+    "growsurf_trigger_referral",
+  ])("marks irreversible external action %s as destructive", async (toolName) => {
+    const tool = (await listTools()).find((candidate) => candidate.name === toolName);
+
+    expect(tool?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
   });
 
   it.each(["growsurf_record_sale", "growsurf_refund_transaction"])(

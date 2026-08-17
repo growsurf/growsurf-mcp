@@ -84,7 +84,7 @@ const TOOL_BEHAVIOR = {
   },
   CONTENT_EXTERNAL: {
     riskTier: TOOL_RISK_TIERS.CONTENT,
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   },
   DESTRUCTIVE: {
     riskTier: TOOL_RISK_TIERS.DESTRUCTIVE,
@@ -100,7 +100,7 @@ const TOOL_BEHAVIOR = {
   },
   MONEY_EXTERNAL: {
     riskTier: TOOL_RISK_TIERS.MONEY,
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   },
   MONEY_SET: {
     riskTier: TOOL_RISK_TIERS.MONEY,

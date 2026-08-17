@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "growsurf",
+  "displayName": "GrowSurf",
+  "version": "0.11.1",
+  "description": "Build and manage GrowSurf referral and affiliate programs from Claude.",
+  "author": {
+    "name": "GrowSurf",
+    "email": "support@growsurf.com",
+    "url": "https://growsurf.com"
+  },
+  "homepage": "https://docs.growsurf.com/build-with-ai",
+  "repository": "https://github.com/growsurf/growsurf-mcp",
+  "license": "MIT",
+  "keywords": [
+    "growsurf",
+    "referral-program",
+    "affiliate-program",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}
