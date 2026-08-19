@@ -135,6 +135,16 @@ describe("tool output schemas", () => {
     );
   });
 
+  it("advertises unique affiliate commission referrals", () => {
+    const campaign = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_analytics;
+    const analytics = campaign.properties?.analytics as {
+      properties?: Record<string, { description?: string }>;
+    };
+
+    expect(analytics.properties).toHaveProperty("uniqueCommissionReferrals");
+    expect(analytics.properties?.uniqueCommissionReferrals.description).toMatch(/unique referred participants/i);
+  });
+
   it("describes reward tax character without overriding Commission treatment", async () => {
     const rewardList = TOOL_OUTPUT_SCHEMAS.growsurf_list_campaign_rewards;
     const reward = (rewardList.properties?.rewards as { items?: { properties?: Record<string, unknown> } }).items;

@@ -752,7 +752,7 @@ const CAMPAIGN_ANALYTICS_TOTALS = {
   type: "object",
   description:
     "Analytics totals: `invites`, `impressions`, `uniqueImpressions`, `participants`, `referrals`, `referralCreditPendings`, `referralCreditExpireds`, per-channel share counts (`emailShares`, `twitterShares`, `copyRefLinkShares`, ...), and for affiliate programs `totalRevenue` and `totalCommissions` " +
-    `(${MONEY_MINOR_UNITS}) plus \`totalCommissionCount\`.`,
+    `(${MONEY_MINOR_UNITS}) plus \`totalCommissionCount\` and \`uniqueCommissionReferrals\`.`,
   properties: {
     referrals: { type: "integer", description: "Referrals whose credit has been awarded." },
     referralCreditPendings: {
@@ -762,6 +762,11 @@ const CAMPAIGN_ANALYTICS_TOTALS = {
     referralCreditExpireds: {
       type: "integer",
       description: "Referred friends whose referral-credit window expired before credit was awarded.",
+    },
+    uniqueCommissionReferrals: {
+      type: "integer",
+      description:
+        "Affiliate programs only. Number of unique referred participants represented by commissions in the requested timeframe.",
     },
   },
   additionalProperties: { type: "integer" },
