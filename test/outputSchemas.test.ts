@@ -140,9 +140,22 @@ describe("tool output schemas", () => {
     const analytics = campaign.properties?.analytics as {
       properties?: Record<string, { description?: string }>;
     };
+    const campaignSeries = campaign.properties?.series as {
+      items?: { properties?: Record<string, { description?: string }> };
+    };
+    const previousPeriod = campaign.properties?.previousPeriod as {
+      properties?: { analytics?: { properties?: Record<string, { description?: string }> } };
+    };
+    const participant = TOOL_OUTPUT_SCHEMAS.growsurf_get_participant_analytics;
+    const participantSeries = participant.properties?.series as {
+      items?: { properties?: Record<string, { description?: string }> };
+    };
 
     expect(analytics.properties).toHaveProperty("uniqueCommissionReferrals");
     expect(analytics.properties?.uniqueCommissionReferrals.description).toMatch(/unique referred participants/i);
+    expect(campaignSeries.items?.properties).toHaveProperty("uniqueCommissionReferrals");
+    expect(previousPeriod.properties?.analytics?.properties).toHaveProperty("uniqueCommissionReferrals");
+    expect(participantSeries.items?.properties).toHaveProperty("uniqueCommissionReferrals");
   });
 
   it("describes reward tax character without overriding Commission treatment", async () => {

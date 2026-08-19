@@ -835,6 +835,7 @@ const CAMPAIGN_ANALYTICS_RESPONSE: ToolOutputSchema = {
         description: "Per-period analytics totals plus `periodStart` (Unix ms, UTC).",
         properties: {
           periodStart: { type: "integer", description: "Start of the period (Unix ms, UTC)." },
+          ...CAMPAIGN_ANALYTICS_TOTALS.properties,
           email: {
             type: "object",
             description: "Per-period email counts. Present only when `include` contains `email`.",
@@ -850,6 +851,12 @@ const CAMPAIGN_ANALYTICS_RESPONSE: ToolOutputSchema = {
       description:
         "Totals for the equal-length window immediately before the requested one (`analytics`, `startDate`, `endDate`). Present only when `include` contains `previousPeriod`.",
       properties: {
+        analytics: {
+          ...CAMPAIGN_ANALYTICS_TOTALS,
+          description: "Campaign analytics totals for the previous comparison timeframe.",
+        },
+        startDate: { type: "integer", description: "Start of the previous comparison timeframe (Unix ms)." },
+        endDate: { type: "integer", description: "End of the previous comparison timeframe (Unix ms)." },
         email: {
           ...EMAIL_ANALYTICS_RESPONSE,
           description: "Previous-window email metrics when `include` contains both `previousPeriod` and `email`.",
@@ -934,6 +941,7 @@ const PARTICIPANT_ANALYTICS_RESPONSE: ToolOutputSchema = {
         description: "Per-period activity totals plus `periodStart` (Unix ms, UTC).",
         properties: {
           periodStart: { type: "integer", description: "Start of the period (Unix ms, UTC)." },
+          ...CAMPAIGN_ANALYTICS_TOTALS.properties,
           email: {
             type: "object",
             description: "Per-period email counts when both optional values are requested.",
