@@ -45,4 +45,20 @@ describe("renderApiLibrarySnippets", () => {
     expect(text).toContain("invoiceID: 'invoice_123'");
     expect(text).not.toContain("invoiceId: 'invoice_123'");
   });
+
+  it("uses current SDK versions and Pied Piper fixtures", () => {
+    const text = renderApiLibrarySnippets({ language: "all", workflow: "all" }, { campaignId: "abc123" });
+
+    for (const language of ["TypeScript", "Python", "PHP", "Ruby", "Java"]) {
+      expect(text).toMatch(new RegExp(`### ${language} .*1\\.2\\.1\\+`));
+    }
+    expect(text).toContain('gem "growsurf-ruby", "~> 1.2.1"');
+    expect(text).toContain('implementation("com.growsurf.api:growsurf-java:1.2.1")');
+    expect(text).not.toContain("1.2.0");
+    expect(text).toContain("gavin@hooli.com");
+    expect(text).toContain("Gavin");
+    expect(text).toContain("Belson");
+    expect(text).not.toContain("person@example.com");
+    expect(text).not.toContain("Ada Lovelace");
+  });
 });

@@ -141,6 +141,25 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("termsAccepted = true");
   });
 
+  it("uses Pied Piper participant fixtures", () => {
+    const text = renderMobileSdkGuide(
+      {
+        platform: "both",
+        attributionProvider: "all",
+        participantState: "new_participant",
+        serverVerifiedQualifyingAction: true,
+        includeInstallSnippets: false,
+      },
+      { campaignId: "abc123" },
+    );
+
+    expect(text).toContain("gavin@hooli.com");
+    expect(text).toContain("Gavin");
+    expect(text).toContain("Belson");
+    expect(text).not.toContain("person@example.com");
+    expect(text).not.toContain("Ada Lovelace");
+  });
+
   it("renders per-provider iOS deferred guidance (LinkMe / UDL / Clipboard-Based DDL)", () => {
     const adjust = renderMobileSdkGuide(
       { platform: "ios", attributionProvider: "adjust", participantState: "both", serverVerifiedQualifyingAction: true, includeInstallSnippets: false },

@@ -28,6 +28,11 @@ export type ApiLibrarySnippetsContext = {
 type Language = Exclude<ApiLibrarySnippetsInput["language"], "all">;
 type Workflow = Exclude<ApiLibrarySnippetsInput["workflow"], "all">;
 
+const REST_API_LIBRARY_VERSION = "1.2.1";
+const FIXTURE_EMAIL = "gavin@hooli.com";
+const FIXTURE_FIRST_NAME = "Gavin";
+const FIXTURE_LAST_NAME = "Belson";
+
 const codeBlock = (language: string, code: string): string => ["```" + language, code, "```"].join("\n");
 
 const placeholder = (value: string | undefined, fallback: string) => {
@@ -48,7 +53,7 @@ const renderTypeScript = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = ["### TypeScript (`growsurf-typescript` 1.2.0+)"];
+  const sections: string[] = [`### TypeScript (\`growsurf-typescript\` ${REST_API_LIBRARY_VERSION}+)`];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
       codeBlock(
@@ -76,9 +81,9 @@ const renderTypeScript = (
         "ts",
         [
           `const participant = await client.campaign.participant.add(${JSON.stringify(campaignId)}, {`,
-          "  email: \"person@example.com\",",
-          "  firstName: \"Ada\",",
-          "  lastName: \"Lovelace\",",
+          `  email: ${JSON.stringify(FIXTURE_EMAIL)},`,
+          `  firstName: ${JSON.stringify(FIXTURE_FIRST_NAME)},`,
+          `  lastName: ${JSON.stringify(FIXTURE_LAST_NAME)},`,
           "});",
         ].join("\n"),
       ),
@@ -135,7 +140,7 @@ const renderPython = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = ["### Python (`growsurf-python` 1.2.0+)"];
+  const sections: string[] = [`### Python (\`growsurf-python\` ${REST_API_LIBRARY_VERSION}+)`];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
       codeBlock("sh", "pip install growsurf-python"),
@@ -159,9 +164,9 @@ const renderPython = (
         "python",
         [
           `participant = client.campaign.participant.add(${JSON.stringify(campaignId)},`,
-          "    email=\"person@example.com\",",
-          "    first_name=\"Ada\",",
-          "    last_name=\"Lovelace\",",
+          `    email=${JSON.stringify(FIXTURE_EMAIL)},`,
+          `    first_name=${JSON.stringify(FIXTURE_FIRST_NAME)},`,
+          `    last_name=${JSON.stringify(FIXTURE_LAST_NAME)},`,
           ")",
         ].join("\n"),
       ),
@@ -214,7 +219,7 @@ const renderPhp = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = ["### PHP (`growsurf/growsurf-php` 1.2.0+)"];
+  const sections: string[] = [`### PHP (\`growsurf/growsurf-php\` ${REST_API_LIBRARY_VERSION}+)`];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
       codeBlock(
@@ -245,7 +250,7 @@ const renderPhp = (
     sections.push(
       codeBlock(
         "php",
-        `$participant = $client->campaign->participant->add(${JSON.stringify(campaignId)}, email: 'person@example.com', firstName: 'Ada', lastName: 'Lovelace');`,
+        `$participant = $client->campaign->participant->add(${JSON.stringify(campaignId)}, email: '${FIXTURE_EMAIL}', firstName: '${FIXTURE_FIRST_NAME}', lastName: '${FIXTURE_LAST_NAME}');`,
       ),
     );
   }
@@ -296,10 +301,10 @@ const renderRuby = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = ["### Ruby (`growsurf-ruby` 1.2.0+)"];
+  const sections: string[] = [`### Ruby (\`growsurf-ruby\` ${REST_API_LIBRARY_VERSION}+)`];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
-      codeBlock("ruby", "gem \"growsurf-ruby\", \"~> 1.2.0\""),
+      codeBlock("ruby", `gem \"growsurf-ruby\", \"~> ${REST_API_LIBRARY_VERSION}\"`),
       codeBlock(
         "ruby",
         [
@@ -319,9 +324,9 @@ const renderRuby = (
         "ruby",
         [
           `participant = growsurf.campaign.participant.add(${JSON.stringify(campaignId)},`,
-          "  email: \"person@example.com\",",
-          "  first_name: \"Ada\",",
-          "  last_name: \"Lovelace\"",
+          `  email: ${JSON.stringify(FIXTURE_EMAIL)},`,
+          `  first_name: ${JSON.stringify(FIXTURE_FIRST_NAME)},`,
+          `  last_name: ${JSON.stringify(FIXTURE_LAST_NAME)}`,
           ")",
         ].join("\n"),
       ),
@@ -372,10 +377,10 @@ const renderJava = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = ["### Java (`com.growsurf.api:growsurf-java` 1.2.0+)"];
+  const sections: string[] = [`### Java (\`com.growsurf.api:growsurf-java\` ${REST_API_LIBRARY_VERSION}+)`];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
-      codeBlock("kotlin", "implementation(\"com.growsurf.api:growsurf-java:1.2.0\")"),
+      codeBlock("kotlin", `implementation(\"com.growsurf.api:growsurf-java:${REST_API_LIBRARY_VERSION}\")`),
       codeBlock(
         "java",
         [
@@ -400,9 +405,9 @@ const renderJava = (
           "var participant = client.campaign().participant().add(",
           `    ${JSON.stringify(campaignId)},`,
           "    ParticipantAddParams.builder()",
-          "        .email(\"person@example.com\")",
-          "        .firstName(\"Ada\")",
-          "        .lastName(\"Lovelace\")",
+          `        .email(${JSON.stringify(FIXTURE_EMAIL)})`,
+          `        .firstName(${JSON.stringify(FIXTURE_FIRST_NAME)})`,
+          `        .lastName(${JSON.stringify(FIXTURE_LAST_NAME)})`,
           "        .build()",
           ");",
         ].join("\n"),

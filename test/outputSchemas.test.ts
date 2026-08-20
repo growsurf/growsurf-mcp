@@ -158,6 +158,76 @@ describe("tool output schemas", () => {
     expect(participantSeries.items?.properties).toHaveProperty("uniqueCommissionReferrals");
   });
 
+  it("advertises every campaign analytics total and status breakdown", () => {
+    const campaign = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_analytics;
+    const analytics = campaign.properties?.analytics as {
+      properties?: Record<string, { description?: string }>;
+    };
+    const statusCounts = campaign.properties?.statusCounts as {
+      properties?: Record<string, { properties?: Record<string, unknown> }>;
+    };
+
+    expect(Object.keys(analytics.properties ?? {})).toEqual([
+      "invites",
+      "impressions",
+      "uniqueImpressions",
+      "participants",
+      "referrals",
+      "referralCreditPendings",
+      "referralCreditExpireds",
+      "emailShares",
+      "facebookShares",
+      "twitterShares",
+      "threadsShares",
+      "blueskyShares",
+      "pinterestShares",
+      "linkedInShares",
+      "smsShares",
+      "messengerShares",
+      "whatsAppShares",
+      "wechatShares",
+      "telegramShares",
+      "qrcodeShares",
+      "redditShares",
+      "tumblrShares",
+      "copyRefLinkShares",
+      "iosNativeShares",
+      "androidNativeShares",
+      "totalRevenue",
+      "totalCommissions",
+      "totalCommissionCount",
+      "uniqueCommissionReferrals",
+    ]);
+    expect(Object.keys(statusCounts.properties ?? {})).toEqual([
+      "currencyISO",
+      "rewardStatus",
+      "affiliateStatus",
+      "commissionStatus",
+      "payoutStatus",
+    ]);
+    expect(Object.keys(statusCounts.properties?.commissionStatus?.properties ?? {})).toEqual([
+      "pending",
+      "approved",
+      "paid",
+      "reversed",
+    ]);
+    expect(Object.keys(statusCounts.properties?.payoutStatus?.properties ?? {})).toEqual([
+      "upcoming",
+      "queued",
+      "issued",
+      "failed",
+      "reversed",
+    ]);
+  });
+
+  it("uses Campaign Reward terminology for earned rewards", () => {
+    const advertised = JSON.stringify(TOOL_OUTPUT_SCHEMAS.growsurf_get_participant);
+
+    expect(advertised).toContain("Campaign Reward");
+    expect(advertised).not.toMatch(/program-level reward config|program reward/i);
+    expect(advertised).not.toMatch(/anti-fraud matching/i);
+  });
+
   it("describes reward tax character without overriding Commission treatment", async () => {
     const rewardList = TOOL_OUTPUT_SCHEMAS.growsurf_list_campaign_rewards;
     const reward = (rewardList.properties?.rewards as { items?: { properties?: Record<string, unknown> } }).items;

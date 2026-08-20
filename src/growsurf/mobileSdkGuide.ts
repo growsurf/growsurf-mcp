@@ -2,6 +2,9 @@ import { z } from "zod";
 
 const MOBILE_SDK_GUIDANCE_VERSION = "0.4.0";
 const IOS_DISTRIBUTION_URL = "https://github.com/growsurf/growsurf-ios-sdk-distribution.git";
+const FIXTURE_EMAIL = "gavin@hooli.com";
+const FIXTURE_FIRST_NAME = "Gavin";
+const FIXTURE_LAST_NAME = "Belson";
 
 const codeBlock = (language: string, code: string): string => ["```" + language, code, "```"].join("\n");
 
@@ -218,7 +221,7 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
         "swift",
         [
           "let result = try await growsurf.addReferredParticipant(",
-          "    .init(email: \"person@example.com\", firstName: \"Ada\", lastName: \"Lovelace\")",
+          `    .init(email: ${JSON.stringify(FIXTURE_EMAIL)}, firstName: ${JSON.stringify(FIXTURE_FIRST_NAME)}, lastName: ${JSON.stringify(FIXTURE_LAST_NAME)})`,
           ")",
           "",
           "if result.added,",
@@ -233,9 +236,9 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
         [
           "let directSignup = try await growsurf.addParticipant(",
           "    .init(",
-          "        email: \"person@example.com\",",
-          "        firstName: \"Ada\",",
-          "        lastName: \"Lovelace\",",
+          `        email: ${JSON.stringify(FIXTURE_EMAIL)},`,
+          `        firstName: ${JSON.stringify(FIXTURE_FIRST_NAME)},`,
+          `        lastName: ${JSON.stringify(FIXTURE_LAST_NAME)},`,
           "        termsAccepted: true",
           "    )",
           ")",
@@ -319,7 +322,7 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
         "kotlin",
         [
           "val result = growsurf.addReferredParticipant(",
-          "    GrowSurfParticipantInput(email = \"person@example.com\", firstName = \"Ada\", lastName = \"Lovelace\")",
+          `    GrowSurfParticipantInput(email = ${JSON.stringify(FIXTURE_EMAIL)}, firstName = ${JSON.stringify(FIXTURE_FIRST_NAME)}, lastName = ${JSON.stringify(FIXTURE_LAST_NAME)})`,
           ")",
           "",
           "if (result.added) {",
@@ -335,9 +338,9 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
         [
           "val directSignup = growsurf.addParticipant(",
           "    GrowSurfParticipantInput(",
-          "        email = \"person@example.com\",",
-          "        firstName = \"Ada\",",
-          "        lastName = \"Lovelace\",",
+          `        email = ${JSON.stringify(FIXTURE_EMAIL)},`,
+          `        firstName = ${JSON.stringify(FIXTURE_FIRST_NAME)},`,
+          `        lastName = ${JSON.stringify(FIXTURE_LAST_NAME)},`,
           "        termsAccepted = true,",
           "    )",
           ")",

@@ -27,10 +27,10 @@ const METADATA = {
 const PARTICIPANT_REWARD = {
   type: "object",
   description:
-    "A reward earned by the participant (`ParticipantReward`), distinct from the program-level reward config (`CampaignReward`).",
+    "A reward earned by the participant (`ParticipantReward`), distinct from a Campaign Reward configuration (`CampaignReward`).",
   properties: {
     id: { type: "string", description: "The participant reward id." },
-    rewardId: { type: "string", description: "Id of the program reward (`CampaignReward`) that was earned." },
+    rewardId: { type: "string", description: "ID of the Campaign Reward (`CampaignReward`) that was earned." },
     status: { type: "string", enum: ["PENDING", "FULFILLED"], description: "Fulfillment status of the earned reward." },
     unread: { type: "boolean", description: "`true` until the participant sees the reward in a GrowSurf window." },
     approved: { type: "boolean", description: "`true` once the reward is approved." },
@@ -140,11 +140,11 @@ const PARTICIPANT: ToolOutputSchema = {
       description:
         "Summary of the participant's referrer (same core fields as a participant). Present only when the participant was referred.",
     },
-    ipAddress: { type: ["string", "null"], description: "IP address used for anti-fraud matching." },
-    fingerprint: { type: ["string", "null"], description: "Browser fingerprint used for anti-fraud matching." },
+    ipAddress: { type: ["string", "null"], description: "IP address recorded for the participant, or `null`." },
+    fingerprint: { type: ["string", "null"], description: "Browser identifier recorded for the participant, or `null`." },
     mobileInstanceId: {
       type: ["string", "null"],
-      description: "App-install scoped mobile identifier used for anti-fraud matching.",
+      description: "App-install scoped identifier supplied by a native app, or `null`.",
     },
     metadata: METADATA,
     notes: { type: ["string", "null"], description: "Internal notes. Never shown to participants." },
@@ -754,6 +754,10 @@ const CAMPAIGN_ANALYTICS_TOTALS = {
     "Analytics totals: `invites`, `impressions`, `uniqueImpressions`, `participants`, `referrals`, `referralCreditPendings`, `referralCreditExpireds`, per-channel share counts (`emailShares`, `twitterShares`, `copyRefLinkShares`, ...), and for affiliate programs `totalRevenue` and `totalCommissions` " +
     `(${MONEY_MINOR_UNITS}) plus \`totalCommissionCount\` and \`uniqueCommissionReferrals\`.`,
   properties: {
+    invites: { type: "integer", description: "Invites sent by participants." },
+    impressions: { type: "integer", description: "Total referral-link views." },
+    uniqueImpressions: { type: "integer", description: "Unique referral-link views." },
+    participants: { type: "integer", description: "Participants added." },
     referrals: { type: "integer", description: "Referrals whose credit has been awarded." },
     referralCreditPendings: {
       type: "integer",
@@ -762,6 +766,36 @@ const CAMPAIGN_ANALYTICS_TOTALS = {
     referralCreditExpireds: {
       type: "integer",
       description: "Referred friends whose referral-credit window expired before credit was awarded.",
+    },
+    emailShares: { type: "integer", description: "Shares through email." },
+    facebookShares: { type: "integer", description: "Shares through Facebook." },
+    twitterShares: { type: "integer", description: "Shares through Twitter/X." },
+    threadsShares: { type: "integer", description: "Shares through Threads." },
+    blueskyShares: { type: "integer", description: "Shares through Bluesky." },
+    pinterestShares: { type: "integer", description: "Shares through Pinterest." },
+    linkedInShares: { type: "integer", description: "Shares through LinkedIn." },
+    smsShares: { type: "integer", description: "Shares through SMS." },
+    messengerShares: { type: "integer", description: "Shares through Messenger." },
+    whatsAppShares: { type: "integer", description: "Shares through WhatsApp." },
+    wechatShares: { type: "integer", description: "Shares through WeChat." },
+    telegramShares: { type: "integer", description: "Shares through Telegram." },
+    qrcodeShares: { type: "integer", description: "Shares through QR code." },
+    redditShares: { type: "integer", description: "Shares through Reddit." },
+    tumblrShares: { type: "integer", description: "Shares through Tumblr." },
+    copyRefLinkShares: { type: "integer", description: "Times participants copied their referral link." },
+    iosNativeShares: { type: "integer", description: "Shares through iOS native sharing." },
+    androidNativeShares: { type: "integer", description: "Shares through Android native sharing." },
+    totalRevenue: {
+      type: "integer",
+      description: `Affiliate programs only. Revenue ${MONEY_MINOR_UNITS}.`,
+    },
+    totalCommissions: {
+      type: "integer",
+      description: `Affiliate programs only. Commissions ${MONEY_MINOR_UNITS}.`,
+    },
+    totalCommissionCount: {
+      type: "integer",
+      description: "Affiliate programs only. Number of commission records.",
     },
     uniqueCommissionReferrals: {
       type: "integer",
@@ -776,6 +810,23 @@ const REWARD_STATUS_COUNT_PROPERTIES = {
   unapproved: { type: "integer", description: "Rewards awaiting customer review." },
   unfulfilled: { type: "integer", description: "Customer-approved rewards that have not been fulfilled." },
   completed: { type: "integer", description: "Rewards that have been fulfilled." },
+} as const;
+
+const COMMISSION_STATUS_METRIC = {
+  type: "object",
+  properties: {
+    count: { type: "integer", description: "Commissions in this status." },
+    totalAmount: { type: "integer", description: `Total commission amount ${MONEY_MINOR_UNITS}.` },
+    totalRevenue: { type: "integer", description: `Total attributed revenue ${MONEY_MINOR_UNITS}.` },
+  },
+} as const;
+
+const PAYOUT_STATUS_METRIC = {
+  type: "object",
+  properties: {
+    count: { type: "integer", description: "Payouts in this status." },
+    totalAmount: { type: "integer", description: `Total payout amount ${MONEY_MINOR_UNITS}.` },
+  },
 } as const;
 
 const EMAIL_ANALYTICS_COUNT_PROPERTIES = {
@@ -869,10 +920,40 @@ const CAMPAIGN_ANALYTICS_RESPONSE: ToolOutputSchema = {
         "Status-count breakdowns: dashboard-aligned reward counts, and for affiliate programs `affiliateStatus`, `commissionStatus`, and `payoutStatus` " +
         `(counts and amounts ${MONEY_MINOR_UNITS}). Present only when \`include\` contains \`statusCounts\`.`,
       properties: {
+        currencyISO: {
+          type: "string",
+          description: "Program currency for money amounts in the status breakdown.",
+        },
         rewardStatus: {
           type: "object",
           description: "Reward counts. These are separate from referral-credit status.",
           properties: REWARD_STATUS_COUNT_PROPERTIES,
+        },
+        affiliateStatus: {
+          type: "object",
+          description: "Affiliate programs only. Participant counts keyed by affiliate status.",
+          additionalProperties: { type: "integer" },
+        },
+        commissionStatus: {
+          type: "object",
+          description: "Affiliate programs only. Commission counts and amounts by status.",
+          properties: {
+            pending: { ...COMMISSION_STATUS_METRIC, description: "Pending commissions." },
+            approved: { ...COMMISSION_STATUS_METRIC, description: "Approved commissions." },
+            paid: { ...COMMISSION_STATUS_METRIC, description: "Paid commissions." },
+            reversed: { ...COMMISSION_STATUS_METRIC, description: "Reversed commissions." },
+          },
+        },
+        payoutStatus: {
+          type: "object",
+          description: "Affiliate programs only. Payout counts and amounts by status.",
+          properties: {
+            upcoming: { ...PAYOUT_STATUS_METRIC, description: "Upcoming payouts." },
+            queued: { ...PAYOUT_STATUS_METRIC, description: "Queued payouts." },
+            issued: { ...PAYOUT_STATUS_METRIC, description: "Issued payouts." },
+            failed: { ...PAYOUT_STATUS_METRIC, description: "Failed payouts." },
+            reversed: { ...PAYOUT_STATUS_METRIC, description: "Reversed payouts." },
+          },
         },
       },
     },
