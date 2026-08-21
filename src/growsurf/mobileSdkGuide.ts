@@ -279,6 +279,7 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
 
   if (input.includeInstallSnippets) {
     sections.push(
+      "Your app must use `minSdk` 24 or higher and `compileSdk` 36 or higher. Set `targetSdk` separately, to the level Google Play currently requires for app updates.",
       "Install from Maven Central:",
       codeBlock(
         "kotlin",
