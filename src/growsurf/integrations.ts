@@ -6,16 +6,15 @@
  * Dependency-free (no MCP internals, no zod) so `installKit.ts` and the sibling
  * `./install-kit` package export can import it without pulling anything else in.
  *
- * Source of truth for the keys and labels is the dashboard app,
- * `growsurf-app/src/components/campaign-integrations.js` (`availableIntegrations`)
- * and its `localized-en.json`. The `key` here must equal the app card's
- * `integration.id` exactly, because that is the value the dashboard matches
- * against the `?integration=` query param to auto-open a card. Most ids are
- * lowercase, but a few are camelCase (`constantContact`, `campaignMonitor`,
- * `helpScout`, `pabblyConnect`, `baskHealth`) and must be kept verbatim.
+ * Mirrors the integration catalog shown in the GrowSurf dashboard. The `key`
+ * here must equal the dashboard card's `integration.id` exactly, because that
+ * is the value the dashboard matches against the `?integration=` query param
+ * to auto-open a card. Most ids are lowercase, but a few are camelCase
+ * (`constantContact`, `campaignMonitor`, `helpScout`, `pabblyConnect`,
+ * `baskHealth`) and must be kept verbatim.
  *
- * XTRM, Chargify, and Pipedrive are intentionally excluded: their catalog cards
- * are commented out in the app, so they are not currently user-connectable.
+ * XTRM, Chargify, and Pipedrive are not currently offered in the dashboard
+ * catalog and are intentionally excluded.
  */
 
 export const DASHBOARD_BASE_URL = "https://app.growsurf.com";
