@@ -406,6 +406,12 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         },
       },
     },
+    countryLabels: {
+      type: "object",
+      description:
+        "Participant-facing country-name overrides keyed by ISO 3166-1 alpha-2 code (for example `GB`). Each label replaces the default country name wherever participants pick a country, such as payout and tax forms. Overrides merge per code on `PATCH`; `null` (or the default name) restores a code's default. Only overridden codes are returned.",
+      additionalProperties: { type: ["string", "null"], maxLength: 500 },
+    },
     referralStatus: {
       type: "object",
       description: "The section listing who a participant invited and each invite's progress.",

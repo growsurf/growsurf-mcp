@@ -1089,13 +1089,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_design",
           description:
-            "Fetch the configured design fields for your GrowSurf program, including GrowSurf Window content, colors, sharing sections, landing/referred-friend content, and payout-destination confirmation page copy under `payoutDestinationConfirmation`. That section is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the configured design fields for your GrowSurf program, including GrowSurf Window content, colors, sharing sections, landing/referred-friend content, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and country-name overrides under `countryLabels`. The confirmation section is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_design",
           description:
-            "Update the design configuration for your GrowSurf program, including payout-destination confirmation page copy under `payoutDestinationConfirmation`. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Fetch the configuration first, preserve starter content unless the user asked to change it, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update the design configuration for your GrowSurf program, including participant sign-in copy under `login` and payout-destination confirmation page copy under `payoutDestinationConfirmation`. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Fetch the configuration first, preserve starter content unless the user asked to change it, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
