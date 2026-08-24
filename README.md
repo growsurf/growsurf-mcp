@@ -85,6 +85,13 @@ npx -y @growsurfteam/growsurf-mcp
 
 The CLI starts GrowSurf's local stdio MCP server. Set `GROWSURF_API_KEY` for API-backed actions and `GROWSURF_CAMPAIGN_ID` for a default program. Public developer resources and static integration guidance work without credentials.
 
+Inspect the installed command without starting the stdio server:
+
+```bash
+npx -y @growsurfteam/growsurf-mcp --help
+npx -y @growsurfteam/growsurf-mcp --version
+```
+
 ## Supported MCP Hosts
 
 The recommended path is GrowSurf's hosted OAuth endpoint at `https://mcp.growsurf.com` when your host supports remote Streamable HTTP with OAuth. Use the local `npx` server when your host needs a stdio process or manual API-key setup. No GrowSurf account yet? An agent can connect to the hosted onboarding endpoint `https://mcp.growsurf.com/onboard` with no credentials and call `growsurf_create_account` to sign up.
