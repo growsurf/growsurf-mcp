@@ -246,7 +246,7 @@ For local development in this repo:
 ```bash
 npm install
 npm run build
-node dist/index.js
+node dist/cli.js
 ```
 
 ## MCP tools

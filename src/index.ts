@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
@@ -10,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.12.0";
+export const GROWSURF_MCP_VERSION = "0.12.1";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -2419,27 +2418,3 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
 
   return server;
 };
-
-const main = async () => {
-  const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js");
-  const server = createGrowSurfMcpServer();
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-};
-
-const isCliEntrypoint = async (): Promise<boolean> => {
-  if (typeof process === "undefined") return false;
-  const entrypoint = process.argv[1];
-  const moduleUrl = import.meta.url;
-  if (!entrypoint || typeof moduleUrl !== "string" || !moduleUrl) return false;
-
-  const { fileURLToPath } = await import("node:url");
-  return fileURLToPath(moduleUrl) === entrypoint;
-};
-
-if (await isCliEntrypoint()) {
-  main().catch((err) => {
-    console.error(err);
-    process.exitCode = 1;
-  });
-}

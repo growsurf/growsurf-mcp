@@ -23,5 +23,4 @@ COPY package.json ./package.json
 COPY --from=prod-deps /app/node_modules ./node_modules
 
 # MCP servers usually run over stdio; keep entrypoint simple.
-ENTRYPOINT ["node", "./dist/index.js"]
-
+ENTRYPOINT ["node", "./dist/cli.js"]
