@@ -10,7 +10,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.11.1";
+export const GROWSURF_MCP_VERSION = "0.12.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -37,6 +37,7 @@ import {
   agentProgramCreationEvalInputSchema,
   renderAgentProgramCreationEval,
 } from "./growsurf/programCreationEval.js";
+import { PUBLIC_GROWSURF_RESOURCES, readPublicGrowSurfResource } from "./growsurf/resources.js";
 import { normalizeWebhook } from "./growsurf/webhooks.js";
 import { getGrowSurfPrompt, listGrowSurfPrompts } from "./prompts.js";
 import { toToolErrorText } from "./toolError.js";
@@ -742,17 +743,23 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
   server.setRequestHandler(ListResourcesRequestSchema, async () => {
     return {
       resources: [
-        {
-          uri: "growsurf://campaign",
-          name: "GrowSurf Campaign Details",
-          description: "Full campaign (program) details fetched from GrowSurf REST API.",
-          mimeType: "application/json",
-        },
+        ...PUBLIC_GROWSURF_RESOURCES,
+        ...(env.GROWSURF_API_KEY && env.GROWSURF_CAMPAIGN_ID ? [
+          {
+            uri: "growsurf://campaign",
+            name: "GrowSurf Campaign Details",
+            description: "Full campaign (program) details fetched from GrowSurf REST API.",
+            mimeType: "application/json",
+          },
+        ] : []),
       ],
     };
   });
 
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const publicResource = readPublicGrowSurfResource(request.params.uri);
+    if (publicResource) return publicResource;
+
     if (request.params.uri === "growsurf://campaign") {
       // The campaign resource has no per-read arguments, so it stays scoped to GROWSURF_CAMPAIGN_ID.
       const campaignResource = requireGrowSurfClient(env);

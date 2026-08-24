@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/npm/l/@growsurfteam/growsurf-mcp)](./LICENSE)
 [![node](https://img.shields.io/node/v/@growsurfteam/growsurf-mcp)](https://nodejs.org)
 
-An **open-source Model Context Protocol (MCP) server** that helps developers implement **GrowSurf referral and affiliate programs** using guided steps and safe REST API wrappers.
+The **official GrowSurf command-line interface (CLI) and open-source Model Context Protocol (MCP) server** for implementing **GrowSurf referral and affiliate programs** with guided steps and safe REST API wrappers.
 
 Connect it to an AI agent and, in plain language, the agent can create a referral or affiliate program, configure rewards, install tracking, add and manage participants, and read analytics, all backed by the GrowSurf REST API.
 
@@ -74,6 +74,16 @@ This MCP server is NOT for:
 - Static guidance/snippet tools can run without credentials
 - Exception: `growsurf_create_account` needs **no** API key. It creates a new account and returns an API key. Team-level tools do not need a campaign ID.
 - Every listed tool publishes standard MCP read-only, destructive, idempotent, and open-world safety hints. Scoped business actions stay available; API-key rotation is intentionally not an MCP tool. Rotate keys in GrowSurf Settings or through a direct REST/SDK client.
+
+## Official CLI
+
+The npm package installs the `growsurf-mcp` command. Run it without a global install:
+
+```bash
+npx -y @growsurfteam/growsurf-mcp
+```
+
+The CLI starts GrowSurf's local stdio MCP server. Set `GROWSURF_API_KEY` for API-backed actions and `GROWSURF_CAMPAIGN_ID` for a default program. Public developer resources and static integration guidance work without credentials.
 
 ## Supported MCP Hosts
 

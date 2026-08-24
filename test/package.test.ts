@@ -8,14 +8,18 @@ describe("package distribution", () => {
       readFileSync(new URL("../package.json", import.meta.url), "utf8"),
     ) as {
       exports?: Record<string, string | { types?: string; default?: string }>;
+      bin?: Record<string, string>;
+      description?: string;
       files?: string[];
       mcpName?: string;
       types?: string;
       version?: string;
     };
 
-    expect(packageJson.version).toBe("0.11.1");
+    expect(packageJson.version).toBe("0.12.0");
     expect(packageJson.mcpName).toBe("com.growsurf/growsurf");
+    expect(packageJson.description).toMatch(/^Official GrowSurf CLI/);
+    expect(packageJson.bin).toEqual({ "growsurf-mcp": "./dist/index.js" });
     expect(GROWSURF_MCP_VERSION).toBe(packageJson.version);
     expect(packageJson.types).toBe("./dist/index.d.ts");
     expect(packageJson.exports).toMatchObject({
