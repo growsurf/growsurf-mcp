@@ -986,11 +986,11 @@ const PARTICIPANT_ANALYTICS_RESPONSE: ToolOutputSchema = {
   properties: {
     analytics: {
       type: "object",
-      description: "Participant analytics totals.",
+      description: "All-time participant analytics totals. Date-window parameters do not filter these fields.",
       properties: {
         referrals: { type: "integer", description: "All-time referrals credited to this participant." },
         monthlyReferrals: { type: "integer", description: "Referrals credited in the current month." },
-        leads: { type: "integer", description: "Pending referral credits." },
+        leads: { type: "integer", description: "Current pending referral credits." },
         expiredReferrals: { type: "integer", description: "Expired referral credits." },
         impressions: { type: "integer", description: "Total referral-link views." },
         uniqueImpressions: { type: "integer", description: "Unique referral-link views." },

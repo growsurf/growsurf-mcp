@@ -1519,7 +1519,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_participant_analytics",
           description:
-            "Fetch analytics for one participant by GrowSurf participant ID or email. The base response includes engagement, rank, share, and applicable affiliate revenue, commission, and payout metrics. Set `include` to `series`, `email`, or both comma-separated. `email` reports sent, delivered, opened, clicked, bounced, and spam-complaint metrics attributed to this participant, including invitations they sent; `series` returns per-period activity. Bucket with `interval` (`day`, `week`, or `month`, default `day`) and scope the window with `days` (max 1825) or `startDate`/`endDate` (Unix ms). Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Fetch analytics for one participant by GrowSurf participant ID or email. The base response includes all-time engagement, rank, share, and applicable affiliate revenue, commission, and payout metrics. Set `include` to `series`, `email`, or both comma-separated. `email` reports sent, delivered, opened, clicked, bounced, and spam-complaint metrics attributed to this participant, including invitations they sent; `series` returns per-period activity. Bucket with `interval` (`day`, `week`, or `month`, default `day`) and scope the optional data with `days` (max 1825) or `startDate`/`endDate` (Unix ms). The date window does not filter the base response. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1534,9 +1534,14 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 enum: ["day", "week", "month"],
                 description: "Bucket size for `series` and email series. Defaults to `day`.",
               },
-              days: { type: "integer", minimum: 1, maximum: 1825 },
-              startDate: { type: "integer", description: "Start of the timeframe, Unix timestamp in ms. Use with endDate instead of days." },
-              endDate: { type: "integer", description: "End of the timeframe, Unix timestamp in ms." },
+              days: {
+                type: "integer",
+                minimum: 1,
+                maximum: 1825,
+                description: "Number of days for optional `series` and `email` analytics. Does not filter the all-time base response.",
+              },
+              startDate: { type: "integer", description: "Start of the optional-data timeframe, Unix timestamp in ms. Use with `endDate` instead of `days`." },
+              endDate: { type: "integer", description: "End of the optional-data timeframe, Unix timestamp in ms. Use with `startDate`." },
             },
             anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
             additionalProperties: false,
