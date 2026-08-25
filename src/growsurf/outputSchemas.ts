@@ -227,6 +227,12 @@ const REWARD: ToolOutputSchema = {
       description: "Whether the reward is enabled. When `false` it is no longer awarded and is hidden from participants.",
     },
     description: { type: ["string", "null"], description: "The reward description shown to the referrer." },
+    event: {
+      type: ["string", "null"],
+      enum: ["LEAD", "CONVERSION", null],
+      description:
+        "The referral event that earns this Campaign Reward. `LEAD` means a referred signup; `CONVERSION` means a qualifying action.",
+    },
     referralDescription: {
       type: ["string", "null"],
       description: "The reward description shown to the referred friend (double-sided rewards only).",

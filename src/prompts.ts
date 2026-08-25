@@ -233,7 +233,7 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
         "",
         `Reward goal: ${rewardGoal}.`,
         "",
-        "Use growsurf_list_campaign_rewards first. For referral programs, only use referral-compatible reward types. For affiliate programs, use AFFILIATE rewards and a commissionStructure.",
+        "Use growsurf_list_campaign_rewards first. For referral programs, only use referral-compatible reward types and set `event` to `LEAD` for a referred signup or `CONVERSION` for a qualifying action. For affiliate programs, use `AFFILIATE` rewards and a `commissionStructure`.",
         "Keep money-moving rewards disabled or non-awarding until the user confirms the final incentive, payout or fulfillment method, funding, tax treatment, and approval flow.",
         "After updating, list rewards again and summarize the exact enabled state, visible state, commission terms, and any remaining manual setup.",
       ].join("\n");

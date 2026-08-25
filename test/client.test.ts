@@ -202,6 +202,7 @@ describe("GrowSurfClient", () => {
     await client.createCampaignReward({
       type: "SINGLE_SIDED",
       title: "Reward",
+      event: "LEAD",
       referralCouponCode: "FRIEND10",
       value: { fairMarketValueUSD: 25, taxCharacter: "PRIZE_OR_AWARD" },
       referredValue: { fairMarketValueUSD: null, taxCharacter: "PURCHASE_REBATE" },
@@ -214,6 +215,7 @@ describe("GrowSurfClient", () => {
         body: JSON.stringify({
           type: "SINGLE_SIDED",
           title: "Reward",
+          event: "LEAD",
           referralCouponCode: "FRIEND10",
           value: { fairMarketValueUSD: 25, taxCharacter: "PRIZE_OR_AWARD" },
           referredValue: { fairMarketValueUSD: null, taxCharacter: "PURCHASE_REBATE" },
@@ -228,6 +230,7 @@ describe("GrowSurfClient", () => {
 
     const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
     await client.updateCampaignReward("crew_1", {
+      event: "CONVERSION",
       referralCouponCode: null,
       value: { fairMarketValueUSD: 10, taxCharacter: null },
     });
@@ -237,6 +240,7 @@ describe("GrowSurfClient", () => {
       expect.objectContaining({
         method: "PATCH",
         body: JSON.stringify({
+          event: "CONVERSION",
           referralCouponCode: null,
           value: { fairMarketValueUSD: 10, taxCharacter: null },
         }),

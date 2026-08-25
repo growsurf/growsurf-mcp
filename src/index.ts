@@ -465,6 +465,7 @@ const commissionStructureJsonSchema = {
 const rewardWritableFields = {
   title: z.string().min(1).optional(),
   description: z.string().optional(),
+  event: z.enum(["LEAD", "CONVERSION"]).optional(),
   referralDescription: z.string().nullable().optional(),
   imageUrl: z.string().nullable().optional(),
   isVisible: z.boolean().optional(),
@@ -947,6 +948,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               type: { type: "string", enum: ["SINGLE_SIDED", "DOUBLE_SIDED", "MILESTONE", "LEADERBOARD", "AFFILIATE"] },
               title: { type: "string" },
               description: { type: "string" },
+              event: {
+                type: "string",
+                enum: ["LEAD", "CONVERSION"],
+                description:
+                  "The referral event that earns this Campaign Reward. Use `LEAD` for a referred signup or `CONVERSION` for a qualifying action. Referral reward types only.",
+              },
               referralDescription: { type: "string" },
               imageUrl: { type: "string" },
               isVisible: { type: "boolean" },
@@ -1018,6 +1025,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               campaignRewardId: { type: "string" },
               title: { type: "string" },
               description: { type: "string" },
+              event: {
+                type: "string",
+                enum: ["LEAD", "CONVERSION"],
+                description:
+                  "The referral event that earns this Campaign Reward. Use `LEAD` for a referred signup or `CONVERSION` for a qualifying action. Referral reward types only.",
+              },
               referralDescription: { type: "string" },
               imageUrl: { type: "string" },
               isVisible: { type: "boolean" },
@@ -1944,6 +1957,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             type: input.type,
             title: input.title,
             description: input.description,
+            event: input.event,
             referralDescription: input.referralDescription,
             imageUrl: input.imageUrl,
             isVisible: input.isVisible,

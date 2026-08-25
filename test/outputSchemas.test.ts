@@ -228,6 +228,30 @@ describe("tool output schemas", () => {
     expect(advertised).not.toMatch(/anti-fraud matching/i);
   });
 
+  it("advertises referral reward events on reward reads and writes", async () => {
+    const rewardList = TOOL_OUTPUT_SCHEMAS.growsurf_list_campaign_rewards;
+    const reward = (rewardList.properties?.rewards as { items?: { properties?: Record<string, unknown> } }).items;
+    const event = reward?.properties?.event as { enum?: unknown[]; description?: string };
+
+    expect(event.enum).toEqual(["LEAD", "CONVERSION", null]);
+    expect(event.description).toContain("referred signup");
+    expect(event.description).toContain("qualifying action");
+
+    const client = await connectClient();
+    try {
+      const { tools } = await client.listTools();
+      for (const name of ["growsurf_create_campaign_reward", "growsurf_update_campaign_reward"]) {
+        const tool = tools.find((candidate) => candidate.name === name);
+        const inputEvent = tool?.inputSchema.properties?.event as { enum?: unknown[]; description?: string };
+        expect(inputEvent.enum, name).toEqual(["LEAD", "CONVERSION"]);
+        expect(inputEvent.description, name).toContain("referred signup");
+        expect(inputEvent.description, name).toContain("qualifying action");
+      }
+    } finally {
+      await client.close();
+    }
+  });
+
   it("describes reward tax character without overriding Commission treatment", async () => {
     const rewardList = TOOL_OUTPUT_SCHEMAS.growsurf_list_campaign_rewards;
     const reward = (rewardList.properties?.rewards as { items?: { properties?: Record<string, unknown> } }).items;
