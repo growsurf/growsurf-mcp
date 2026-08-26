@@ -33,7 +33,7 @@ const serverJson = JSON.parse(
 
 describe("package distribution", () => {
   it("ships the hosted-server exports and advertised Agent Skill bundle", () => {
-    expect(packageJson.version).toBe("0.12.2");
+    expect(packageJson.version).toBe("0.13.0");
     expect(packageJson.mcpName).toBe("com.growsurf/growsurf");
     expect(packageJson.description).toMatch(/^Official GrowSurf CLI/);
     expect(packageJson.bin).toEqual({ "growsurf-mcp": "./dist/cli.js" });

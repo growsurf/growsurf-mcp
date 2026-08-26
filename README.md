@@ -9,8 +9,13 @@ The **official GrowSurf command-line interface (CLI) and open-source Model Conte
 
 Connect it to an AI agent and, in plain language, the agent can create a referral or affiliate program, configure rewards, install tracking, add and manage participants, and read analytics, all backed by the GrowSurf REST API.
 
+MCP is optional. Any action-capable agent that can send HTTPS requests can start with GrowSurf's client-neutral REST workflow at https://growsurf.com/agent-start.md.
+
 - Learn more about GrowSurf at https://growsurf.com
-- Learn more about this MCP server at https://docs.growsurf.com/build-with-ai
+- Start with direct REST at https://growsurf.com/agent-start.md
+- Read the OpenAPI contract at https://growsurf.com/openapi.json
+- Read the Arazzo workflow at https://growsurf.com/arazzo.yaml
+- Learn about optional MCP setup at https://docs.growsurf.com/build-with-ai#optional-connect-mcp
 
 ## Who is this for
 
@@ -21,7 +26,7 @@ This MCP server is for:
 
 This MCP server is NOT for:
 
-- Browser-only users who want a local stdio install. ChatGPT web, Claude.ai, and Claude Desktop do not run a local MCP server, but all three connect to GrowSurf through the hosted remote connector at `https://mcp.growsurf.com`. See the full client list and setup at https://docs.growsurf.com/build-with-ai#mcp.
+- Browser-only users who want a local stdio install. ChatGPT web, Claude.ai, and Claude Desktop do not run a local MCP server, but all three connect to GrowSurf through the hosted remote connector at `https://mcp.growsurf.com`. See the full client list and setup at https://docs.growsurf.com/build-with-ai#optional-connect-mcp.
 
 ## What you get
 
@@ -72,7 +77,7 @@ This MCP server is NOT for:
 - A GrowSurf **API key** for local stdio setup or manual API-key remote setup. A scoped key works as long as it has access to the tools and programs you want the agent to use.
 - A **campaign (program) ID** for campaign-scoped tools. Set `GROWSURF_CAMPAIGN_ID` as the default, pass a `campaignId` argument to target a specific program, or call `growsurf_list_campaigns` to find available programs. For a newly created program, pass the `id` returned by `growsurf_create_campaign` to the other tools.
 - Static guidance/snippet tools can run without credentials
-- Exception: `growsurf_create_account` needs **no** API key. It creates a new account and returns an API key. Team-level tools do not need a campaign ID.
+- Exception: `growsurf_create_account` needs **no** API key. Call it only after the authorized owner approves account creation and accepts GrowSurf's Terms of Service and Privacy Policy. The account starts a 14-day Business trial without a credit card and returns its API key once. Pause for owner email verification before protected calls. Unverified accounts are deleted after 7 days. Team-level tools do not need a campaign ID.
 - Every listed tool publishes standard MCP read-only, destructive, idempotent, and open-world safety hints. Scoped business actions stay available; API-key rotation is intentionally not an MCP tool. Rotate keys in GrowSurf Settings or through a direct REST/SDK client.
 
 ## Official CLI
@@ -94,9 +99,9 @@ npx -y @growsurfteam/growsurf-mcp --version
 
 ## Supported MCP Hosts
 
-The recommended path is GrowSurf's hosted OAuth endpoint at `https://mcp.growsurf.com` when your host supports remote Streamable HTTP with OAuth. Use the local `npx` server when your host needs a stdio process or manual API-key setup. No GrowSurf account yet? An agent can connect to the hosted onboarding endpoint `https://mcp.growsurf.com/onboard` with no credentials and call `growsurf_create_account` to sign up.
+For an MCP-compatible host, use GrowSurf's hosted OAuth endpoint at `https://mcp.growsurf.com` when the host supports remote Streamable HTTP with OAuth. Use the local `npx` server when the host needs a stdio process or manual API-key setup. No GrowSurf account yet? After owner approval, an agent can connect to `https://mcp.growsurf.com/onboard` with no credentials and call `growsurf_create_account`.
 
-The GrowSurf MCP server works with any MCP-compatible host. The examples below cover a few config-based and CLI hosts. For the complete, current list of supported clients (including ChatGPT web, Claude.ai, Claude Desktop, GitHub Copilot, Gemini CLI, Devin Desktop, and Cline) with step-by-step setup, see https://docs.growsurf.com/build-with-ai#mcp.
+The GrowSurf MCP server works with any MCP-compatible host. The examples below cover a few config-based and CLI hosts. For the complete, current list of supported clients (including ChatGPT web, Claude.ai, Claude Desktop, GitHub Copilot, Gemini CLI, Devin Desktop, and Cline) with step-by-step setup, see https://docs.growsurf.com/build-with-ai#optional-connect-mcp.
 
 - Cursor
 - Claude Code (CLI-based)

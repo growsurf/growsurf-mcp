@@ -228,6 +228,17 @@ describe("tool output schemas", () => {
     expect(advertised).not.toMatch(/anti-fraud matching/i);
   });
 
+  it("advertises cancelled participant rewards", () => {
+    const participant = TOOL_OUTPUT_SCHEMAS.growsurf_get_participant;
+    const rewards = participant.properties?.rewards as {
+      items?: { properties?: Record<string, unknown> };
+    };
+    const status = rewards.items?.properties?.status as { enum?: unknown[]; description?: string };
+
+    expect(status.enum).toEqual(["PENDING", "FULFILLED", "CANCELLED"]);
+    expect(status.description).toMatch(/unpaid.*Lead reward.*reversed/i);
+  });
+
   it("advertises referral reward events on reward reads and writes", async () => {
     const rewardList = TOOL_OUTPUT_SCHEMAS.growsurf_list_campaign_rewards;
     const reward = (rewardList.properties?.rewards as { items?: { properties?: Record<string, unknown> } }).items;
@@ -246,7 +257,69 @@ describe("tool output schemas", () => {
         expect(inputEvent.enum, name).toEqual(["LEAD", "CONVERSION"]);
         expect(inputEvent.description, name).toContain("referred signup");
         expect(inputEvent.description, name).toContain("qualifying action");
+        expect(inputEvent.description, name).toContain("later custom conversion trigger");
+
+        const commissionStructure = (tool?.inputSchema.properties as Record<string, unknown>)
+          ?.commissionStructure as {
+            allOf?: Array<Record<string, unknown>>;
+            properties?: Record<string, { description?: string; minimum?: number }>;
+          };
+        expect(commissionStructure.properties?.event.description, `${name}.commissionStructure.event`).toMatch(
+          /`LEAD`.*`FIXED`/,
+        );
+        expect(commissionStructure.properties?.amount.minimum, `${name}.commissionStructure.amount`).toBe(1);
+        expect(commissionStructure.allOf, `${name}.commissionStructure`).toEqual([
+          {
+            if: {
+              properties: { event: { enum: ["CLICK", "LEAD"] } },
+              required: ["event"],
+            },
+            then: {
+              properties: {
+                type: { enum: ["FIXED"] },
+                amount: { type: "integer", minimum: 1 },
+              },
+              required: ["amount"],
+            },
+          },
+        ]);
       }
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("rejects invalid Lead commission inputs before calling the API", async () => {
+    globalThis.fetch = vi.fn(async () => new Response("{}", { status: 200 })) as typeof fetch;
+    const client = await connectClient();
+
+    try {
+      const percentLead = await client.callTool({
+        name: "growsurf_create_campaign_reward",
+        arguments: {
+          type: "AFFILIATE",
+          commissionStructure: { event: "LEAD", type: "PERCENT", percent: 10 },
+        },
+      });
+      const zeroAmountLead = await client.callTool({
+        name: "growsurf_create_campaign_reward",
+        arguments: {
+          type: "AFFILIATE",
+          commissionStructure: { event: "LEAD", type: "FIXED", amount: 0, amountISO: "USD" },
+        },
+      });
+      const missingAmountLead = await client.callTool({
+        name: "growsurf_create_campaign_reward",
+        arguments: {
+          type: "AFFILIATE",
+          commissionStructure: { event: "LEAD", type: "FIXED", amountISO: "USD" },
+        },
+      });
+
+      expect(percentLead.isError).toBe(true);
+      expect(zeroAmountLead.isError).toBe(true);
+      expect(missingAmountLead.isError).toBe(true);
+      expect(globalThis.fetch).not.toHaveBeenCalled();
     } finally {
       await client.close();
     }

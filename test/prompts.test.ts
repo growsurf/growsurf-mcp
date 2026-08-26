@@ -217,6 +217,20 @@ describe("GrowSurf MCP prompts", () => {
     expect(campaignText).toContain("Fetch campaign abc123");
   });
 
+  it("explains the Lead reward requirements", () => {
+    const result = getGrowSurfPrompt("set_rewards", {
+      campaignId: "abc123",
+      programType: "AFFILIATE",
+      rewardGoal: "pay for qualified leads",
+    });
+
+    const text = result.messages[0]?.content.type === "text" ? result.messages[0].content.text : "";
+    expect(text).toContain("later custom conversion trigger");
+    expect(text).toContain("`FIXED`");
+    expect(text).toContain("`amount`");
+    expect(text).toContain("`amountISO`");
+  });
+
   it("exports an importable server factory without starting stdio", () => {
     const server = createGrowSurfMcpServer({
       env: {
