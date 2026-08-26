@@ -384,6 +384,26 @@ describe("tool output schemas", () => {
     ]);
   });
 
+  it("advertises the Claim Offer Popup design and email fields", () => {
+    const design = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_design;
+    const referredExperience = design.properties?.referredExperience as {
+      properties?: Record<string, { enum?: unknown[] }>;
+    };
+    const theme = design.properties?.theme as { properties?: Record<string, unknown> };
+    const emails = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_emails;
+
+    expect(referredExperience.properties).toHaveProperty("isOfferPopupEnabled");
+    expect(referredExperience.properties?.offerPopupPlacement.enum).toEqual([
+      "CENTER",
+      "BOTTOM",
+      "BOTTOM_RIGHT",
+      "BOTTOM_LEFT",
+      "TOP",
+    ]);
+    expect(theme.properties).toHaveProperty("referredExperienceOfferPopup");
+    expect(emails.properties).toHaveProperty("offerClaimed");
+  });
+
   it("advertises payout-destination confirmation page copy on the campaign Design response", () => {
     const design = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_design;
     const confirmation = design.properties?.payoutDestinationConfirmation as {

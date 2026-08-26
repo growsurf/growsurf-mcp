@@ -425,7 +425,29 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     leaderboard: { type: "object", description: "The leaderboard section: labels, selectors, and name masking." },
     referredExperience: {
       type: "object",
-      description: "The banner and headline shown to a visitor who arrives through a referral link.",
+      description:
+        "The banner, headline, and Claim Offer Popup shown to a visitor who arrives through a referral link. The popup is available for referral and affiliate programs.",
+      properties: {
+        isOfferPopupEnabled: { type: "boolean", description: "Whether referred visitors see the Claim Offer Popup." },
+        offerPopupTitle: { type: ["string", "null"], maxLength: 255, description: "Popup heading." },
+        offerPopupDescription: { type: ["string", "null"], maxLength: 255, description: "Text below the popup heading." },
+        offerPopupButtonText: { type: ["string", "null"], maxLength: 100, description: "Offer-save button text." },
+        offerPopupImageUrl: { type: ["string", "null"], maxLength: 500, description: "Optional popup image." },
+        isOfferPopupReferrerImageShown: { type: "boolean", description: "Whether to show the referrer's profile image." },
+        offerPopupPlacement: {
+          type: "string",
+          enum: ["CENTER", "BOTTOM", "BOTTOM_RIGHT", "BOTTOM_LEFT", "TOP"],
+          description: "Where the popup appears.",
+        },
+        offerPopupDelaySeconds: { type: "integer", enum: [0, 3, 5, 10], description: "Delay before the popup appears." },
+        offerPopupThankYouText: { type: ["string", "null"], maxLength: 255, description: "Message shown after the offer is saved." },
+        offerPopupThankYouButtonText: { type: ["string", "null"], maxLength: 100, description: "Post-claim signup button text." },
+        isOfferPopupConfettiEnabled: { type: "boolean", description: "Whether to show confetti after a claim." },
+        isOfferPopupShownOnAllPages: { type: "boolean", description: "Whether the popup can appear on every installed page." },
+        offerPopupSecondaryLinkText: { type: ["string", "null"], maxLength: 100, description: "Optional post-claim link text." },
+        offerPopupSecondaryLinkUrl: { type: ["string", "null"], maxLength: 255, description: "Optional post-claim link destination." },
+        isOfferPopupOverlayDimmed: { type: "boolean", description: "Whether a centered popup dims the page behind it." },
+      },
     },
     referralSummary: {
       type: "object",
@@ -447,7 +469,20 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
       type: "object",
       description: "Portal and landing pages: company info, `content`, `styles`, third-party script ids, and SEO meta tags.",
     },
-    theme: { type: "object", description: "Visual theme styling (colors, shadows, and similar)." },
+    theme: {
+      type: "object",
+      description: "Visual theme styling (colors, shadows, and similar).",
+      properties: {
+        referredExperienceOfferPopup: {
+          type: "object",
+          description: "Paid-plan color settings for the Claim Offer Popup.",
+          properties: {
+            color: { type: ["string", "null"], maxLength: 255, description: "Popup text color." },
+            backgroundColor: { type: ["string", "null"], maxLength: 255, description: "Popup background color." },
+          },
+        },
+      },
+    },
   },
 };
 
@@ -463,6 +498,11 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
     welcomeReferred: {
       type: "object",
       description: "Welcome email for someone who signs up through a referral link. Referral programs only.",
+    },
+    offerClaimed: {
+      type: "object",
+      description:
+        "Sent when a referred visitor saves an offer through the Claim Offer Popup. Referral and affiliate programs. Promotional; its toggle can be changed.",
     },
     referralLinkViewedFirstTime: {
       type: "object",
