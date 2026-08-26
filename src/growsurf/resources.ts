@@ -15,11 +15,14 @@ GrowSurf is referral program software and affiliate program software for B2C and
 
 ## Start here
 
+- Client-neutral REST onboarding: https://growsurf.com/agent-start.md
+- REST API documentation: https://docs.growsurf.com/developer-tools/rest-api
+- OpenAPI 3.1 schema: https://growsurf.com/openapi.json
+- Arazzo 1.1 onboarding workflow: https://growsurf.com/arazzo.yaml
 - Agent index: https://growsurf.com/llms.txt
 - Website sitemap: https://growsurf.com/sitemap.xml
 - Developer documentation: https://docs.growsurf.com/
-- OpenAPI 3.1 schema: https://api.growsurf.com/api/v2/openapi
-- Hosted MCP server: https://mcp.growsurf.com/
+- Optional hosted MCP server: https://mcp.growsurf.com/
 
 ## Command line
 

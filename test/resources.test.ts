@@ -32,9 +32,11 @@ describe("GrowSurf MCP resources", () => {
         expect.objectContaining({
           uri: GROWSURF_AGENT_INDEX_URI,
           mimeType: "text/markdown",
-          text: expect.stringContaining("https://api.growsurf.com/api/v2/openapi"),
+          text: expect.stringContaining("https://growsurf.com/openapi.json"),
         }),
       ]);
+      expect(read.contents[0]?.text).toContain("https://growsurf.com/arazzo.yaml");
+      expect(read.contents[0]?.text).toContain("MCP server");
       expect(read.contents[0]?.text).toContain("https://growsurf.com/sitemap.xml");
       expect(read.contents[0]?.text).toContain("npx -y @growsurfteam/growsurf-mcp");
     } finally {

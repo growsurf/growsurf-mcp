@@ -31,7 +31,12 @@ const PARTICIPANT_REWARD = {
   properties: {
     id: { type: "string", description: "The participant reward id." },
     rewardId: { type: "string", description: "ID of the Campaign Reward (`CampaignReward`) that was earned." },
-    status: { type: "string", enum: ["PENDING", "FULFILLED"], description: "Fulfillment status of the earned reward." },
+    status: {
+      type: "string",
+      enum: ["PENDING", "FULFILLED", "CANCELLED"],
+      description:
+        "Fulfillment status of the earned reward. `CANCELLED` means an unpaid Lead reward was reversed before fulfillment.",
+    },
     unread: { type: "boolean", description: "`true` until the participant sees the reward in a GrowSurf window." },
     approved: { type: "boolean", description: "`true` once the reward is approved." },
     approvedAt: {

@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.12.2";
+export const GROWSURF_MCP_VERSION = "0.13.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -410,7 +410,7 @@ const commissionStructureSchema = z
   .object({
     type: z.enum(["PERCENT", "FIXED"]).optional(),
     event: z.enum(["CLICK", "LEAD", "SALE"]).optional(),
-    amount: z.number().int().nullable().optional().describe(COMMISSION_MINOR_UNITS_DESCRIPTION),
+    amount: z.number().int().min(1).nullable().optional().describe(COMMISSION_MINOR_UNITS_DESCRIPTION),
     amountISO: z.string().nullable().optional(),
     percent: z.number().nullable().optional(),
     minPaidReferrals: z.number().int().min(1).optional(),
@@ -429,17 +429,40 @@ const commissionStructureSchema = z
     introDuration: z.enum(["REPEATING", "ONCE"]).nullable().optional(),
     introDurationInMonths: z.number().int().nullable().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((commissionStructure, context) => {
+    const isFixedEvent = ["CLICK", "LEAD"].includes(commissionStructure.event ?? "");
+    if (!isFixedEvent) return;
+
+    if (commissionStructure.type === "PERCENT") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["type"],
+        message: "CLICK and LEAD commissions must use FIXED.",
+      });
+    }
+    if (typeof commissionStructure.amount !== "number") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["amount"],
+        message: "CLICK and LEAD commissions require a positive fixed amount.",
+      });
+    }
+  });
 
 // JSON-schema mirror of commissionStructureSchema for the MCP tool input contract (closed object).
 const commissionStructureJsonSchema = {
   type: "object",
   description:
-    "Affiliate commission structure (AFFILIATE rewards only). Provide `amount` (+ optional `amountISO`) for a FIXED commission, or `percent` for a PERCENT commission.",
+    "Affiliate commission structure (AFFILIATE rewards only). Provide a positive `amount` (+ optional `amountISO`) for a FIXED commission, or `percent` for a PERCENT commission. CLICK and LEAD commissions must use FIXED.",
   properties: {
     type: { type: "string", enum: ["PERCENT", "FIXED"] },
-    event: { type: "string", enum: ["CLICK", "LEAD", "SALE"] },
-    amount: { type: ["integer", "null"], description: COMMISSION_MINOR_UNITS_DESCRIPTION },
+    event: {
+      type: "string",
+      enum: ["CLICK", "LEAD", "SALE"],
+      description: "The affiliate event that earns the commission. `CLICK` and `LEAD` must use `FIXED`.",
+    },
+    amount: { type: ["integer", "null"], minimum: 1, description: COMMISSION_MINOR_UNITS_DESCRIPTION },
     amountISO: { type: ["string", "null"] },
     percent: { type: ["number", "null"] },
     minPaidReferrals: { type: "integer", minimum: 1 },
@@ -458,6 +481,21 @@ const commissionStructureJsonSchema = {
     introDuration: { type: ["string", "null"] },
     introDurationInMonths: { type: ["integer", "null"] },
   },
+  allOf: [
+    {
+      if: {
+        properties: { event: { enum: ["CLICK", "LEAD"] } },
+        required: ["event"],
+      },
+      then: {
+        properties: {
+          type: { enum: ["FIXED"] },
+          amount: { type: "integer", minimum: 1 },
+        },
+        required: ["amount"],
+      },
+    },
+  ],
   additionalProperties: false,
 } as const;
 
@@ -952,7 +990,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 type: "string",
                 enum: ["LEAD", "CONVERSION"],
                 description:
-                  "The referral event that earns this Campaign Reward. Use `LEAD` for a referred signup or `CONVERSION` for a qualifying action. Referral reward types only.",
+                  "The referral event that earns this Campaign Reward. Use `LEAD` for a referred signup or `CONVERSION` for a qualifying action. A `LEAD` reward requires a later custom conversion trigger. Referral reward types only.",
               },
               referralDescription: { type: "string" },
               imageUrl: { type: "string" },
@@ -1029,7 +1067,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 type: "string",
                 enum: ["LEAD", "CONVERSION"],
                 description:
-                  "The referral event that earns this Campaign Reward. Use `LEAD` for a referred signup or `CONVERSION` for a qualifying action. Referral reward types only.",
+                  "The referral event that earns this Campaign Reward. Use `LEAD` for a referred signup or `CONVERSION` for a qualifying action. A `LEAD` reward requires a later custom conversion trigger. Referral reward types only.",
               },
               referralDescription: { type: "string" },
               imageUrl: { type: "string" },
@@ -1224,7 +1262,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_account",
           description:
-            "Create a brand-new GrowSurf account and return an API key. This is the only tool that does not require `GROWSURF_API_KEY`. The endpoint returns the new key once in `apiKey`. The key is locked until the account owner's email address is verified. Until then, program and resource endpoints return a `403` with error code `EMAIL_NOT_VERIFIED_ERROR`. Create the account, tell the owner to click the link in the verification email, then retry until that error clears. Use `growsurf_resend_team_owner_verification_email` if the email was lost. The welcome email also contains a set-password link for dashboard access. Accounts whose email is never verified are deleted automatically after 7 days. The API key is rotated the first time the account owner signs in to the GrowSurf dashboard. Some actions, such as emailing participants, also require GrowSurf to verify the team. Personal and disposable email addresses are not accepted. By creating an account you agree, on behalf of the account holder, to GrowSurf's Terms of Service (https://growsurf.com/terms) and Privacy Policy (https://growsurf.com/privacy).",
+            "Create a brand-new GrowSurf account and return an API key. Call this tool only after the authorized owner explicitly approves account creation and accepts GrowSurf's Terms of Service (https://growsurf.com/terms) and Privacy Policy (https://growsurf.com/privacy). This is the only tool that does not require `GROWSURF_API_KEY`. The account starts a 14-day Business trial without a credit card. The endpoint returns the new key once in `apiKey`. The key is locked until the account owner's email address is verified. Until then, program and resource endpoints return a `403` with error code `EMAIL_NOT_VERIFIED_ERROR`. Create the account, tell the owner to click the link in the verification email, then retry until that error clears. Use `growsurf_resend_team_owner_verification_email` if the email was lost. The welcome email also contains a set-password link for dashboard access. Accounts whose email is never verified are deleted automatically after 7 days. The API key is rotated the first time the account owner signs in to the GrowSurf dashboard. Some actions, such as emailing participants, also require GrowSurf to verify the team. Personal and disposable email addresses are not accepted.",
           inputSchema: {
             type: "object",
             properties: {
