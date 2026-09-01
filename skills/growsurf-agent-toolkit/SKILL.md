@@ -91,9 +91,22 @@ Use `growsurf_list_campaign_rewards` first. Prefer updating existing reward conf
 
 Use `growsurf_list_campaign_webhooks`, then create or update with the exact event list the user requested. Use `growsurf_test_campaign_webhook` after saving. Never expose or echo webhook secrets.
 
+### Manage Program Resources
+
+Use `growsurf_list_program_resources` first. Create LINK resources with an HTTPS URL and TEXT
+resources with plain text. For a FILE, read the local file, call
+`growsurf_prepare_program_resource_file` with its safe file name, matching MIME type, and padded
+base64 bytes. That tool requests the ticket and completes the host-allowlisted upload. Then pass its
+`uploadTicket` and `uploadResult` unchanged to create or update. Never provide an upload URL or
+credential. Files must use an allowed type, have a file name of 120 characters or fewer, and be 10 MB
+or smaller. Keep unfinished resources as drafts, then fetch the list again to confirm title, type,
+publication state, and order.
+
 ### Read Analytics
 
-Use `growsurf_get_campaign_analytics`. Add `include=rates,statusCounts` for overall performance, and add `email` when the question covers email delivery or engagement. Request an interval only for trend or pacing questions. For one participant, use `growsurf_get_participant_analytics` with `include=email`, adding `series` only when a time trend is needed.
+Use `growsurf_get_campaign_analytics`. Add `include=rates,statusCounts` for overall performance, `email` for email delivery metrics, and `engagement` for participant activity grouped by when portal views and share actions occurred. Use `growsurf_get_campaign_activation_analytics` for participants grouped by eligibility date with a fixed 7- or 30-day observation window. Referral cohorts use `enrolledAsAdvocateAt`; affiliate cohorts use `approvedAsAffiliateAt`.
+
+Read `coverageStartAt`, `state`, and `reason` before interpreting a zero or null. Pre-coverage and unavailable values are unknown, not proof that an action never happened. For one participant, use `growsurf_get_participant_analytics` with `include=activation`; add `series` only when covered portal-view or share-action trends matter.
 
 ## Final Response Checklist
 

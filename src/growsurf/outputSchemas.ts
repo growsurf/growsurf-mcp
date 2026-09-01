@@ -354,16 +354,103 @@ const DELETE_REWARD_RESPONSE: ToolOutputSchema = {
   },
 };
 
+const PROGRAM_RESOURCE: ToolOutputSchema = {
+  type: "object",
+  description: "One ordered participant resource. Private file delivery fields are not returned.",
+  properties: {
+    id: { type: "string", description: "The stable public resource id." },
+    type: { type: "string", enum: ["FILE", "LINK", "TEXT"], description: "The resource type." },
+    title: { type: "string", description: "The title shown to participants." },
+    description: { type: ["string", "null"], description: "Optional supporting text shown to participants." },
+    category: { type: ["string", "null"], description: "Optional category heading." },
+    url: { type: ["string", "null"], description: "The HTTPS destination for a `LINK`; otherwise `null`." },
+    text: { type: ["string", "null"], description: "Plain copyable content for `TEXT`; otherwise `null`." },
+    file: {
+      type: ["object", "null"],
+      description: "Safe file metadata for `FILE`; otherwise `null`.",
+      properties: {
+        fileName: { type: "string", description: "The displayed download file name." },
+        mimeType: { type: "string", description: "The detected MIME type." },
+        bytes: { type: "integer", description: "The file size in bytes." },
+        format: { type: "string", description: "The detected file format." },
+        moderationStatus: {
+          type: "string",
+          enum: ["PENDING", "APPROVED", "REJECTED"],
+          description: "The latest security review status for the file.",
+        },
+      },
+    },
+    isPublished: { type: "boolean", description: "Whether eligible participants can receive the resource." },
+    position: { type: "integer", description: "The zero-based display position." },
+    createdAt: { type: "integer", description: "The creation time as a Unix timestamp in milliseconds." },
+    updatedAt: { type: "integer", description: "The latest update time as a Unix timestamp in milliseconds." },
+  },
+};
+
+const PROGRAM_RESOURCE_LIST_RESPONSE: ToolOutputSchema = {
+  type: "object",
+  properties: {
+    resources: {
+      type: "array",
+      items: PROGRAM_RESOURCE,
+      description: "The program's resources in participant display order, including drafts.",
+    },
+  },
+};
+
+const PREPARED_PROGRAM_RESOURCE_FILE: ToolOutputSchema = {
+  type: "object",
+  description: "One-time signed confirmation for a FILE resource create or replacement.",
+  properties: {
+    uploadTicket: {
+      type: "string",
+      description: "The one-time GrowSurf ticket. Pass it unchanged to create/update.",
+    },
+    uploadResult: {
+      type: "object",
+      description: "The minimal signed upload confirmation. Pass it unchanged to create/update.",
+      properties: {
+        public_id: { type: "string" },
+        version: { type: "integer" },
+        signature: { type: "string" },
+        resource_type: { type: "string", enum: ["image", "raw"] },
+        type: { type: "string", enum: ["authenticated"] },
+        bytes: { type: "integer", minimum: 1, maximum: 10 * 1024 * 1024 },
+        secure_url: { type: "string", description: "The provider-signed HTTPS result URL." },
+      },
+    },
+  },
+};
+
+const DELETE_PROGRAM_RESOURCE_RESPONSE: ToolOutputSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string", description: "The deleted resource id." },
+    success: { type: "boolean", description: "Whether the resource was deleted." },
+  },
+};
+
 const CAMPAIGN_DESIGN: ToolOutputSchema = {
   type: "object",
   description:
     "A program's design configuration, organized by section. The sections available depend on the program type. `GET` returns configured fields; `payoutDestinationConfirmation` is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. `PATCH` back only the sections or fields you want to change.",
   properties: {
+    participantAvatarStyle: {
+      type: "string",
+      enum: ["CHARACTERS", "INITIALS", "ANIMALS", "GRADIENT"],
+      description:
+        "How participant avatars appear in the GrowSurf Window. New programs use `CHARACTERS`; missing or unknown stored values return `INITIALS`.",
+    },
     window: { type: "object", description: "Layout of the GrowSurf window (`navigationMode`: `TABS` or `LIST`)." },
     header: { type: "object", description: "Header content for participants (`postText`) and non-participants (`preText`)." },
     stats: { type: "object", description: "The participant's referral-progress stats panel. Only `title` is editable." },
     share: { type: "object", description: "Share channels, invite settings, and share-button styling." },
     signup: { type: "object", description: "Signup form fields, GDPR consent, and button and login text." },
+    resources: {
+      type: "object",
+      description:
+        "Participant Resources presentation settings: visibility, title, link and copy labels, and the section icon. Resource items use the program Resource tools.",
+    },
     login: {
       type: "object",
       description: "The returning-participant sign-in form plus its success, resend, validation, and error text.",
@@ -930,6 +1017,199 @@ const EMAIL_ANALYTICS_RESPONSE = {
   },
 } as const;
 
+const ANALYTICS_AVAILABILITY = {
+  type: "string",
+  enum: ["AVAILABLE", "PARTIAL", "UNAVAILABLE"],
+  description: "Whether the value is complete, partial, or unavailable for the requested bounds.",
+} as const;
+
+const ANALYTICS_UNAVAILABLE_REASON = {
+  type: ["string", "null"],
+  enum: [
+    "COVERAGE_UNAVAILABLE",
+    "PRE_COVERAGE",
+    "PARTIAL_COVERAGE",
+    "INSUFFICIENT_COVERAGE",
+    "EMPTY_DENOMINATOR",
+    "QUERY_LIMIT_EXCEEDED",
+    "PARTICIPANT_NOT_ELIGIBLE",
+    null,
+  ],
+  description: "Why a value is partial or unavailable, or `null` when it is available.",
+} as const;
+
+const ENGAGEMENT_METRIC = {
+  type: "object",
+  description: "One engagement value with explicit availability.",
+  properties: {
+    state: ANALYTICS_AVAILABILITY,
+    value: { type: ["number", "null"], description: "Measured value, or `null` when unavailable." },
+    reason: ANALYTICS_UNAVAILABLE_REASON,
+    delta: { type: "number", description: "Optional current-minus-previous difference on comparison metrics." },
+  },
+} as const;
+
+const ENGAGEMENT_TOTALS = {
+  type: "object",
+  description: "Unique participant metrics and action totals for one activity period.",
+  properties: {
+    activeParticipants: { ...ENGAGEMENT_METRIC, description: "Eligible participants with a signed-in portal view." },
+    sharingParticipants: { ...ENGAGEMENT_METRIC, description: "Eligible participants with an accepted share action." },
+    sharingRate: { ...ENGAGEMENT_METRIC, description: "Sharing participants divided by active participants." },
+    repeatActiveParticipants: {
+      ...ENGAGEMENT_METRIC,
+      description: "Eligible participants active on at least two distinct program-local days.",
+    },
+    repeatSharingParticipants: {
+      ...ENGAGEMENT_METRIC,
+      description: "Eligible participants who shared on at least two distinct program-local days.",
+    },
+    retainedActiveParticipants: {
+      ...ENGAGEMENT_METRIC,
+      description: "Eligible participants active in both the current and previous equal periods.",
+    },
+    portalViews: { ...ENGAGEMENT_METRIC, description: "Total accepted signed-in portal-view actions." },
+    shareActions: { ...ENGAGEMENT_METRIC, description: "Total accepted referral-link share actions." },
+  },
+} as const;
+
+const ENGAGEMENT_COMPARISON_METRICS = {
+  type: "object",
+  properties: {
+    activeParticipants: { ...ENGAGEMENT_METRIC, description: "Change in unique active participants." },
+    sharingParticipants: { ...ENGAGEMENT_METRIC, description: "Change in unique sharing participants." },
+    repeatActiveParticipants: { ...ENGAGEMENT_METRIC, description: "Change in repeat active participants." },
+    repeatSharingParticipants: { ...ENGAGEMENT_METRIC, description: "Change in repeat sharing participants." },
+    portalViews: { ...ENGAGEMENT_METRIC, description: "Change in total signed-in portal views." },
+    shareActions: { ...ENGAGEMENT_METRIC, description: "Change in total accepted share actions." },
+  },
+} as const;
+
+const CAMPAIGN_ENGAGEMENT_ANALYTICS = {
+  type: "object",
+  description: "Opt-in participant engagement grouped by when activity occurred.",
+  properties: {
+    coverageStartAt: {
+      type: ["integer", "null"],
+      description: "Earliest expected complete capture time (Unix ms), or `null` until coverage begins.",
+    },
+    metricContractVersion: { type: "integer", description: "Shared activation and engagement metric version." },
+    programType: { type: "string", enum: ["REFERRAL", "AFFILIATE"], description: "Program eligibility model." },
+    timezone: { type: "string", description: "IANA timezone used for interval and distinct-day calculations." },
+    interval: { type: "string", enum: ["day", "week", "month"], description: "Bucket size used for `series`." },
+    platform: {
+      type: "object",
+      description: "Requested and applied client-platform filter.",
+      properties: {
+        requested: { type: "string", enum: ["ALL", "WEB", "IOS", "ANDROID"] },
+        applied: { type: "string", enum: ["ALL", "WEB", "IOS", "ANDROID"] },
+        state: ANALYTICS_AVAILABILITY,
+      },
+    },
+    period: {
+      type: "object",
+      description: "Exact half-open current and previous activity bounds.",
+      properties: {
+        from: { type: "integer", description: "Inclusive requested activity start (Unix ms)." },
+        to: { type: "integer", description: "Exclusive requested activity end (Unix ms)." },
+        effectiveFrom: { type: ["integer", "null"], description: "Measured start after coverage, or `null`." },
+        previousFrom: { type: "integer", description: "Inclusive previous-period start (Unix ms)." },
+        previousTo: { type: "integer", description: "Exclusive previous-period end (Unix ms)." },
+      },
+    },
+    state: ANALYTICS_AVAILABILITY,
+    reason: ANALYTICS_UNAVAILABLE_REASON,
+    totals: ENGAGEMENT_TOTALS,
+    previousPeriod: {
+      type: "object",
+      description: "Engagement totals for the immediately previous equal activity period.",
+      properties: {
+        state: ANALYTICS_AVAILABILITY,
+        reason: ANALYTICS_UNAVAILABLE_REASON,
+        totals: { ...ENGAGEMENT_TOTALS, type: ["object", "null"] },
+      },
+    },
+    comparison: {
+      type: "object",
+      description: "Current-versus-previous engagement changes.",
+      properties: {
+        state: ANALYTICS_AVAILABILITY,
+        reason: ANALYTICS_UNAVAILABLE_REASON,
+        metrics: { ...ENGAGEMENT_COMPARISON_METRICS, type: ["object", "null"] },
+      },
+    },
+    series: {
+      type: "array",
+      description: "Continuous half-open activity intervals in ascending order.",
+      items: {
+        type: "object",
+        properties: {
+          from: { type: "integer", description: "Inclusive interval start (Unix ms)." },
+          to: { type: "integer", description: "Exclusive interval end (Unix ms)." },
+          activeParticipants: { type: "integer", description: "Unique active participants." },
+          sharingParticipants: { type: "integer", description: "Unique sharing participants." },
+          portalViews: { type: "integer", description: "Total signed-in portal views." },
+          shareActions: { type: "integer", description: "Total accepted share actions." },
+        },
+      },
+    },
+    breakdowns: {
+      type: "object",
+      description: "Engagement grouped by platform, portal source, and share channel.",
+      properties: {
+        platforms: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              key: { type: "string", enum: ["WEB", "IOS", "ANDROID"] },
+              activeParticipants: { type: "integer" },
+              sharingParticipants: { type: "integer" },
+              portalViews: { type: "integer" },
+              shareActions: { type: "integer" },
+            },
+          },
+        },
+        portalViewSources: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              key: {
+                type: "string",
+                enum: ["DEFAULT_LAUNCHER", "SDK_OPEN", "CSS_CLASS", "HOSTED_PORTAL", "NATIVE_WINDOW", "UNKNOWN"],
+              },
+              activeParticipants: { type: "integer" },
+              portalViews: { type: "integer" },
+            },
+          },
+        },
+        shareChannels: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              key: { type: "string", description: "Stable share-channel key." },
+              sharingParticipants: { type: "integer" },
+              shareActions: { type: "integer" },
+            },
+          },
+        },
+        firstShareChannels: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              key: { type: "string", description: "Stable first-share channel key." },
+              sharingParticipants: { type: "integer" },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
 const CAMPAIGN_ANALYTICS_RESPONSE: ToolOutputSchema = {
   type: "object",
   properties: {
@@ -954,6 +1234,7 @@ const CAMPAIGN_ANALYTICS_RESPONSE: ToolOutputSchema = {
       description: "Per-period totals in ascending order. Present only when `interval` is `day`, `week`, or `month`.",
     },
     email: EMAIL_ANALYTICS_RESPONSE,
+    engagement: CAMPAIGN_ENGAGEMENT_ANALYTICS,
     previousPeriod: {
       type: "object",
       description:
@@ -1026,6 +1307,232 @@ const CAMPAIGN_ANALYTICS_RESPONSE: ToolOutputSchema = {
   },
 };
 
+const ACTIVATION_STAGE_KEYS = [
+  "ELIGIBLE",
+  "PORTAL_VIEWED",
+  "SHARE_ACTION",
+  "UNIQUE_REFERRAL_VISIT",
+  "LEAD",
+  "CREDITED_REFERRAL",
+] as const;
+
+const ACTIVATION_STALLED_SEGMENT_KEYS = [
+  "ELIGIBLE_NO_PORTAL_VIEW",
+  "PORTAL_VIEWED_NO_SHARE_ACTION",
+  "SHARED_NO_UNIQUE_REFERRAL_VISIT",
+  "UNIQUE_VISIT_NO_LEAD",
+  "LEAD_NO_CREDITED_REFERRAL",
+] as const;
+
+const ACTIVATION_COHORT_BOUNDS = {
+  type: "object",
+  description: "Exact half-open eligibility cohort and observation maturity dates.",
+  properties: {
+    from: { type: "integer", description: "Inclusive selected cohort start (Unix ms)." },
+    to: { type: "integer", description: "Exclusive selected cohort end (Unix ms)." },
+    effectiveFrom: { type: ["integer", "null"], description: "Measured cohort start after coverage, or `null`." },
+    maturedAt: { type: "integer", description: "Earliest time the cohort has its complete observation window." },
+    asOf: { type: "integer", description: "Server time used to determine cohort maturity." },
+    anchorField: {
+      type: "string",
+      enum: ["enrolledAsAdvocateAt", "approvedAsAffiliateAt"],
+      description: "Eligibility milestone used to place participants in the cohort.",
+    },
+  },
+} as const;
+
+const ACTIVATION_COHORT_RESULT = {
+  type: "object",
+  description: "Strict activation metrics for one exact enrollment cohort.",
+  properties: {
+    state: ANALYTICS_AVAILABILITY,
+    reason: ANALYTICS_UNAVAILABLE_REASON,
+    cohort: ACTIVATION_COHORT_BOUNDS,
+    strictStages: {
+      type: ["array", "null"],
+      description: "Ordered monotonic stages, or `null` when the cohort is unavailable.",
+      items: {
+        type: "object",
+        properties: {
+          key: { type: "string", enum: ACTIVATION_STAGE_KEYS, description: "Stable strict-stage key." },
+          count: { type: "integer", description: "Participants who reached this and every prior stage." },
+          conversionRateFromPrior: { type: ["number", "null"], description: "Count divided by prior-stage count." },
+          conversionRateFromEligible: { type: ["number", "null"], description: "Count divided by eligible participants." },
+          dropOffCount: { type: ["integer", "null"], description: "Prior-stage count minus this count." },
+          dropOffRate: { type: ["number", "null"], description: "Drop-off count divided by prior-stage count." },
+          medianTimeToStageMs: { type: ["number", "null"], description: "Median elapsed time from eligibility." },
+          stalledSegmentKey: {
+            type: ["string", "null"],
+            enum: [...ACTIVATION_STALLED_SEGMENT_KEYS, null],
+            description: "Gap before this stage, or `null` for `ELIGIBLE`.",
+          },
+        },
+      },
+    },
+    rawStageCounts: {
+      type: ["object", "null"],
+      description: "Raw counts before strict stage-order enforcement, or `null` when unavailable.",
+      properties: Object.fromEntries(
+        ACTIVATION_STAGE_KEYS.map((key) => [key, { type: "integer", description: `Raw ${key} participant count.` }]),
+      ),
+    },
+    stalledSegments: {
+      type: ["array", "null"],
+      description: "Exact gaps between consecutive strict stages, or `null` when unavailable.",
+      items: {
+        type: "object",
+        properties: {
+          key: { type: "string", enum: ACTIVATION_STALLED_SEGMENT_KEYS },
+          fromStage: { type: "string", enum: ACTIVATION_STAGE_KEYS.slice(0, -1) },
+          toStage: { type: "string", enum: ACTIVATION_STAGE_KEYS.slice(1) },
+          count: { type: "integer", description: "Participants in this stage gap." },
+        },
+      },
+    },
+    outcomes: {
+      type: ["object", "null"],
+      description: "Program-specific outcomes outside the strict funnel, or `null` when unavailable.",
+      properties: {
+        FIRST_REWARD: {
+          type: "object",
+          description: "Referral programs only. Participants who received a first referrer-side reward.",
+          properties: { count: { type: "integer" } },
+        },
+        FIRST_COMMISSION: {
+          type: "object",
+          description: "Affiliate programs only. Participants who received a first commission.",
+          properties: { count: { type: "integer" } },
+        },
+        PAYOUT_SETUP_COMPLETED: {
+          type: "object",
+          description: "Participants who completed payout setup.",
+          properties: { count: { type: "integer" } },
+        },
+      },
+    },
+    largestDrop: {
+      type: ["object", "null"],
+      description: "Highest percentage loss between consecutive stages, or `null` without a valid denominator.",
+      properties: {
+        fromStage: { type: "string", enum: ACTIVATION_STAGE_KEYS.slice(0, -1) },
+        toStage: { type: "string", enum: ACTIVATION_STAGE_KEYS.slice(1) },
+        count: { type: "integer", description: "Participants lost between the stages." },
+        rate: { type: "number", description: "Lost participants divided by the prior-stage count." },
+        stalledSegmentKey: { type: "string", enum: ACTIVATION_STALLED_SEGMENT_KEYS },
+        improvementAreaKey: {
+          type: "string",
+          enum: [
+            "PORTAL_ACCESS",
+            "SHARING_EXPERIENCE",
+            "SHARE_EFFECTIVENESS",
+            "VISITOR_SIGNUP",
+            "ATTRIBUTION_AND_QUALIFICATION",
+          ],
+        },
+        improvementArea: { type: "string", description: "Participant experience related to the drop." },
+      },
+    },
+  },
+} as const;
+
+const CAMPAIGN_ACTIVATION_ANALYTICS_RESPONSE: ToolOutputSchema = {
+  type: "object",
+  description: "Activation grouped by eligibility cohort, with a fixed observation window per participant.",
+  properties: {
+    coverageStartAt: {
+      type: ["integer", "null"],
+      description: "Earliest expected complete activation capture time (Unix ms), or `null` until coverage begins.",
+    },
+    metricContractVersion: { type: "integer", description: "Shared activation and engagement metric version." },
+    programType: { type: "string", enum: ["REFERRAL", "AFFILIATE"], description: "Program eligibility model." },
+    timezone: { type: "string", description: "IANA timezone used to advance cohort boundaries." },
+    cohortInterval: { type: "string", enum: ["day", "week", "month"], description: "Bucket size for `cohorts`." },
+    observationWindowDays: { type: "integer", enum: [7, 30], description: "Days after eligibility in which stages count." },
+    portalViewedLabel: {
+      type: "string",
+      enum: ["Referral portal viewed", "Affiliate portal viewed"],
+      description: "Program-specific display label for the stable `PORTAL_VIEWED` stage.",
+    },
+    portalViewedHelperText: { type: "string", description: "Display definition for a qualifying signed-in portal view." },
+    aggregate: ACTIVATION_COHORT_RESULT,
+    cohorts: {
+      type: "array",
+      description: "Selected range split into exact half-open eligibility-cohort buckets.",
+      items: ACTIVATION_COHORT_RESULT,
+    },
+  },
+};
+
+const PARTICIPANT_ACTIVATION_ANALYTICS = {
+  type: "object",
+  description: "Opt-in covered eligibility and first-milestone analytics for one participant.",
+  properties: {
+    coverageStartAt: {
+      type: ["integer", "null"],
+      description: "Earliest expected complete participant activation capture time (Unix ms).",
+    },
+    metricContractVersion: { type: "integer", description: "Shared activation and engagement metric version." },
+    programType: { type: "string", enum: ["REFERRAL", "AFFILIATE"], description: "Program eligibility model." },
+    state: ANALYTICS_AVAILABILITY,
+    reason: ANALYTICS_UNAVAILABLE_REASON,
+    cohort: {
+      type: "object",
+      description: "Program-specific eligibility anchor and covered value.",
+      properties: {
+        anchorField: { type: "string", enum: ["enrolledAsAdvocateAt", "approvedAsAffiliateAt"] },
+        anchorAt: {
+          type: ["integer", "null"],
+          description: "Covered anchor time (Unix ms). `null` is unknown and does not mean enrollment never occurred.",
+        },
+      },
+    },
+    enrolledAsAdvocateAt: {
+      type: ["integer", "null"],
+      description: "Referral only. Covered advocate enrollment (Unix ms); `null` does not mean enrollment never occurred.",
+    },
+    milestones: {
+      type: "object",
+      description: "Covered first milestones. A `null` value is unknown and does not mean the action never happened.",
+      properties: {
+        firstPortalViewedAt: { type: ["integer", "null"], description: "First covered signed-in portal view (Unix ms)." },
+        firstReferralLinkCopiedAt: { type: ["integer", "null"], description: "First covered referral-link copy (Unix ms)." },
+        firstShareAt: { type: ["integer", "null"], description: "First covered accepted share action (Unix ms)." },
+        firstShareChannel: {
+          type: ["string", "null"],
+          enum: [
+            "email",
+            "facebook",
+            "twitter",
+            "linkedin",
+            "pinterest",
+            "threads",
+            "bluesky",
+            "sms",
+            "messenger",
+            "whatsapp",
+            "wechat",
+            "telegram",
+            "reddit",
+            "tumblr",
+            "qrcode",
+            "copyRefLink",
+            "iosNativeShare",
+            "androidNativeShare",
+            null,
+          ],
+          description: "Channel for `firstShareAt`, or `null` when the first covered share is unavailable.",
+        },
+        firstUniqueClickAt: { type: ["integer", "null"], description: "First covered unique referral visit (Unix ms)." },
+        firstLeadAt: { type: ["integer", "null"], description: "First covered referred lead (Unix ms)." },
+        firstReferralAt: { type: ["integer", "null"], description: "First covered credited referral (Unix ms)." },
+        firstRewardAt: { type: ["integer", "null"], description: "Referral only. First covered participant reward (Unix ms)." },
+        firstCommissionAt: { type: ["integer", "null"], description: "Affiliate only. First covered commission (Unix ms)." },
+        payoutSetupCompletedAt: { type: ["integer", "null"], description: "First covered payout-setup completion (Unix ms)." },
+      },
+    },
+  },
+} as const;
+
 const PARTICIPANT_ANALYTICS_RESPONSE: ToolOutputSchema = {
   type: "object",
   properties: {
@@ -1072,6 +1579,7 @@ const PARTICIPANT_ANALYTICS_RESPONSE: ToolOutputSchema = {
       additionalProperties: { type: "integer" },
       description: "Per-channel share counts (e.g. `email`, `facebook`, `twitter`).",
     },
+    activation: PARTICIPANT_ACTIVATION_ANALYTICS,
     series: {
       type: "array",
       items: {
@@ -1084,6 +1592,14 @@ const PARTICIPANT_ANALYTICS_RESPONSE: ToolOutputSchema = {
             type: "object",
             description: "Per-period email counts when both optional values are requested.",
             properties: EMAIL_ANALYTICS_COUNT_PROPERTIES,
+          },
+          portalViews: {
+            type: ["integer", "null"],
+            description: "Covered signed-in portal views, or `null` outside known coverage.",
+          },
+          shareActions: {
+            type: ["integer", "null"],
+            description: "Covered accepted share actions, or `null` outside known coverage.",
           },
         },
       },
@@ -1517,6 +2033,15 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
     "The updated campaign reward. Same shape as the items in the `growsurf_list_campaign_rewards` result.",
   ),
   growsurf_delete_campaign_reward: DELETE_REWARD_RESPONSE,
+  growsurf_list_program_resources: PROGRAM_RESOURCE_LIST_RESPONSE,
+  growsurf_prepare_program_resource_file: PREPARED_PROGRAM_RESOURCE_FILE,
+  growsurf_create_program_resource: sameShapeAs(
+    "The created resource. Same shape as the items in the `growsurf_list_program_resources` result.",
+  ),
+  growsurf_update_program_resource: sameShapeAs(
+    "The updated resource. Same shape as the items in the `growsurf_list_program_resources` result.",
+  ),
+  growsurf_delete_program_resource: DELETE_PROGRAM_RESOURCE_RESPONSE,
   growsurf_get_campaign_design: CAMPAIGN_DESIGN,
   growsurf_update_campaign_design: sameShapeAs(
     "The full updated design configuration. Same shape as the `growsurf_get_campaign_design` result.",
@@ -1539,6 +2064,7 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
   growsurf_request_team_verification: TEAM,
   growsurf_resend_team_owner_verification_email: VERIFICATION_EMAIL_RESPONSE,
   growsurf_get_campaign_analytics: CAMPAIGN_ANALYTICS_RESPONSE,
+  growsurf_get_campaign_activation_analytics: CAMPAIGN_ACTIVATION_ANALYTICS_RESPONSE,
   growsurf_list_campaign_webhooks: WEBHOOK_LIST_RESPONSE,
   growsurf_create_campaign_webhook: sameShapeAs(
     "The created webhook. Same shape as the items in the `growsurf_list_campaign_webhooks` result.",

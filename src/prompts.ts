@@ -285,9 +285,11 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
         `Timeframe: ${timeframe}.`,
         `Question: ${question}.`,
         "",
-        "Use growsurf_get_campaign_analytics with interval and include values that fit the question. Request `email` for delivery and engagement metrics, and series data when trend or pacing matters.",
+        "Use growsurf_get_campaign_analytics with interval and include values that fit the question. Request `email` for email delivery metrics and `include=engagement` for participant activity periods. Request series data when trend or pacing matters.",
+        "Use growsurf_get_campaign_activation_analytics for enrollment cohorts and fixed 7- or 30-day observation windows. Do not compare activity periods as if they were enrollment cohorts.",
+        "Read `coverageStartAt`, `state`, and `reason` before interpreting a zero or null. A pre-coverage or unavailable value is unknown; it does not mean the action never happened.",
         "Keep statuses distinct: `referralCreditPendings` counts referred friends whose referral credit has not yet been awarded. Campaign `statusCounts.rewardStatus` and participant `analytics.rewardStatus` contain only `unapproved`, `unfulfilled`, and `completed`. Never equate referral-credit pending with reward status.",
-        "When diagnosing one participant, use growsurf_get_participant_analytics and growsurf_get_participant_activity_logs.",
+        "When diagnosing one participant, use growsurf_get_participant_analytics with `include=activation`; add `series` only for covered portal-view and share-action trends. Use growsurf_get_participant_activity_logs for event context.",
         "Report plain-language findings, likely causes, and the next concrete action. Separate measured facts from hypotheses.",
       ].join("\n");
     },
