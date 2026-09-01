@@ -457,6 +457,17 @@ describe("tool output schemas", () => {
     ]);
   });
 
+  it("advertises the exact participant avatar style contract", () => {
+    const design = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_design;
+    const participantAvatarStyle = design.properties?.participantAvatarStyle as {
+      enum?: unknown[];
+      description?: string;
+    };
+
+    expect(participantAvatarStyle.enum).toEqual(["CHARACTERS", "INITIALS", "ANIMALS", "GRADIENT"]);
+    expect(participantAvatarStyle.description).toMatch(/missing or unknown.*`INITIALS`/i);
+  });
+
   it("advertises the Claim Offer Popup design and email fields", () => {
     const design = TOOL_OUTPUT_SCHEMAS.growsurf_get_campaign_design;
     const referredExperience = design.properties?.referredExperience as {

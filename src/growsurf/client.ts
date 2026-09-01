@@ -7,6 +7,7 @@ export type GrowSurfClientOptions = {
   apiKey?: string | undefined;
   campaignId?: string | undefined;
   baseUrl?: string; // defaults to https://api.growsurf.com/v2
+  uploadAllowedOrigins?: string | undefined;
 };
 
 type GrowSurfRequestOptions = {
@@ -38,7 +39,27 @@ export type GrowSurfParticipantInput = {
   metadata?: Record<string, unknown>;
 };
 
+export type PrepareProgramResourceFileInput = {
+  fileName: string;
+  mimeType: string;
+  bytes: Uint8Array;
+};
+
+export type PreparedProgramResourceFile = {
+  uploadTicket: string;
+  uploadResult: {
+    public_id: string;
+    version: number;
+    signature: string;
+    resource_type: "image" | "raw";
+    type: "authenticated";
+    bytes: number;
+    secure_url: string;
+  };
+};
+
 const DEFAULT_BASE_URL = "https://api.growsurf.com/v2";
+const PROGRAM_RESOURCE_UPLOAD_RESPONSE_MAX_BYTES = 256 * 1024;
 
 const normalizeBaseUrl = (baseUrl: string) => baseUrl.replace(/\/+$/, "");
 
@@ -101,12 +122,14 @@ export class GrowSurfClient {
   private readonly campaignId: string;
   private readonly baseUrl: string;
   private readonly mcpBaseUrl: string;
+  private readonly uploadAllowedOrigins: string | undefined;
 
   constructor(options: GrowSurfClientOptions) {
     this.apiKey = options.apiKey ?? "";
     this.campaignId = options.campaignId ?? "";
     this.baseUrl = normalizeBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
     this.mcpBaseUrl = toMcpBaseUrl(this.baseUrl);
+    this.uploadAllowedOrigins = options.uploadAllowedOrigins;
   }
 
   getCampaignId(): string {
@@ -243,6 +266,94 @@ export class GrowSurfClient {
     );
   }
 
+  async listProgramResources(): Promise<unknown> {
+    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/resources`);
+  }
+
+  /**
+   * Requests a one-time upload ticket, uploads the supplied bytes only to the API-selected HTTPS
+   * destination, and returns the minimal signed confirmation needed by create/update.
+   */
+  async prepareProgramResourceFile(input: PrepareProgramResourceFileInput): Promise<PreparedProgramResourceFile> {
+    const allowedUploadOrigins = parseProgramResourceUploadAllowedOrigins(this.uploadAllowedOrigins);
+    const ticketResponse = await this.requestJson(
+      "POST",
+      `/campaign/${encodeURIComponent(this.campaignId)}/resource-upload-tickets`,
+      { fileName: input.fileName, mimeType: input.mimeType, bytes: input.bytes.byteLength },
+    );
+    const ticket = parseProgramResourceUploadTicket(ticketResponse);
+    const uploadUrl = parseSecureProgramResourceUploadUrl(ticket.uploadUrl);
+    if (!allowedUploadOrigins.has(uploadUrl.origin)) {
+      throw programResourceUploadError("GrowSurf returned an invalid secure upload destination.");
+    }
+
+    const form = new FormData();
+    for (const [name, value] of Object.entries(ticket.uploadParameters)) {
+      if (name === "file") {
+        throw programResourceUploadError("GrowSurf returned invalid secure upload parameters.");
+      }
+      if (!["string", "number", "boolean"].includes(typeof value)) {
+        throw programResourceUploadError("GrowSurf returned invalid secure upload parameters.");
+      }
+      form.append(name, String(value));
+    }
+    form.append("file", new Blob([input.bytes], { type: input.mimeType }), input.fileName);
+
+    let uploadResponse: Response;
+    try {
+      // Uploads are never retried. A network failure can have an ambiguous provider outcome, so a
+      // replay could create a second asset. The caller must request a fresh preparation instead.
+      uploadResponse = await fetch(uploadUrl, {
+        method: "POST",
+        body: form,
+        redirect: "error",
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch {
+      throw programResourceUploadError(
+        "The file upload could not be confirmed. Do not replay it; prepare the file again with a new ticket.",
+      );
+    }
+    if (!uploadResponse.ok) {
+      throw programResourceUploadError(
+        "The file upload failed before confirmation. Prepare the file again with a new ticket.",
+        uploadResponse.status,
+      );
+    }
+
+    let uploadJson: unknown;
+    try {
+      uploadJson = await readBoundedProgramResourceUploadJson(uploadResponse);
+    } catch {
+      throw programResourceUploadError(
+        "The file upload response could not be confirmed. Do not replay it; prepare the file again with a new ticket.",
+      );
+    }
+    return {
+      uploadTicket: ticket.ticket,
+      uploadResult: parseProgramResourceUploadResult(uploadJson, input.bytes.byteLength),
+    };
+  }
+
+  async createProgramResource(resource: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("POST", `/campaign/${encodeURIComponent(this.campaignId)}/resources`, resource);
+  }
+
+  async updateProgramResource(resourceId: string, fields: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson(
+      "PATCH",
+      `/campaign/${encodeURIComponent(this.campaignId)}/resources/${encodeURIComponent(resourceId)}`,
+      fields,
+    );
+  }
+
+  async deleteProgramResource(resourceId: string): Promise<unknown> {
+    return this.requestJson(
+      "DELETE",
+      `/campaign/${encodeURIComponent(this.campaignId)}/resources/${encodeURIComponent(resourceId)}`,
+    );
+  }
+
   // Campaign config sub-resources — one GET/PATCH pair per dashboard Program Editor tab
   // (design, emails, options, installation). Bodies/responses are large nested objects.
   // PATCH changes only the fields you send; anything left out is untouched (arrays such as
@@ -328,15 +439,39 @@ export class GrowSurfClient {
   }
 
   // Campaign analytics. Pass `interval` (day|week|month) to also receive a per-period `series`
-  // alongside the totals; pass `include` (comma-separated: previousPeriod, statusCounts, rates,
-  // email) to
-  // enrich the response; scope the timeframe with `days` or an explicit startDate/endDate window.
+  // alongside the totals; pass `include` to add optional email, comparison, or participant
+  // engagement data; scope the timeframe with `days` or an explicit startDate/endDate window.
   async getCampaignAnalytics(
-    query: { interval?: string; include?: string; days?: number; startDate?: number; endDate?: number } = {},
+    query: {
+      interval?: string;
+      include?: string;
+      days?: number;
+      startDate?: number;
+      endDate?: number;
+      timezone?: string;
+      platform?: string;
+    } = {},
   ): Promise<unknown> {
     return this.requestJson(
       "GET",
       `/campaign/${encodeURIComponent(this.campaignId)}/analytics${toQueryString(query)}`,
+    );
+  }
+
+  // Activation cohorts group participants by the program-specific eligibility date and apply one
+  // fixed observation window. Omitting both bounds requests the latest fully matured cohort.
+  async getCampaignActivationAnalytics(
+    query: {
+      cohortFrom?: number;
+      cohortTo?: number;
+      cohortInterval?: string;
+      observationWindowDays?: number;
+      timezone?: string;
+    } = {},
+  ): Promise<unknown> {
+    return this.requestJson(
+      "GET",
+      `/campaign/${encodeURIComponent(this.campaignId)}/analytics/activation${toQueryString(query)}`,
     );
   }
 
@@ -388,8 +523,9 @@ export class GrowSurfClient {
     return this.requestJson("POST", this.participantPath(participantEmail, "/email"), body);
   }
 
-  // Pass `include=series` to receive per-period referral activity, `include=email` for sent,
-  // delivery, and engagement metrics, or both values; scope either type of optional data with the window parameters.
+  // Pass `include=series` for per-period referral activity, `include=email` for email metrics, or
+  // `include=activation` for covered first milestones. Combine activation and series for covered
+  // portal-view and share-action buckets.
   async getParticipantAnalyticsById(
     participantId: string,
     query: { include?: string; interval?: string; days?: number; startDate?: number; endDate?: number } = {},
@@ -581,3 +717,160 @@ export class GrowSurfClient {
     throw { name: "HttpError", code: "HTTP_ERROR", message: "Unreachable" } satisfies GrowSurfRequestError;
   }
 }
+
+type ProgramResourceUploadTicket = {
+  ticket: string;
+  uploadUrl: string;
+  uploadParameters: Record<string, string | number | boolean>;
+};
+
+const programResourceUploadError = (message: string, status?: number): GrowSurfRequestError => ({
+  name: "ProgramResourceUploadError",
+  code: "PROGRAM_RESOURCE_UPLOAD_ERROR",
+  message,
+  ...(status === undefined ? {} : { status }),
+});
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+/** Parses a private, comma-separated list of canonical HTTPS origins and fails closed. */
+const parseProgramResourceUploadAllowedOrigins = (value: string | undefined): Set<string> => {
+  if (!value) {
+    throw programResourceUploadError(
+      "Program Resource file upload is disabled because no upload origin allowlist is configured.",
+    );
+  }
+
+  const origins = new Set<string>();
+  for (const rawOrigin of value.split(",")) {
+    const origin = rawOrigin.trim();
+    if (!origin || origin.includes("*")) {
+      throw programResourceUploadError("Program Resource file upload origin configuration is invalid.");
+    }
+    let parsed: URL;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      throw programResourceUploadError("Program Resource file upload origin configuration is invalid.");
+    }
+    if (
+      parsed.protocol !== "https:" || parsed.username || parsed.password ||
+      parsed.pathname !== "/" || parsed.search || parsed.hash || parsed.origin !== origin
+    ) {
+      throw programResourceUploadError("Program Resource file upload origin configuration is invalid.");
+    }
+    origins.add(origin);
+  }
+  if (origins.size === 0) {
+    throw programResourceUploadError("Program Resource file upload origin configuration is invalid.");
+  }
+  return origins;
+};
+
+/** Parses one API-selected upload URL without exposing it through validation errors. */
+const parseSecureProgramResourceUploadUrl = (value: string): URL => {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol === "https:" && !parsed.username && !parsed.password) return parsed;
+  } catch {
+    // The public error below intentionally omits the API-selected URL.
+  }
+  throw programResourceUploadError("GrowSurf returned an invalid secure upload destination.");
+};
+
+/** Reads one upload confirmation as JSON without buffering more than 256 KiB. */
+const readBoundedProgramResourceUploadJson = async (response: Response): Promise<unknown> => {
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > PROGRAM_RESOURCE_UPLOAD_RESPONSE_MAX_BYTES) {
+    try {
+      await response.body?.cancel();
+    } catch {
+      // Best-effort body cleanup only.
+    }
+    throw programResourceUploadError("The file upload returned an oversized confirmation.");
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw programResourceUploadError("The file upload returned an invalid confirmation.");
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > PROGRAM_RESOURCE_UPLOAD_RESPONSE_MAX_BYTES) {
+        try {
+          await reader.cancel();
+        } catch {
+          // Best-effort body cleanup only.
+        }
+        throw programResourceUploadError("The file upload returned an oversized confirmation.");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), totalBytes);
+  return JSON.parse(bytes.toString("utf8")) as unknown;
+};
+
+const parseProgramResourceUploadTicket = (value: unknown): ProgramResourceUploadTicket => {
+  if (!isRecord(value)) throw programResourceUploadError("GrowSurf returned an invalid upload ticket.");
+  const { ticket, uploadUrl, uploadParameters } = value;
+  if (
+    typeof ticket !== "string" || ticket.length < 20 ||
+    typeof uploadUrl !== "string" || !isRecord(uploadParameters)
+  ) {
+    throw programResourceUploadError("GrowSurf returned an invalid upload ticket.");
+  }
+  for (const [name, parameter] of Object.entries(uploadParameters)) {
+    if (!name || !["string", "number", "boolean"].includes(typeof parameter)) {
+      throw programResourceUploadError("GrowSurf returned an invalid upload ticket.");
+    }
+  }
+  return {
+    ticket,
+    uploadUrl,
+    uploadParameters: uploadParameters as Record<string, string | number | boolean>,
+  };
+};
+
+const parseProgramResourceUploadResult = (
+  value: unknown,
+  expectedBytes: number,
+): PreparedProgramResourceFile["uploadResult"] => {
+  if (!isRecord(value)) throw programResourceUploadError("The file upload returned an invalid confirmation.");
+  const result = value;
+  const secureUrl = typeof result.secure_url === "string" ? result.secure_url : "";
+  let isSecureUrl = false;
+  try {
+    const parsed = new URL(secureUrl);
+    isSecureUrl = parsed.protocol === "https:" && !parsed.username && !parsed.password;
+  } catch {
+    isSecureUrl = false;
+  }
+  if (
+    typeof result.public_id !== "string" || !result.public_id ||
+    !Number.isInteger(result.version) || Number(result.version) < 1 ||
+    typeof result.signature !== "string" || !result.signature ||
+    !["image", "raw"].includes(String(result.resource_type)) ||
+    result.type !== "authenticated" ||
+    result.bytes !== expectedBytes ||
+    !isSecureUrl
+  ) {
+    throw programResourceUploadError("The file upload returned an invalid confirmation.");
+  }
+  return {
+    public_id: result.public_id,
+    version: Number(result.version),
+    signature: result.signature,
+    resource_type: result.resource_type as "image" | "raw",
+    type: "authenticated",
+    bytes: expectedBytes,
+    secure_url: secureUrl,
+  };
+};

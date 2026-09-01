@@ -76,6 +76,7 @@ const envSchema = z.object({
   GROWSURF_API_KEY: optionalNonEmptyString(),
   GROWSURF_CAMPAIGN_ID: optionalNonEmptyString(),
   GROWSURF_API_BASE_URL: optionalNonEmptyString(),
+  GROWSURF_UPLOAD_ALLOWED_ORIGINS: optionalNonEmptyString(),
   GROWSURF_PARTICIPANT_AUTH_SECRET: optionalNonEmptyString(),
   GROWSURF_WEBHOOK_TOKEN: optionalNonEmptyString(),
 });
@@ -100,6 +101,7 @@ const requireGrowSurfClient = (env: Env): GrowSurfClient => {
     apiKey: env.GROWSURF_API_KEY,
     campaignId: env.GROWSURF_CAMPAIGN_ID,
     ...(env.GROWSURF_API_BASE_URL ? { baseUrl: env.GROWSURF_API_BASE_URL } : {}),
+    uploadAllowedOrigins: env.GROWSURF_UPLOAD_ALLOWED_ORIGINS,
   });
 };
 
@@ -113,6 +115,7 @@ const requireGrowSurfApiKey = (env: Env): GrowSurfClient => {
     apiKey: env.GROWSURF_API_KEY,
     campaignId: env.GROWSURF_CAMPAIGN_ID ?? "",
     ...(env.GROWSURF_API_BASE_URL ? { baseUrl: env.GROWSURF_API_BASE_URL } : {}),
+    uploadAllowedOrigins: env.GROWSURF_UPLOAD_ALLOWED_ORIGINS,
   });
 };
 
@@ -123,6 +126,7 @@ const getKeylessGrowSurfClient = (env: Env): GrowSurfClient =>
     apiKey: env.GROWSURF_API_KEY,
     campaignId: env.GROWSURF_CAMPAIGN_ID ?? "",
     ...(env.GROWSURF_API_BASE_URL ? { baseUrl: env.GROWSURF_API_BASE_URL } : {}),
+    uploadAllowedOrigins: env.GROWSURF_UPLOAD_ALLOWED_ORIGINS,
   });
 
 // The campaign-scoped tools: every tool that operates on a single program (campaign). Each accepts
@@ -141,6 +145,11 @@ const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
   "growsurf_create_campaign_reward",
   "growsurf_update_campaign_reward",
   "growsurf_delete_campaign_reward",
+  "growsurf_list_program_resources",
+  "growsurf_prepare_program_resource_file",
+  "growsurf_create_program_resource",
+  "growsurf_update_program_resource",
+  "growsurf_delete_program_resource",
   "growsurf_get_campaign_design",
   "growsurf_update_campaign_design",
   "growsurf_get_campaign_emails",
@@ -151,6 +160,7 @@ const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
   "growsurf_update_campaign_installation",
   "growsurf_capture_referral_flow_screenshots",
   "growsurf_get_campaign_analytics",
+  "growsurf_get_campaign_activation_analytics",
   "growsurf_list_campaign_webhooks",
   "growsurf_create_campaign_webhook",
   "growsurf_update_campaign_webhook",
@@ -538,6 +548,148 @@ const deleteCampaignRewardSchema = z.object({
   campaignRewardId: z.string().min(1),
 });
 
+const programResourceCommonFields = {
+  campaignId: z.string().min(1).optional(),
+  title: z.string().min(1).max(120),
+  description: z.string().max(500).nullable().optional(),
+  category: z.string().max(60).nullable().optional(),
+  isPublished: z.boolean().optional(),
+};
+
+const PROGRAM_RESOURCE_MAX_FILE_BYTES = 10 * 1024 * 1024;
+const PROGRAM_RESOURCE_MAX_BASE64_LENGTH = 4 * Math.ceil(PROGRAM_RESOURCE_MAX_FILE_BYTES / 3);
+const PROGRAM_RESOURCE_MIME_BY_EXTENSION = {
+  jpg: ["image/jpeg", "image/jpg"],
+  jpeg: ["image/jpeg", "image/jpg"],
+  png: ["image/png"],
+  gif: ["image/gif"],
+  webp: ["image/webp"],
+  pdf: ["application/pdf"],
+  csv: ["text/csv", "application/csv", "text/plain"],
+  zip: ["application/zip", "application/x-zip-compressed"],
+  doc: ["application/msword", "application/x-ole-storage"],
+  docx: ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  xls: ["application/vnd.ms-excel", "application/x-ole-storage"],
+  xlsx: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+  ppt: ["application/vnd.ms-powerpoint", "application/x-ole-storage"],
+  pptx: ["application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+} as const;
+
+/** Validates base64 structure without a repeated-group regex that can overflow on 10 MB input. */
+const isStructurallyValidProgramResourceBase64 = (value: string): boolean => {
+  if (value.length % 4 !== 0 || /[^A-Za-z0-9+/=]/.test(value)) return false;
+  const firstPadding = value.indexOf("=");
+  if (firstPadding === -1) return true;
+  const paddingLength = value.length - firstPadding;
+  return paddingLength <= 2 && value.endsWith("=".repeat(paddingLength));
+};
+
+const prepareProgramResourceFileSchema = z.object({
+  fileName: z.string().min(1).max(120),
+  mimeType: z.string().min(1),
+  fileBase64: z.string().min(4).max(PROGRAM_RESOURCE_MAX_BASE64_LENGTH).refine(
+    isStructurallyValidProgramResourceBase64,
+    "fileBase64 must contain valid padded base64 bytes without a data-URL prefix or whitespace.",
+  ),
+  campaignId: z.string().min(1).optional(),
+}).strict().superRefine((input, ctx) => {
+  if (
+    input.fileName !== input.fileName.trim() ||
+    /[\\/\u0000-\u001f\u007f]/.test(input.fileName) ||
+    input.fileName === "." || input.fileName === ".."
+  ) {
+    ctx.addIssue({ code: "custom", path: ["fileName"], message: "fileName must be a safe base name." });
+    return;
+  }
+  const extension = input.fileName.includes(".") ? input.fileName.split(".").pop()!.toLowerCase() : "";
+  const allowedMimes = PROGRAM_RESOURCE_MIME_BY_EXTENSION[
+    extension as keyof typeof PROGRAM_RESOURCE_MIME_BY_EXTENSION
+  ];
+  if (!allowedMimes || !(allowedMimes as readonly string[]).includes(input.mimeType)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["mimeType"],
+      message: "mimeType must match a supported file extension.",
+    });
+  }
+});
+
+const programResourceUploadResultSchema = z.object({
+  asset_id: z.string().min(1).optional(),
+  public_id: z.string().min(1),
+  version: z.number().int().positive(),
+  signature: z.string().min(1),
+  resource_type: z.enum(["image", "raw"]),
+  type: z.literal("authenticated"),
+  bytes: z.number().int().positive().max(10 * 1024 * 1024),
+  secure_url: z.string().url().refine((value) => value.startsWith("https://"), "URL must use HTTPS"),
+  format: z.string().min(1).optional(),
+}).passthrough();
+
+const createProgramResourceSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("FILE"),
+    ...programResourceCommonFields,
+    uploadTicket: z.string().min(20),
+    uploadResult: programResourceUploadResultSchema,
+  }).strict(),
+  z.object({
+    type: z.literal("LINK"),
+    ...programResourceCommonFields,
+    url: z.string().url().max(2048).refine((value) => value.startsWith("https://"), "URL must use HTTPS"),
+  }).strict(),
+  z.object({
+    type: z.literal("TEXT"),
+    ...programResourceCommonFields,
+    text: z.string().min(1).max(5000),
+  }).strict(),
+]);
+
+const updateProgramResourceSchema = z.object({
+  resourceId: z.string().min(1),
+  campaignId: z.string().min(1).optional(),
+  type: z.enum(["FILE", "LINK", "TEXT"]).optional(),
+  title: z.string().min(1).max(120).optional(),
+  description: z.string().max(500).nullable().optional(),
+  category: z.string().max(60).nullable().optional(),
+  isPublished: z.boolean().optional(),
+  position: z.number().int().min(0).max(99).optional(),
+  uploadTicket: z.string().min(20).optional(),
+  uploadResult: programResourceUploadResultSchema.optional(),
+  url: z.string().url().max(2048).refine((value) => value.startsWith("https://"), "URL must use HTTPS").optional(),
+  text: z.string().min(1).max(5000).optional(),
+}).strict().superRefine((input, ctx) => {
+  if (Object.keys(input).every((key) => key === "resourceId" || key === "campaignId")) {
+    ctx.addIssue({ code: "custom", message: "Send at least one Resource field to update." });
+  }
+  if ((input.uploadTicket === undefined) !== (input.uploadResult === undefined)) {
+    ctx.addIssue({
+      code: "custom",
+      message: "`uploadTicket` and `uploadResult` must be supplied together.",
+      path: input.uploadTicket === undefined ? ["uploadTicket"] : ["uploadResult"],
+    });
+  }
+  const suppliedContentTypes = [
+    input.url === undefined ? undefined : "LINK",
+    input.text === undefined ? undefined : "TEXT",
+    input.uploadTicket === undefined && input.uploadResult === undefined ? undefined : "FILE",
+  ].filter((value): value is "FILE" | "LINK" | "TEXT" => value !== undefined);
+  if (suppliedContentTypes.length > 1) {
+    ctx.addIssue({ code: "custom", message: "Send content fields for only one Resource type." });
+  }
+  if (input.type && suppliedContentTypes.some((contentType) => contentType !== input.type)) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Content fields must match the selected Resource type.",
+      path: ["type"],
+    });
+  }
+});
+
+const deleteProgramResourceSchema = z.object({
+  resourceId: z.string().min(1),
+});
+
 const createMobileParticipantTokenSchema = addParticipantSchema;
 
 const participantAuthHashSchema = z.object({
@@ -621,14 +773,40 @@ const testWebhookSchema = z.object({
 
 const getCampaignAnalyticsSchema = z.object({
   interval: z.enum(["day", "week", "month", "total"]).optional(),
-  // Comma-separated optional data (previousPeriod, statusCounts, rates, email). Modeled as a free
-  // string like the openapi `include` param — the API validates the individual values, and new
-  // values can be added server-side without a schema bump here.
+  // Modeled as a free string like the OpenAPI `include` param so additive server values do not
+  // require an MCP release solely to pass through the new token.
   include: z.string().optional(),
   days: z.number().int().min(1).max(1825).optional(),
   startDate: z.number().int().optional(),
   endDate: z.number().int().optional(),
+  timezone: z.string().min(1).optional(),
+  platform: z.enum(["ALL", "WEB", "IOS", "ANDROID"]).optional(),
 });
+
+const getCampaignActivationAnalyticsSchema = z
+  .object({
+    cohortFrom: z.number().int().optional(),
+    cohortTo: z.number().int().optional(),
+    cohortInterval: z.enum(["day", "week", "month"]).optional(),
+    observationWindowDays: z.union([z.literal(7), z.literal(30)]).optional(),
+    timezone: z.string().min(1).optional(),
+  })
+  .superRefine((input, ctx) => {
+    if ((input.cohortFrom === undefined) !== (input.cohortTo === undefined)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Provide both cohortFrom and cohortTo, or omit both.",
+        path: input.cohortFrom === undefined ? ["cohortFrom"] : ["cohortTo"],
+      });
+    }
+    if (input.cohortFrom !== undefined && input.cohortTo !== undefined && input.cohortTo <= input.cohortFrom) {
+      ctx.addIssue({
+        code: "custom",
+        message: "cohortTo must be greater than cohortFrom.",
+        path: ["cohortTo"],
+      });
+    }
+  });
 
 // ---- Participant email / analytics / activity-log / update tools ----
 
@@ -1144,15 +1322,232 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           },
         },
         {
+          name: "growsurf_list_program_resources",
+          description:
+            "List the participant resources configured for your GrowSurf program, including drafts. Results stay in display order. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_prepare_program_resource_file",
+          description:
+            "Prepare a local file for a `FILE` Program Resource. Pass the safe file name, matching supported MIME type, and padded base64 bytes (10 MB maximum). GrowSurf requests a one-time ticket and uploads only to the secure HTTPS destination selected by GrowSurf. The result contains only `uploadTicket` and `uploadResult`; pass both unchanged to `growsurf_create_program_resource` or `growsurf_update_program_resource`. The tool does not accept upload URLs or credentials and never retries an ambiguous upload. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              fileName: {
+                type: "string",
+                minLength: 1,
+                maxLength: 120,
+                description: "A safe base name with an allowed extension: jpg/jpeg/png/gif/webp/pdf/csv/zip/doc/docx/xls/xlsx/ppt/pptx.",
+              },
+              mimeType: {
+                type: "string",
+                enum: [...new Set(Object.values(PROGRAM_RESOURCE_MIME_BY_EXTENSION).flat())],
+                description: "The supported MIME type matching fileName's extension.",
+              },
+              fileBase64: {
+                type: "string",
+                minLength: 4,
+                maxLength: PROGRAM_RESOURCE_MAX_BASE64_LENGTH,
+                description: "Canonical padded base64 file bytes only. Do not include a data-URL prefix or whitespace.",
+              },
+            },
+            required: ["fileName", "mimeType", "fileBase64"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_create_program_resource",
+          description:
+            "Create a `FILE`, `LINK`, or `TEXT` resource for participants. `LINK` requires an HTTPS `url`. `TEXT` requires plain `text`. For a `FILE` up to 10 MB, call `growsurf_prepare_program_resource_file` first and pass its `uploadTicket` and `uploadResult` unchanged. New resources default to draft unless you set `isPublished`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["FILE", "LINK", "TEXT"] },
+              title: { type: "string", minLength: 1, maxLength: 120 },
+              description: { type: ["string", "null"], maxLength: 500 },
+              category: { type: ["string", "null"], maxLength: 60 },
+              isPublished: { type: "boolean" },
+              uploadTicket: {
+                type: "string",
+                minLength: 20,
+                description: "The one-time upload ticket. Used only with `FILE`.",
+              },
+              uploadResult: {
+                type: "object",
+                description: "The unmodified result returned by the secure upload flow. Used only with `FILE`.",
+                properties: {
+                  asset_id: { type: "string" },
+                  public_id: { type: "string" },
+                  version: { type: "integer", minimum: 1 },
+                  signature: { type: "string" },
+                  resource_type: { type: "string", enum: ["image", "raw"] },
+                  type: { type: "string", const: "authenticated" },
+                  bytes: { type: "integer", minimum: 1, maximum: 10 * 1024 * 1024 },
+                  secure_url: { type: "string", pattern: "^https://" },
+                  format: { type: "string" },
+                },
+                required: ["public_id", "version", "signature", "resource_type", "type", "bytes", "secure_url"],
+                additionalProperties: true,
+              },
+              url: { type: "string", maxLength: 2048, pattern: "^https://", description: "Used only with `LINK`." },
+              text: { type: "string", minLength: 1, maxLength: 5000, description: "Used only with `TEXT`." },
+            },
+            required: ["type", "title"],
+            allOf: [
+              {
+                if: { properties: { type: { const: "FILE" } } },
+                then: {
+                  required: ["uploadTicket", "uploadResult"],
+                  not: { anyOf: [{ required: ["url"] }, { required: ["text"] }] },
+                },
+              },
+              {
+                if: { properties: { type: { const: "LINK" } } },
+                then: {
+                  required: ["url"],
+                  not: {
+                    anyOf: [
+                      { required: ["text"] },
+                      { required: ["uploadTicket"] },
+                      { required: ["uploadResult"] },
+                    ],
+                  },
+                },
+              },
+              {
+                if: { properties: { type: { const: "TEXT" } } },
+                then: {
+                  required: ["text"],
+                  not: {
+                    anyOf: [
+                      { required: ["url"] },
+                      { required: ["uploadTicket"] },
+                      { required: ["uploadResult"] },
+                    ],
+                  },
+                },
+              },
+            ],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_update_program_resource",
+          description:
+            "Update at least one participant resource field, or move it to a zero-based `position`. Only sent fields change. To replace a `FILE`, call `growsurf_prepare_program_resource_file` first and pass its `uploadTicket` and `uploadResult` unchanged. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            minProperties: 2,
+            properties: {
+              resourceId: { type: "string" },
+              type: { type: "string", enum: ["FILE", "LINK", "TEXT"] },
+              title: { type: "string", minLength: 1, maxLength: 120 },
+              description: { type: ["string", "null"], maxLength: 500 },
+              category: { type: ["string", "null"], maxLength: 60 },
+              isPublished: { type: "boolean" },
+              position: { type: "integer", minimum: 0, maximum: 99 },
+              uploadTicket: { type: "string", minLength: 20, description: "The one-time upload ticket for a replacement `FILE`." },
+              uploadResult: {
+                type: "object",
+                description: "The unmodified result returned by the secure upload flow for a replacement `FILE`.",
+                properties: {
+                  asset_id: { type: "string" },
+                  public_id: { type: "string" },
+                  version: { type: "integer", minimum: 1 },
+                  signature: { type: "string" },
+                  resource_type: { type: "string", enum: ["image", "raw"] },
+                  type: { type: "string", const: "authenticated" },
+                  bytes: { type: "integer", minimum: 1, maximum: 10 * 1024 * 1024 },
+                  secure_url: { type: "string", pattern: "^https://" },
+                  format: { type: "string" },
+                },
+                required: ["public_id", "version", "signature", "resource_type", "type", "bytes", "secure_url"],
+                additionalProperties: true,
+              },
+              url: { type: "string", maxLength: 2048, pattern: "^https://", description: "Used with `LINK`." },
+              text: { type: "string", minLength: 1, maxLength: 5000, description: "Used with `TEXT`." },
+            },
+            required: ["resourceId"],
+            anyOf: [
+              { required: ["type"] },
+              { required: ["title"] },
+              { required: ["description"] },
+              { required: ["category"] },
+              { required: ["isPublished"] },
+              { required: ["position"] },
+              { required: ["uploadTicket"] },
+              { required: ["uploadResult"] },
+              { required: ["url"] },
+              { required: ["text"] },
+            ],
+            allOf: [
+              { if: { required: ["uploadTicket"] }, then: { required: ["uploadResult"] } },
+              { if: { required: ["uploadResult"] }, then: { required: ["uploadTicket"] } },
+              {
+                not: {
+                  anyOf: [
+                    { required: ["url", "text"] },
+                    { required: ["url", "uploadTicket"] },
+                    { required: ["url", "uploadResult"] },
+                    { required: ["text", "uploadTicket"] },
+                    { required: ["text", "uploadResult"] },
+                  ],
+                },
+              },
+              {
+                if: { required: ["type"], properties: { type: { const: "FILE" } } },
+                then: { not: { anyOf: [{ required: ["url"] }, { required: ["text"] }] } },
+              },
+              {
+                if: { required: ["type"], properties: { type: { const: "LINK" } } },
+                then: {
+                  not: {
+                    anyOf: [
+                      { required: ["text"] },
+                      { required: ["uploadTicket"] },
+                      { required: ["uploadResult"] },
+                    ],
+                  },
+                },
+              },
+              {
+                if: { required: ["type"], properties: { type: { const: "TEXT" } } },
+                then: {
+                  not: {
+                    anyOf: [
+                      { required: ["url"] },
+                      { required: ["uploadTicket"] },
+                      { required: ["uploadResult"] },
+                    ],
+                  },
+                },
+              },
+            ],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_delete_program_resource",
+          description:
+            "Delete a participant resource from your GrowSurf program. This does not remove its reusable Media Center asset. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: { resourceId: { type: "string" } },
+            required: ["resourceId"],
+            additionalProperties: false,
+          },
+        },
+        {
           name: "growsurf_get_campaign_design",
           description:
-            "Fetch the configured design fields for your GrowSurf program, including GrowSurf Window content, colors, sharing sections, referred-visitor content such as the Claim Offer Popup, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and country-name overrides under `countryLabels`. The confirmation section is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the configured design fields for your GrowSurf program, including GrowSurf Window content, colors, sharing sections, participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and country-name overrides under `countryLabels`. `participantAvatarStyle` is `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`; missing or unknown values mean `INITIALS`. The confirmation section is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_design",
           description:
-            "Update the design configuration for your GrowSurf program, including referred-visitor content such as the Claim Offer Popup, participant sign-in copy under `login`, and payout-destination confirmation page copy under `payoutDestinationConfirmation`. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Fetch the configuration first, preserve starter content unless the user asked to change it, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, participant sign-in copy under `login`, and payout-destination confirmation page copy under `payoutDestinationConfirmation`. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Fetch the configuration first, preserve starter content unless the user asked to change it, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1314,7 +1709,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_analytics",
           description:
-            "Fetch analytics for your GrowSurf program: participants, referrals, impressions, per-channel shares, and affiliate revenue, commission, and payout metrics when applicable. Pass `interval` (`day`, `week`, or `month`) for a per-period `series`. Pass comma-separated `include` values for `previousPeriod`, `statusCounts`, `rates`, or `email`. The `email` data reports sent, delivered, opened, clicked, bounced, and spam-complaint counts, rates, and per-email-type metrics. Scope the timeframe with `days` (default 365, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Fetch analytics for your GrowSurf program: participants, referrals, impressions, per-channel shares, and affiliate revenue, commission, and payout metrics when applicable. Pass `interval` (`day`, `week`, or `month`) for a per-period `series`. Pass comma-separated `include` values for `previousPeriod`, `statusCounts`, `rates`, `email`, or `engagement`. `engagement` groups unique active, sharing, repeat, and retained participants by when portal views and share actions occurred. Its `coverageStartAt`, `state`, and `reason` distinguish measured zeroes from partial or unavailable history. Scope the timeframe with `days` (default 365, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). `timezone` and `platform` apply to engagement only. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1326,12 +1721,58 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               include: {
                 type: "string",
                 description:
-                  "Comma-separated optional data: `previousPeriod`, `statusCounts`, `rates`, and `email`. Combine `email` with `previousPeriod` or a non-total `interval` to receive matching email metrics for those windows.",
+                  "Comma-separated optional data: `previousPeriod`, `statusCounts`, `rates`, `email`, and `engagement`. Combine values when the question needs more than one view.",
               },
               days: { type: "integer", minimum: 1, maximum: 1825 },
               startDate: { type: "integer", description: "Start of the timeframe, Unix timestamp in ms. Use with endDate instead of days." },
               endDate: { type: "integer", description: "End of the timeframe, Unix timestamp in ms." },
+              timezone: {
+                type: "string",
+                description: "IANA timezone for engagement interval and distinct-day calculations. Used with `include=engagement`.",
+              },
+              platform: {
+                type: "string",
+                enum: ["ALL", "WEB", "IOS", "ANDROID"],
+                description: "Client-platform filter for engagement. Defaults to `ALL`.",
+              },
             },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_get_campaign_activation_analytics",
+          description:
+            "Fetch strict activation for eligible participants in one enrollment cohort. Referral programs group by `enrolledAsAdvocateAt`; affiliate programs group by `approvedAsAffiliateAt`. The ordered stages are `ELIGIBLE`, `PORTAL_VIEWED`, `SHARE_ACTION`, `UNIQUE_REFERRAL_VISIT`, `LEAD`, and `CREDITED_REFERRAL`. Each participant gets the selected 7- or 30-day observation window. Omit both cohort bounds for the latest fully matured cohort. Read `coverageStartAt`, `state`, and `reason` before interpreting a null or zero; unavailable history does not mean an action never happened. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              cohortFrom: {
+                type: "integer",
+                description: "Inclusive eligibility-cohort start, Unix timestamp in ms. Use with `cohortTo`.",
+              },
+              cohortTo: {
+                type: "integer",
+                description: "Exclusive eligibility-cohort end, Unix timestamp in ms. Must be greater than `cohortFrom`.",
+              },
+              cohortInterval: {
+                type: "string",
+                enum: ["day", "week", "month"],
+                description: "Bucket size for `cohorts`. Defaults to `day`.",
+              },
+              observationWindowDays: {
+                type: "integer",
+                enum: [7, 30],
+                description: "Days after eligibility in which stages can count. Defaults to `30`.",
+              },
+              timezone: {
+                type: "string",
+                description: "IANA timezone used to advance cohort boundaries. Defaults to `UTC`.",
+              },
+            },
+            allOf: [
+              { if: { required: ["cohortFrom"] }, then: { required: ["cohortTo"] } },
+              { if: { required: ["cohortTo"] }, then: { required: ["cohortFrom"] } },
+            ],
             additionalProperties: false,
           },
         },
@@ -1557,7 +1998,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_participant_analytics",
           description:
-            "Fetch analytics for one participant by GrowSurf participant ID or email. The base response includes all-time engagement, rank, share, and applicable affiliate revenue, commission, and payout metrics. Set `include` to `series`, `email`, or both comma-separated. `email` reports sent, delivered, opened, clicked, bounced, and spam-complaint metrics attributed to this participant, including invitations they sent; `series` returns per-period activity. Bucket with `interval` (`day`, `week`, or `month`, default `day`) and scope the optional data with `days` (max 1825) or `startDate`/`endDate` (Unix ms). The date window does not filter the base response. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Fetch analytics for one participant by GrowSurf participant ID or email. The base response includes all-time engagement, rank, share, and applicable affiliate revenue, commission, and payout metrics. Add `activation` to `include` for the program-specific eligibility anchor and covered first milestones, including `firstPortalViewedAt` and `firstShareChannel`. A null milestone with a partial or unavailable `state` is unknown, not proof that the action never happened. Request both `activation` and `series` for covered `portalViews` and `shareActions` buckets. Date-window parameters filter optional series and email data, not the base response or activation milestones. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1565,7 +2006,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               participantEmail: { type: "string" },
               include: {
                 type: "string",
-                description: "Comma-separated optional data. Current values are `series` and `email`; the API returns `400` for unknown values.",
+                description: "Comma-separated optional data. Current values are `series`, `email`, and `activation`; the API returns `400` for unknown values.",
               },
               interval: {
                 type: "string",
@@ -2037,6 +2478,52 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = await growsurf.deleteCampaignReward(input.campaignRewardId);
           return jsonToolResult(result);
         }
+        case "growsurf_list_program_resources": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const result = await growsurf.listProgramResources();
+          return jsonToolResult(result);
+        }
+        case "growsurf_prepare_program_resource_file": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = prepareProgramResourceFileSchema.parse(request.params.arguments ?? {});
+          const bytes = Buffer.from(input.fileBase64, "base64");
+          if (bytes.toString("base64") !== input.fileBase64) {
+            throw new Error("fileBase64 must use canonical padded base64 encoding.");
+          }
+          if (bytes.byteLength < 1 || bytes.byteLength > PROGRAM_RESOURCE_MAX_FILE_BYTES) {
+            throw new Error("The decoded file must be between 1 byte and 10 MB.");
+          }
+          const result = await growsurf.prepareProgramResourceFile({
+            fileName: input.fileName,
+            mimeType: input.mimeType,
+            bytes,
+          });
+          return jsonToolResult(result);
+        }
+        case "growsurf_create_program_resource": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = createProgramResourceSchema.parse(request.params.arguments ?? {});
+          const body = { ...input } as Record<string, unknown>;
+          delete body.campaignId;
+          const result = await growsurf.createProgramResource(body);
+          return jsonToolResult(result);
+        }
+        case "growsurf_update_program_resource": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = updateProgramResourceSchema.parse(request.params.arguments ?? {});
+          const resourceId = input.resourceId;
+          const fields = { ...input } as Record<string, unknown>;
+          delete fields.resourceId;
+          delete fields.campaignId;
+          const result = await growsurf.updateProgramResource(resourceId, omitUndefined(fields));
+          return jsonToolResult(result);
+        }
+        case "growsurf_delete_program_resource": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = deleteProgramResourceSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.deleteProgramResource(input.resourceId);
+          return jsonToolResult(result);
+        }
         case "growsurf_get_campaign_design": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaignDesign();
@@ -2130,8 +2617,37 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             days: input.days,
             startDate: input.startDate,
             endDate: input.endDate,
-          }) as { interval?: string; include?: string; days?: number; startDate?: number; endDate?: number };
+            timezone: input.timezone,
+            platform: input.platform,
+          }) as {
+            interval?: string;
+            include?: string;
+            days?: number;
+            startDate?: number;
+            endDate?: number;
+            timezone?: string;
+            platform?: string;
+          };
           const result = await growsurf.getCampaignAnalytics(query);
+          return jsonToolResult(result);
+        }
+        case "growsurf_get_campaign_activation_analytics": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = getCampaignActivationAnalyticsSchema.parse(request.params.arguments ?? {});
+          const query = omitUndefined({
+            cohortFrom: input.cohortFrom,
+            cohortTo: input.cohortTo,
+            cohortInterval: input.cohortInterval,
+            observationWindowDays: input.observationWindowDays,
+            timezone: input.timezone,
+          }) as {
+            cohortFrom?: number;
+            cohortTo?: number;
+            cohortInterval?: string;
+            observationWindowDays?: number;
+            timezone?: string;
+          };
+          const result = await growsurf.getCampaignActivationAnalytics(query);
           return jsonToolResult(result);
         }
         case "growsurf_list_campaign_webhooks": {

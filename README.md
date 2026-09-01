@@ -26,7 +26,7 @@ This MCP server is for:
 
 This MCP server is NOT for:
 
-- Browser-only users who want a local stdio install. ChatGPT web, Claude.ai, and Claude Desktop do not run a local MCP server, but all three connect to GrowSurf through the hosted remote connector at `https://mcp.growsurf.com`. See the full client list and setup at https://docs.growsurf.com/build-with-ai#optional-connect-mcp.
+- Browser-only users who want a local stdio install. ChatGPT web and Claude.ai use the hosted remote connector at `https://mcp.growsurf.com`. Claude Desktop can use either the local stdio server or the hosted connector. See the full client list and setup at https://docs.growsurf.com/build-with-ai#optional-connect-mcp.
 
 ## What you get
 
@@ -47,9 +47,10 @@ This MCP server is NOT for:
   - Create an account and get an API key with no existing credentials
   - Read and rename the bound team, request team verification, and resend the team owner's verification email
   - List and get campaigns
-  - Get campaign analytics (totals, optional per-period time series, email metrics, previous-period totals, status counts, and rates)
+  - Get campaign analytics (totals, time series, email metrics, participant engagement activity, and activation cohorts)
   - Create, update, and clone programs (campaigns)
   - List, create, update, and delete campaign rewards
+  - List, create, update, and delete Program Resources, including a safe one-time FILE preparation flow
   - Get/update Design, Emails, Options, and Installation config
   - Capture temporary GrowSurf preview screenshots when the user explicitly asks for visual proof
   - List, create, update, delete, and test program webhooks
@@ -241,6 +242,7 @@ Set the following environment variables when running the MCP server:
 - `GROWSURF_API_KEY` (optional for startup; required for API-calling tools. Use a key with the scopes and program access those tools need)
 - `GROWSURF_CAMPAIGN_ID` (optional; the default program for campaign-scoped tools. A tool's `campaignId` argument overrides it, so a single server can operate on any of your programs)
 - `GROWSURF_API_BASE_URL` (optional; defaults to `https://api.growsurf.com/v2`. Useful for local or hosted MCP gateways that should call a different GrowSurf API origin)
+- `GROWSURF_UPLOAD_ALLOWED_ORIGINS` (required only for FILE Resource uploads; a comma-separated private allowlist of exact HTTPS origins accepted from GrowSurf upload tickets. Wildcards and URL paths are rejected)
 - `GROWSURF_PARTICIPANT_AUTH_SECRET` (optional; used by the hash helper)
 - `GROWSURF_WEBHOOK_TOKEN` (optional; used for your own webhook URL token scheme)
 
@@ -318,7 +320,10 @@ Every tool declares an MCP output schema and returns `structuredContent`, so hos
   List programs available to the credential. Use this to find a `campaignId` before calling campaign-scoped tools.
 
 - `growsurf_get_campaign_analytics`
-  Fetch program analytics, with optional per-period `series`, comparison, status, rate, and email delivery and engagement data via `include=email`.
+  Fetch program analytics, with optional per-period `series`, comparison, status, rate, email metrics via `include=email`, and participant activity-period engagement via `include=engagement`.
+
+- `growsurf_get_campaign_activation_analytics`
+  Fetch eligible-participant activation cohorts with a fixed 7- or 30-day observation window. Referral programs group by `enrolledAsAdvocateAt`; affiliate programs group by `approvedAsAffiliateAt`. Read `coverageStartAt`, `state`, and `reason` before interpreting zeroes or nulls.
 
 - `growsurf_create_campaign`
   Create a new program (campaign) with type-appropriate starter content and optional inline rewards (only needs `GROWSURF_API_KEY`, not `GROWSURF_CAMPAIGN_ID`). Review the seeded Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching.
@@ -343,6 +348,12 @@ Every tool declares an MCP output schema and returns `structuredContent`, so hos
 
 - `growsurf_delete_campaign_reward`
   Delete a campaign reward by its reward key.
+
+- `growsurf_list_program_resources` / `growsurf_create_program_resource` / `growsurf_update_program_resource` / `growsurf_delete_program_resource`
+  Manage ordered participant resources. LINK uses HTTPS and TEXT uses plain text.
+
+- `growsurf_prepare_program_resource_file`
+  Request a one-time ticket and upload an allowed file up to 10 MB to the exact host-allowlisted destination selected by GrowSurf. Pass the returned ticket and signed result unchanged to create/update. The tool accepts no upload URL or credential and never retries an upload.
 
 - `growsurf_get_campaign_design` / `growsurf_update_campaign_design`
   Read or patch design configuration, including the Program Editor Design tab and payout-destination confirmation page copy.
@@ -393,7 +404,7 @@ Every tool declares an MCP output schema and returns `structuredContent`, so hos
   Email a participant using a configured template or a free-form subject/body.
 
 - `growsurf_get_participant_analytics`
-  Fetch one participant's engagement, rank, share, affiliate revenue, commission, payout, and optional email metrics. Use `include=series`, `include=email`, or both comma-separated.
+  Fetch one participant's engagement, rank, share, affiliate revenue, commission, payout, optional email metrics, and covered first milestones. Use `include=activation` for milestones such as `firstPortalViewedAt` and `firstShareChannel`; add `series` for covered `portalViews` and `shareActions`. An unavailable null is unknown, not proof that the action never happened.
 
 - `growsurf_get_participant_activity_logs`
   List a participant's activity logs (offset/limit paginated).

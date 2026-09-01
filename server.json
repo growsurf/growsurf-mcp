@@ -38,6 +38,13 @@
           "format": "string",
           "isRequired": false,
           "isSecret": false
+        },
+        {
+          "name": "GROWSURF_UPLOAD_ALLOWED_ORIGINS",
+          "description": "A comma-separated allowlist of exact HTTPS origins accepted from GrowSurf FILE Resource upload tickets.",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
         }
       ]
     }

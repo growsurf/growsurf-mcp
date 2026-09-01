@@ -149,6 +149,11 @@ describe("GrowSurf MCP prompts", () => {
     expect(analyticsText).toContain("unfulfilled");
     expect(analyticsText).toContain("completed");
     expect(analyticsText).toMatch(/never equate/i);
+    expect(analyticsText).toContain("growsurf_get_campaign_activation_analytics");
+    expect(analyticsText).toContain("include=engagement");
+    expect(analyticsText).toContain("coverageStartAt");
+    expect(analyticsText).toMatch(/activity periods.*enrollment cohorts/i);
+    expect(analyticsText).toMatch(/unknown.*never happened/i);
     expect(participantText).toContain("growsurf_list_campaign_rewards");
     expect(participantText).toContain("rewardId");
     expect(participantText).toContain("Do not infer a reward amount");

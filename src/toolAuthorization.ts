@@ -86,6 +86,10 @@ const TOOL_BEHAVIOR = {
     riskTier: TOOL_RISK_TIERS.CONTENT,
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   },
+  CONTENT_OPEN_WORLD: {
+    riskTier: TOOL_RISK_TIERS.CONTENT,
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  },
   DESTRUCTIVE: {
     riskTier: TOOL_RISK_TIERS.DESTRUCTIVE,
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
@@ -149,6 +153,14 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_create_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_CREATE, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_update_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_SET, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_delete_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_SET, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_list_program_resources: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
+  growsurf_prepare_program_resource_file: requiresScopes(
+    TOOL_BEHAVIOR.CONTENT_OPEN_WORLD,
+    MACHINE_SCOPES.PROGRAM_WRITE,
+  ),
+  growsurf_create_program_resource: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_update_program_resource: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_delete_program_resource: requiresScopes(TOOL_BEHAVIOR.DESTRUCTIVE, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_get_campaign_design: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_update_campaign_design: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_get_campaign_emails: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
@@ -170,6 +182,7 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
     MACHINE_SCOPES.TEAM_WRITE,
   ),
   growsurf_get_campaign_analytics: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.ANALYTICS_READ),
+  growsurf_get_campaign_activation_analytics: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.ANALYTICS_READ),
   growsurf_list_campaign_webhooks: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_create_campaign_webhook: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_update_campaign_webhook: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
