@@ -69,7 +69,7 @@ export const INTEGRATIONS: readonly Integration[] = [
   { key: "mailerlite", label: "MailerLite", category: "Email & ESP" },
   { key: "resenddotcom", label: "Resend", category: "Email & ESP" },
   { key: "loopsdotso", label: "Loops", category: "Email & ESP" },
-  { key: "convertkit", label: "ConvertKit", category: "Email & ESP" },
+  { key: "convertkit", label: "Kit (formerly ConvertKit)", category: "Email & ESP" },
   { key: "constantContact", label: "Constant Contact", category: "Email & ESP" },
   { key: "campaignMonitor", label: "Campaign Monitor", category: "Email & ESP" },
   { key: "aweber", label: "AWeber", category: "Email & ESP" },

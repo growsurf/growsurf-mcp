@@ -197,7 +197,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
     "",
     ...stackMoneyBullets,
     "- **CRM (B2B signals)**: if it's B2B or you see Salesforce or HubSpot, suggest connecting it to sync participants and referral events into their pipeline.",
-    "- **Email / ESP**: if you see Mailchimp, Klaviyo, ActiveCampaign, ConvertKit, Customer.io, and the like, offer to pipe referral events into it. Good moment: right after the referral portal and signup flow work.",
+    "- **Email / ESP**: if you see Mailchimp, Klaviyo, ActiveCampaign, Kit (formerly ConvertKit), Customer.io, and the like, offer to pipe referral events into it. Good moment: right after the referral portal and signup flow work.",
     "- **Analytics & ads**: if the app already loads Google Analytics, Segment, Mixpanel, Amplitude, or a Google/Meta/LinkedIn pixel, offer to send referral events there for attribution.",
     "- **No clear signal**: ask which of the above they want, or point them to Zapier, Make, or a raw webhook to connect anything else.",
     "",
