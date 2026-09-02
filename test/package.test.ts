@@ -59,44 +59,40 @@ describe("package distribution", () => {
     async () => {
       const sourceEntrypoint = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
       const commandPrefix = ["--import", "tsx", sourceEntrypoint];
+      // Every invocation pays its own `tsx` cold start. Run the five concurrently rather than in
+      // series: serially they add up to more than this test's budget whenever the suite is under
+      // parallel load, which made a passing CLI look like a failing one.
+      const run = (flag: string) =>
+        execFileAsync(process.execPath, [...commandPrefix, flag], { timeout: 30_000 });
 
-      const help = await execFileAsync(process.execPath, [...commandPrefix, "--help"], {
-        timeout: 5_000,
-      });
+      const [help, shortHelp, version, shortVersion, unknown] = await Promise.all([
+        run("--help"),
+        run("-h"),
+        run("--version"),
+        run("-v"),
+        run("--unknown").then(
+          () => null,
+          (error: unknown) => error,
+        ),
+      ]);
+
       expect(help.stderr).toBe("");
       expect(help.stdout).toContain("GrowSurf CLI and MCP server");
       expect(help.stdout).toContain("growsurf-mcp --version");
       expect(help.stdout).toContain("https://docs.growsurf.com/build-with-ai");
-
-      const shortHelp = await execFileAsync(process.execPath, [...commandPrefix, "-h"], {
-        timeout: 5_000,
-      });
       expect(shortHelp.stdout).toBe(help.stdout);
 
-      const version = await execFileAsync(process.execPath, [...commandPrefix, "--version"], {
-        timeout: 5_000,
-      });
       expect(version.stderr).toBe("");
       expect(version.stdout.trim()).toBe(packageJson.version);
-
-      const shortVersion = await execFileAsync(process.execPath, [...commandPrefix, "-v"], {
-        timeout: 5_000,
-      });
       expect(shortVersion.stdout).toBe(version.stdout);
 
-      try {
-        await execFileAsync(process.execPath, [...commandPrefix, "--unknown"], {
-          timeout: 5_000,
-        });
-        expect.fail("Expected an unsupported CLI argument to fail");
-      } catch (error) {
-        expect(error).toMatchObject({
-          code: 1,
-          stderr: expect.stringContaining("Run growsurf-mcp --help"),
-        });
-      }
+      expect(unknown, "Expected an unsupported CLI argument to fail").not.toBeNull();
+      expect(unknown).toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("Run growsurf-mcp --help"),
+      });
     },
-    15_000,
+    60_000,
   );
 
   it.skipIf(process.platform === "win32")(
