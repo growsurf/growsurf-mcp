@@ -183,6 +183,30 @@ const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
   "growsurf_create_mobile_participant_token",
 ]);
 
+// Sent to the client at connection time, so these rules apply to any call of these tools, not only
+// to the sessions that started from a GrowSurf prompt. Keep it short: it is read on every session.
+const GROWSURF_SERVER_INSTRUCTIONS = [
+  "GrowSurf runs a customer's live referral or affiliate program. The settings you write are what",
+  "their participants see, and the reward amounts you write are what the customer pays out.",
+  "",
+  "Before creating a program, resolve these with the person, asking at most two short questions and",
+  "skipping anything they already told you:",
+  "",
+  "- What the program is for, so share settings match the audience. Pass it as `goal` on",
+  "  `growsurf_create_campaign`.",
+  "- The incentive, and who funds and fulfills it.",
+  "",
+  "Never choose a reward or commission amount yourself. If the person has not named one, omit",
+  "`rewards` from `growsurf_create_campaign`. The program is then created with GrowSurf's starter",
+  "rewards switched off, so it awards nothing until they decide the amount and turn one on. Say that,",
+  "rather than reporting an amount you picked.",
+  "",
+  "Read a configuration tab before you patch it, and change only what the request calls for. Treat",
+  "an existing value the customer already set, such as the program's Share URL, as theirs: to make",
+  "GrowSurf work on another origin, add that origin to `allowedUrls` instead of replacing the Share",
+  "URL, and ask before changing one that is already set.",
+].join("\n");
+
 // Shared JSON-schema property injected into every campaign-scoped tool's input schema (see the
 // tool-catalog builder). Keeping it in one place means the campaign-scoped tool schemas cannot drift.
 const CAMPAIGN_ID_JSON_PROP = {
@@ -218,21 +242,62 @@ const markdownToolResult = (markdown: string): ToolResult => ({
   structuredContent: { markdown },
 });
 
+// Returns an explanation when a patch would replace a Share URL the customer already set, and
+// undefined when the patch is safe to send. Every referral link already handed out points at the
+// current Share URL, so overwriting one to reach a different origin breaks live links; adding that
+// origin to `allowedUrls` is what the caller almost always wanted.
+const findShareUrlConflict = async (
+  growsurf: GrowSurfClient,
+  fields: Record<string, unknown>,
+): Promise<string | undefined> => {
+  const nextShareUrl = fields.shareUrl;
+  if (typeof nextShareUrl !== "string") return undefined;
+
+  // The guard is a safety net over a reversible setting, not an authorization boundary, so it fails
+  // open. Reading the tab needs `program:read` while patching it needs only `program:write`, and a
+  // caller holding just the write scope must not lose an update it was always allowed to make.
+  let current: unknown;
+  try {
+    current = await growsurf.getCampaignInstallation();
+  } catch {
+    return undefined;
+  }
+  const currentShareUrl = current && typeof current === "object"
+    ? (current as { shareUrl?: unknown }).shareUrl
+    : undefined;
+  if (typeof currentShareUrl !== "string" || currentShareUrl.trim() === "") return undefined;
+  if (currentShareUrl.trim() === nextShareUrl.trim()) return undefined;
+
+  return [
+    `This program's Share URL is already set to ${currentShareUrl}, and the patch would replace it with ${nextShareUrl}.`,
+    "",
+    "Every referral link already shared points at the current Share URL, so replacing it sends those",
+    "visitors somewhere else. To let GrowSurf run on another origin, such as a development server, add",
+    "that origin to `allowedUrls` and leave `shareUrl` out of the patch.",
+    "",
+    "If the customer does want the landing page changed, confirm it with them and send the same patch",
+    "again with `replaceExistingShareUrl: true`.",
+  ].join("\n");
+};
+
 const omitUndefined = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
   const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
   return Object.fromEntries(entries) as Partial<T>;
 };
 
+// The optional profile and attribution fields accept an empty string, because the REST endpoint does
+// and `growsurf_update_participant` does. A caller clearing a field, or passing through a form value
+// the person left blank, sends `""`; rejecting it here would fail a request REST accepts.
 const addParticipantSchema = z.object({
   email: z.string().min(3),
   isAffiliate: z.boolean().optional(),
-  firstName: z.string().min(1).optional(),
-  lastName: z.string().min(1).optional(),
-  referredBy: z.string().min(1).optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  referredBy: z.string().optional(),
   referralStatus: z.enum(["CREDIT_PENDING", "CREDIT_AWARDED"]).optional(),
-  ipAddress: z.string().min(1).optional(),
-  fingerprint: z.string().min(1).optional(),
-  mobileInstanceId: z.string().min(1).optional(),
+  ipAddress: z.string().optional(),
+  fingerprint: z.string().optional(),
+  mobileInstanceId: z.string().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -356,12 +421,29 @@ const refundTransactionSchema = z
 // Create = type + identity + inline rewards only. Editor-tab config (options, design,
 // emails, installation) is NOT accepted here; configure it via the config sub-resource
 // tools after the program is created.
+// What the program is for. Same list the GrowSurf dashboard offers when someone creates a program,
+// and it seeds the share settings that suit that audience (see the tool description). Chosen once,
+// at create: the update endpoint does not accept it.
+const CAMPAIGN_GOALS = [
+  "CUSTOMERS",
+  "USERS",
+  "SUBSCRIBERS",
+  "WAITLIST",
+  "B2B_SAAS_SELF_SERVICE",
+  "B2B_SAAS_ENTERPRISE",
+  "B2C_SUBSCRIPTIONS",
+  "FINANCIAL_SERVICES",
+  "ONLINE_EDUCATION",
+  "ONLINE_INSURANCE",
+] as const;
+
 const createCampaignSchema = z.object({
   type: z.enum(["REFERRAL", "AFFILIATE"]),
   name: z.string().min(1).optional(),
   companyName: z.string().min(1).optional(),
   companyLogoImageUrl: z.string().min(1).optional(),
   currencyISO: z.string().min(3).max(3).optional(),
+  goal: z.enum(CAMPAIGN_GOALS).optional(),
   rewards: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
@@ -390,6 +472,14 @@ const updateCampaignSchema = z
 // want to change.
 const campaignConfigUpdateSchema = z.object({
   fields: z.record(z.string(), z.unknown()),
+});
+
+// The Installation tab is the one config tab that carries a value a caller can silently destroy: the
+// Share URL is where every referral link already in the wild points. `replaceExistingShareUrl` makes
+// replacing one that is already set an explicit act, so adding a development origin cannot take the
+// live landing page with it.
+const campaignInstallationUpdateSchema = campaignConfigUpdateSchema.extend({
+  replaceExistingShareUrl: z.boolean().optional(),
 });
 
 // Tax valuation settings shared by the reward `value` and `referredValue` fields
@@ -953,6 +1043,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         resources: {},
         prompts: {},
       },
+      instructions: GROWSURF_SERVER_INSTRUCTIONS,
     },
   );
 
@@ -1108,7 +1199,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_campaign",
           description:
-            "Create a new GrowSurf program (campaign) pre-populated with type-appropriate starter content, optionally with inline rewards. Starter content includes Design, Emails, Options, Installation, and GrowSurf Window defaults. Only `type` is required; the program is created in `DRAFT` status owned by the credential's bound team. `currencyISO` sets the program's currency (defaults to `USD`) and is immutable after creation. Editor-tab config (design, emails, options, installation) is not accepted here. Fetch and review those config sub-resources after creation, then patch only what needs to change. Does NOT require GROWSURF_CAMPAIGN_ID. The response includes the new program `id`; pass it as `campaignId` to the other tools (or set GROWSURF_CAMPAIGN_ID) to configure and operate the program.",
+            "Create a new GrowSurf program (campaign) pre-populated with type-appropriate starter content, optionally with inline rewards. Starter content includes Design, Emails, Options, Installation, and GrowSurf Window defaults. Only `type` is required; the program is created in `DRAFT` status owned by the credential's bound team. `currencyISO` sets the program's currency (defaults to `USD`) and is immutable after creation. Pass `goal` so the share settings suit the audience; it is set here or not at all. Ask the person for the incentive rather than choosing one: leave `rewards` out unless they named an amount, and tell them the program starts with GrowSurf's starter rewards switched off so it awards nothing yet. Editor-tab config (design, emails, options, installation) is not accepted here. Fetch and review those config sub-resources after creation, then patch only what needs to change. Does NOT require GROWSURF_CAMPAIGN_ID. The response includes the new program `id`; pass it as `campaignId` to the other tools (or set GROWSURF_CAMPAIGN_ID) to configure and operate the program.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1117,7 +1208,18 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               companyName: { type: "string" },
               companyLogoImageUrl: { type: "string" },
               currencyISO: { type: "string" },
-              rewards: { type: "array", items: { type: "object", additionalProperties: true } },
+              goal: {
+                type: "string",
+                enum: [...CAMPAIGN_GOALS],
+                description:
+                  "What the program is for, which seeds share settings that suit that audience. Programs selling to businesses (`CUSTOMERS`, `USERS`, `B2B_SAAS_SELF_SERVICE`, `B2B_SAAS_ENTERPRISE`) start with the LinkedIn share button visible. Consumer, financial, education, insurance, newsletter, and waitlist programs (`B2C_SUBSCRIPTIONS`, `FINANCIAL_SERVICES`, `ONLINE_EDUCATION`, `ONLINE_INSURANCE`, `SUBSCRIBERS`, `WAITLIST`) start with it hidden. Omit `goal` and every share button keeps its standard default. Change any of it afterward with `growsurf_update_campaign_design`. Set only at creation; `growsurf_update_campaign` does not accept it.",
+              },
+              rewards: {
+                type: "array",
+                items: { type: "object", additionalProperties: true },
+                description:
+                  "Rewards to create with the program. Include this only when the person told you the amount and who funds it. Omit it and the program is seeded with starter rewards that are switched off, awarding nothing until the customer enables one. Send `[]` to start with no rewards at all.",
+              },
             },
             required: ["type"],
             additionalProperties: false,
@@ -1604,7 +1706,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_installation",
           description:
-            "Update the Installation tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Set `shareUrl` before `allowedUrls`; preserve the full allowed-origin array, including any local or staging origin. A browser origin missing from both can return `403`. Fetch the tab first, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update the Installation tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). To let GrowSurf run on another origin, such as `http://localhost:3000`, add that origin to `allowedUrls` and preserve the rest of the array; a browser origin missing from both `shareUrl` and `allowedUrls` can return `403`. Leave `shareUrl` out of the patch unless the customer asked for a different landing page: every referral link already shared points at the current one. A patch that would replace a Share URL that is already set is refused until you confirm it with the customer and resend with `replaceExistingShareUrl: true`. Fetch the tab first, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1643,6 +1745,11 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 },
                 additionalProperties: true,
               },
+              replaceExistingShareUrl: {
+                type: "boolean",
+                description:
+                  "Set this to `true` only after the customer confirms they want a different landing page. Without it, a patch that would replace a Share URL that is already set is refused.",
+              },
             },
             required: ["fields"],
             additionalProperties: false,
@@ -1657,7 +1764,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_account",
           description:
-            "Create a brand-new GrowSurf account and return an API key. Call this tool only after the authorized owner explicitly approves account creation and accepts GrowSurf's Terms of Service (https://growsurf.com/terms) and Privacy Policy (https://growsurf.com/privacy). This is the only tool that does not require `GROWSURF_API_KEY`. The account starts a 14-day Business trial without a credit card. The endpoint returns the new key once in `apiKey`. The key is locked until the account owner's email address is verified. Until then, program and resource endpoints return a `403` with error code `EMAIL_NOT_VERIFIED_ERROR`. Create the account, tell the owner to click the link in the verification email, then retry until that error clears. Use `growsurf_resend_team_owner_verification_email` if the email was lost. The welcome email also contains a set-password link for dashboard access. Accounts whose email is never verified are deleted automatically after 7 days. The API key is rotated the first time the account owner signs in to the GrowSurf dashboard. Some actions, such as emailing participants, also require GrowSurf to verify the team. Personal and disposable email addresses are not accepted.",
+            "Create a brand-new GrowSurf account and return an API key. Call this tool only after the authorized owner explicitly approves account creation and accepts GrowSurf's Terms of Service (https://growsurf.com/terms) and Privacy Policy (https://growsurf.com/privacy). This is the only tool that does not require `GROWSURF_API_KEY`. The account starts a 14-day Business trial without a credit card. The endpoint returns the new key once in `apiKey`. The key is locked until the account owner's email address is verified. Until then, program and resource endpoints return a `403` with error code `EMAIL_NOT_VERIFIED_ERROR`. Create the account, tell the owner to click the link in the verification email, then retry until that error clears. Use `growsurf_resend_team_owner_verification_email` if the email was lost. The welcome email also contains a set-password link for dashboard access. Accounts whose email is never verified are deleted automatically after 7 days. Verification unlocks the same key you were given, so keep it and retry rather than asking for a replacement. Separately, the API key is replaced the first time the account owner signs in to the GrowSurf dashboard; after that the previous key returns a `403` with error code `NOT_AUTHORIZED_ERROR`. Some actions, such as emailing participants, also require GrowSurf to verify the team. Personal and disposable email addresses are not accepted.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2400,6 +2507,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             companyName: input.companyName,
             companyLogoImageUrl: input.companyLogoImageUrl,
             currencyISO: input.currencyISO,
+            goal: input.goal,
             rewards: input.rewards,
           }) as Record<string, unknown>;
           const result = await growsurf.createCampaign(body);
@@ -2564,7 +2672,16 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         }
         case "growsurf_update_campaign_installation": {
           const growsurf = resolveCampaignClient(env, toolArgs);
-          const input = campaignConfigUpdateSchema.parse(request.params.arguments ?? {});
+          const input = campaignInstallationUpdateSchema.parse(request.params.arguments ?? {});
+          const conflict = input.replaceExistingShareUrl === true
+            ? undefined
+            : await findShareUrlConflict(growsurf, input.fields);
+          if (conflict) {
+            return {
+              content: [{ type: "text", text: conflict }],
+              isError: true,
+            };
+          }
           const result = await growsurf.updateCampaignInstallation(input.fields);
           return jsonToolResult(result);
         }

@@ -376,7 +376,8 @@ const PROGRAM_RESOURCE: ToolOutputSchema = {
         moderationStatus: {
           type: "string",
           enum: ["PENDING", "APPROVED", "REJECTED"],
-          description: "The latest security review status for the file.",
+          description:
+            "The latest security review status for the file. `PENDING` and `APPROVED` files can be published and downloaded; a `REJECTED` file is blocked everywhere, including one that was already published.",
         },
       },
     },

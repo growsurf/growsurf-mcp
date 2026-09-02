@@ -404,8 +404,8 @@ export class GrowSurfClient {
 
   // createAccount is the ONLY unauthenticated endpoint. It creates a new account and returns a
   // one-time API key (locked with 403 EMAIL_NOT_VERIFIED_ERROR until the account's email is
-  // verified, and rotated on the owner's first dashboard sign-in), so it is sent WITHOUT an
-  // Authorization header even when one is configured.
+  // verified; verification unlocks that same key, and it is replaced only on the owner's first
+  // dashboard sign-in), so it is sent WITHOUT an Authorization header even when one is configured.
   async createAccount(body: Record<string, unknown>): Promise<unknown> {
     return this.requestJson("POST", `/accounts`, body, { auth: false });
   }
