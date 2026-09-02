@@ -295,7 +295,7 @@ Every tool declares an MCP output schema and returns `structuredContent`, so hos
 ### Account onboarding
 
 - `growsurf_create_account`
-  Create a GrowSurf account and get an API key. This is the only tool that does not require `GROWSURF_API_KEY`. The returned key is shown once and locked (`403` `EMAIL_NOT_VERIFIED_ERROR`) until the owner verifies their email. The key is rotated on the owner's first dashboard sign-in. Creating an account agrees, on the account holder's behalf, to GrowSurf's [Terms of Service](https://growsurf.com/terms) and [Privacy Policy](https://growsurf.com/privacy).
+  Create a GrowSurf account and get an API key. This is the only tool that does not require `GROWSURF_API_KEY`. The returned key is shown once and locked (`403` `EMAIL_NOT_VERIFIED_ERROR`) until the owner verifies their email; verification unlocks that same key, so keep it and retry. It is replaced only on the owner's first dashboard sign-in. Creating an account agrees, on the account holder's behalf, to GrowSurf's [Terms of Service](https://growsurf.com/terms) and [Privacy Policy](https://growsurf.com/privacy).
 
 ### Team
 

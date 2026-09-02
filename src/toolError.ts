@@ -1,3 +1,5 @@
+import { ZodError } from "zod";
+
 import type { GrowSurfRequestError } from "./growsurf/client.js";
 
 const INTERNAL_SOURCE_LOCATION_PATTERN =
@@ -30,10 +32,34 @@ const sanitizeValidationErrors = (value: unknown): Array<Record<string, string>>
   return sanitized.length > 0 ? sanitized : undefined;
 };
 
+// Turns a rejected tool input into the same `{ name, code, message, errors }` shape a rejected API
+// call produces, naming the field and the reason. A ZodError's own `message` is a JSON array of raw
+// issues, which carries none of that shape and reads as noise to whoever has to fix the call.
+const toInputValidationErrorText = (err: ZodError): string => {
+  const errors = err.issues.map((issue) => ({
+    field: issue.path.map(String).join(".") || "(root)",
+    code: issue.code,
+    message: sanitizeToolErrorString(issue.message),
+  }));
+  const summary = errors.map((detail) => `${detail.field}: ${detail.message}`).join("; ");
+  return JSON.stringify(
+    {
+      name: "ValidationError",
+      code: "INVALID_TOOL_INPUT",
+      message: `Invalid tool input. ${summary}`,
+      status: 400,
+      errors,
+    },
+    null,
+    2,
+  );
+};
+
 // Formats only the public API error contract; unknown diagnostic fields never reach MCP clients.
 export const toToolErrorText = (err: unknown): string => {
   if (!err) return "Unknown error.";
   if (typeof err === "string") return sanitizeToolErrorString(err);
+  if (err instanceof ZodError) return toInputValidationErrorText(err);
   if (err instanceof Error) return sanitizeToolErrorString(err.message);
   if (typeof err === "object") {
     const maybe = err as GrowSurfRequestError;
