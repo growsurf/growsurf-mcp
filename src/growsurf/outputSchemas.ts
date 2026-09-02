@@ -450,7 +450,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     resources: {
       type: "object",
       description:
-        "Participant Resources presentation settings: visibility, title, link and copy labels, and the section icon. Resource items use the program Resource tools.",
+        "Participant Resources presentation settings: visibility, title, link and copy labels, the message shown when nothing is published, and the section icon. Resource items use the program Resource tools.",
     },
     login: {
       type: "object",
