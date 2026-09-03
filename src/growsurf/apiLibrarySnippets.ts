@@ -28,7 +28,7 @@ export type ApiLibrarySnippetsContext = {
 type Language = Exclude<ApiLibrarySnippetsInput["language"], "all">;
 type Workflow = Exclude<ApiLibrarySnippetsInput["workflow"], "all">;
 
-const REST_API_LIBRARY_VERSION = "1.2.1";
+const REST_API_LIBRARY_VERSION = "1.4.0";
 const FIXTURE_EMAIL = "gavin@hooli.com";
 const FIXTURE_FIRST_NAME = "Gavin";
 const FIXTURE_LAST_NAME = "Belson";
