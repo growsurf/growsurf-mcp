@@ -1178,7 +1178,7 @@ const CAMPAIGN_ENGAGEMENT_ANALYTICS = {
             properties: {
               key: {
                 type: "string",
-                enum: ["DEFAULT_LAUNCHER", "SDK_OPEN", "CSS_CLASS", "HOSTED_PORTAL", "NATIVE_WINDOW", "UNKNOWN"],
+                enum: ["DEFAULT_LAUNCHER", "SDK_OPEN", "CSS_CLASS", "EMBEDDABLE_ELEMENT", "HOSTED_PORTAL", "NATIVE_WINDOW", "UNKNOWN"],
               },
               activeParticipants: { type: "integer" },
               portalViews: { type: "integer" },
