@@ -25,6 +25,10 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("affiliateApplicationMode");
     expect(text).toContain("Program Page");
     expect(text).toContain("validateReferrer()");
+    expect(text).toContain("utm_marketing_tactic");
+    expect(text).toContain("stable visit automatically");
+    expect(text).toContain("server-signed first-visit and last-visit receipts");
+    expect(text).toContain("Do not call `recordAttribution()` after a handler");
     expect(text).toContain("the SDK stores it automatically");
     expect(text).toContain("presentGrowSurfWindow");
     expect(text).not.toContain("requestParticipantLogin");

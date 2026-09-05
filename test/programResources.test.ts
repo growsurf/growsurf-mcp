@@ -178,19 +178,19 @@ describe("Program Resources", () => {
   });
 
   it.each([
-    ["malformed base64", { fileName: "guide.pdf", mimeType: "application/pdf", fileBase64: "not base64" }],
-    ["non-canonical base64", { fileName: "guide.pdf", mimeType: "application/pdf", fileBase64: "AB==" }],
-    ["data URL", { fileName: "guide.pdf", mimeType: "application/pdf", fileBase64: "data:application/pdf;base64,AAAA" }],
-    ["unsafe file name", { fileName: "../guide.pdf", mimeType: "application/pdf", fileBase64: "AAAA" }],
-    ["overlong file name", { fileName: `${"a".repeat(117)}.pdf`, mimeType: "application/pdf", fileBase64: "AAAA" }],
-    ["mismatched MIME", { fileName: "guide.pdf", mimeType: "image/png", fileBase64: "AAAA" }],
+    ["malformed base64", { fileName: "guide.pdf", mimeType: "application/pdf", fileBase64: "not base64" }, "fileBase64"],
+    ["non-canonical base64", { fileName: "guide.pdf", mimeType: "application/pdf", fileBase64: "AB==" }, "fileBase64"],
+    ["data URL", { fileName: "guide.pdf", mimeType: "application/pdf", fileBase64: "data:application/pdf;base64,AAAA" }, "fileBase64"],
+    ["unsafe file name", { fileName: "../guide.pdf", mimeType: "application/pdf", fileBase64: "AAAA" }, "fileName"],
+    ["overlong file name", { fileName: `${"a".repeat(117)}.pdf`, mimeType: "application/pdf", fileBase64: "AAAA" }, "fileName"],
+    ["mismatched MIME", { fileName: "guide.pdf", mimeType: "image/png", fileBase64: "AAAA" }, "mimeType"],
     ["caller upload URL", {
       fileName: "guide.pdf",
       mimeType: "application/pdf",
       fileBase64: "AAAA",
       uploadUrl: "https://attacker.example/upload",
-    }],
-  ])("rejects %s before requesting a ticket", async (_label, arguments_) => {
+    }, "uploadUrl"],
+  ])("rejects %s before requesting a ticket", async (_label, arguments_, expectedField) => {
     const fetchMock = vi.fn();
     globalThis.fetch = fetchMock as typeof fetch;
     const server = createGrowSurfMcpServer({
@@ -210,6 +210,15 @@ describe("Program Resources", () => {
         arguments: arguments_,
       });
       expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ text: string }>)[0]!.text;
+      const error = JSON.parse(text) as {
+        code?: string;
+        status?: number;
+        errors?: Array<{ field?: string }>;
+      };
+      expect(error.code).toBe("INVALID_TOOL_INPUT");
+      expect(error.status).toBe(400);
+      expect(error.errors?.some((detail) => detail.field === expectedField)).toBe(true);
       expect(fetchMock).not.toHaveBeenCalled();
     } finally {
       await client.close();
@@ -241,6 +250,15 @@ describe("Program Resources", () => {
         },
       });
       expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ text: string }>)[0]!.text;
+      const error = JSON.parse(text) as {
+        code?: string;
+        status?: number;
+        errors?: Array<{ field?: string }>;
+      };
+      expect(error.code).toBe("INVALID_TOOL_INPUT");
+      expect(error.status).toBe(400);
+      expect(error.errors?.some((detail) => detail.field === "fileBase64")).toBe(true);
       expect(fetchMock).not.toHaveBeenCalled();
     } finally {
       await client.close();
@@ -538,6 +556,18 @@ describe("Program Resources", () => {
     ["update with only a campaign override", "growsurf_update_program_resource", {
       resourceId: "resource-1",
       campaignId: "override-program",
+    }],
+    ["update FILE without replacement content", "growsurf_update_program_resource", {
+      resourceId: "resource-1",
+      type: "FILE",
+    }],
+    ["update LINK without replacement content", "growsurf_update_program_resource", {
+      resourceId: "resource-1",
+      type: "LINK",
+    }],
+    ["update TEXT without replacement content", "growsurf_update_program_resource", {
+      resourceId: "resource-1",
+      type: "TEXT",
     }],
     ["update LINK with FILE fields", "growsurf_update_program_resource", {
       resourceId: "resource-1",

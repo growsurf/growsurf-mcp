@@ -39,7 +39,8 @@ import {
 import { PUBLIC_GROWSURF_RESOURCES, readPublicGrowSurfResource } from "./growsurf/resources.js";
 import { normalizeWebhook } from "./growsurf/webhooks.js";
 import { getGrowSurfPrompt, listGrowSurfPrompts } from "./prompts.js";
-import { toToolErrorText } from "./toolError.js";
+import { createToolInputValidationError, toToolErrorText } from "./toolError.js";
+import { createToolInputGuard, type ToolInputGuard } from "./toolInputValidation.js";
 import {
   filterToolsForCredential,
   withToolAuthorizationMetadata,
@@ -771,6 +772,13 @@ const updateProgramResourceSchema = z.object({
     ctx.addIssue({
       code: "custom",
       message: "Content fields must match the selected Resource type.",
+      path: ["type"],
+    });
+  }
+  if (input.type && suppliedContentTypes.length === 0) {
+    ctx.addIssue({
+      code: "custom",
+      message: `Changing a Program Resource to ${input.type} requires its replacement content.`,
       path: ["type"],
     });
   }
@@ -1599,11 +1607,15 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               },
               {
                 if: { required: ["type"], properties: { type: { const: "FILE" } } },
-                then: { not: { anyOf: [{ required: ["url"] }, { required: ["text"] }] } },
+                then: {
+                  required: ["uploadTicket", "uploadResult"],
+                  not: { anyOf: [{ required: ["url"] }, { required: ["text"] }] },
+                },
               },
               {
                 if: { required: ["type"], properties: { type: { const: "LINK" } } },
                 then: {
+                  required: ["url"],
                   not: {
                     anyOf: [
                       { required: ["text"] },
@@ -1616,6 +1628,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               {
                 if: { required: ["type"], properties: { type: { const: "TEXT" } } },
                 then: {
+                  required: ["text"],
                   not: {
                     anyOf: [
                       { required: ["url"] },
@@ -2452,6 +2465,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
   };
 
   let toolsWithMetadataCache: ReturnType<typeof buildToolsWithMetadata> | undefined;
+  const toolInputGuards = new Map<string, ToolInputGuard>();
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     const toolsWithMetadata = (toolsWithMetadataCache ??= buildToolsWithMetadata());
     // Hosted transports can hide tools that a verified credential cannot use. Omitting the
@@ -2463,6 +2477,16 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
+      const listedTool = (toolsWithMetadataCache ??= buildToolsWithMetadata())
+        .find((tool) => tool.name === request.params.name);
+      if (listedTool) {
+        let inputGuard = toolInputGuards.get(listedTool.name);
+        if (!inputGuard) {
+          inputGuard = createToolInputGuard(listedTool.inputSchema);
+          toolInputGuards.set(listedTool.name, inputGuard);
+        }
+        inputGuard(request.params.arguments ?? {});
+      }
       // Optional per-call program override — an explicit `campaignId` tool argument wins over
       // GROWSURF_CAMPAIGN_ID (see resolveCampaignClient), so an agent can operate on a program it
       // just created without restarting the server. Tools that are not campaign-scoped ignore it.
@@ -2596,10 +2620,18 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const input = prepareProgramResourceFileSchema.parse(request.params.arguments ?? {});
           const bytes = Buffer.from(input.fileBase64, "base64");
           if (bytes.toString("base64") !== input.fileBase64) {
-            throw new Error("fileBase64 must use canonical padded base64 encoding.");
+            throw createToolInputValidationError([{
+              field: "fileBase64",
+              code: "invalid_string",
+              message: "Must use canonical padded base64 encoding.",
+            }]);
           }
           if (bytes.byteLength < 1 || bytes.byteLength > PROGRAM_RESOURCE_MAX_FILE_BYTES) {
-            throw new Error("The decoded file must be between 1 byte and 10 MB.");
+            throw createToolInputValidationError([{
+              field: "fileBase64",
+              code: "invalid_size",
+              message: "The decoded file must be between 1 byte and 10 MB.",
+            }]);
           }
           const result = await growsurf.prepareProgramResourceFile({
             fileName: input.fileName,

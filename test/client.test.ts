@@ -84,6 +84,50 @@ describe("GrowSurfClient", () => {
     );
   });
 
+  it("keeps the HTTP response status authoritative when an API error body includes status", async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          name: "BadRequestError",
+          code: "BAD_REQUEST_ERROR",
+          message: "Invalid request.",
+          status: 200,
+        }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      ),
+    ) as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+
+    await expect(client.getCampaign()).rejects.toMatchObject({
+      name: "BadRequestError",
+      code: "BAD_REQUEST_ERROR",
+      message: "Invalid request.",
+      status: 400,
+    });
+  });
+
+  it("adds the standard HTTP error fields when an API error body omits them", async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          errors: [{ field: "delayInDays", code: "too_small", message: "Must be at least 1." }],
+        }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      ),
+    ) as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+
+    await expect(client.getCampaign()).rejects.toMatchObject({
+      name: "HttpError",
+      code: "HTTP_ERROR",
+      message: "GrowSurf API error: HTTP 400",
+      status: 400,
+      errors: [{ field: "delayInDays", code: "too_small", message: "Must be at least 1." }],
+    });
+  });
+
   it("cancels a pending delayed referral with a DELETE on the ref path", async () => {
     const fetchMock = vi.fn(async () => {
       return new Response(JSON.stringify({ success: true, message: "Delayed referral cancelled" }), {
