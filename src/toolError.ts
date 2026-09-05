@@ -2,6 +2,12 @@ import { ZodError } from "zod";
 
 import type { GrowSurfRequestError } from "./growsurf/client.js";
 
+export type ToolInputValidationDetail = {
+  field: string;
+  code: string;
+  message: string;
+};
+
 const INTERNAL_SOURCE_LOCATION_PATTERN =
   /(?:file:\/\/\/|[A-Za-z]:[\\/]|\/)(?:[^/\\\s()'"]+[\\/])*[^/\\\s()'"]+\.(?:[cm]?[jt]sx?|map):\d+(?::\d+)?/g;
 
@@ -32,27 +38,40 @@ const sanitizeValidationErrors = (value: unknown): Array<Record<string, string>>
   return sanitized.length > 0 ? sanitized : undefined;
 };
 
+// Builds the public validation-error contract shared by advertised JSON Schema validation and the
+// narrower Zod checks inside individual tool handlers.
+export const createToolInputValidationError = (
+  errors: ToolInputValidationDetail[],
+): GrowSurfRequestError => {
+  const summary = errors.map((detail) => `${detail.field}: ${detail.message}`).join("; ");
+  return {
+    name: "ValidationError",
+    code: "INVALID_TOOL_INPUT",
+    message: `Invalid tool input. ${summary}`,
+    status: 400,
+    errors,
+  };
+};
+
 // Turns a rejected tool input into the same `{ name, code, message, errors }` shape a rejected API
 // call produces, naming the field and the reason. A ZodError's own `message` is a JSON array of raw
 // issues, which carries none of that shape and reads as noise to whoever has to fix the call.
 const toInputValidationErrorText = (err: ZodError): string => {
-  const errors = err.issues.map((issue) => ({
-    field: issue.path.map(String).join(".") || "(root)",
-    code: issue.code,
-    message: sanitizeToolErrorString(issue.message),
-  }));
-  const summary = errors.map((detail) => `${detail.field}: ${detail.message}`).join("; ");
-  return JSON.stringify(
-    {
-      name: "ValidationError",
-      code: "INVALID_TOOL_INPUT",
-      message: `Invalid tool input. ${summary}`,
-      status: 400,
-      errors,
-    },
-    null,
-    2,
-  );
+  const errors = err.issues.flatMap<ToolInputValidationDetail>((issue) => {
+    if (issue.code === "unrecognized_keys") {
+      return issue.keys.map((key) => ({
+        field: key,
+        code: issue.code,
+        message: `Unexpected field. This tool does not accept \`${key}\`.`,
+      }));
+    }
+    return [{
+      field: issue.path.map(String).join(".") || "(root)",
+      code: issue.code,
+      message: sanitizeToolErrorString(issue.message),
+    }];
+  });
+  return JSON.stringify(createToolInputValidationError(errors), null, 2);
 };
 
 // Formats only the public API error contract; unknown diagnostic fields never reach MCP clients.

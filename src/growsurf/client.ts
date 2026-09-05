@@ -94,8 +94,15 @@ const toError = async (response: Response): Promise<GrowSurfRequestError> => {
 
   try {
     const json = (await response.json()) as unknown;
-    if (json && typeof json === "object") {
-      return { status: response.status, ...(json as Record<string, unknown>) };
+    if (json && typeof json === "object" && !Array.isArray(json)) {
+      const error: GrowSurfRequestError = {
+        ...(json as Record<string, unknown>),
+        status: response.status,
+      };
+      if (typeof error.name !== "string") error.name = "HttpError";
+      if (typeof error.code !== "string") error.code = "HTTP_ERROR";
+      if (typeof error.message !== "string") error.message = `GrowSurf API error: HTTP ${response.status}`;
+      return error;
     }
     return {
       name: "HttpError",

@@ -55,19 +55,21 @@ const providerDisplayName = (provider: ProviderCallback) =>
 
 const IOS_DEFERRED_BEST_EFFORT =
   " iOS deferred is best-effort even when configured — clipboard providers (Branch/Adjust/Singular) can miss if the user declines the iOS paste prompt or overwrites the clipboard before first launch, AppsFlyer (server-side UDL) can miss outside its ~15-minute window, and an in-app/non-Safari browser can break the click — so always pair it with a fallback such as manual referral-code entry. Android's Play Install Referrer is deterministic.";
+const VISIT_CAPTURE_TEXT =
+  " The handler captures `utm_id`, `utm_source`, `utm_medium`, `utm_campaign`, `utm_source_platform`, `utm_term`, `utm_content`, `utm_creative_format`, and `utm_marketing_tactic`. It queues one stable visit automatically, retries after an offline launch, and keeps only the origin and path for destination and referrer URLs.";
 
 const iosAttributionText = (provider: AttributionProvider) => {
   if (provider === "none") return "Skip attribution handling only if this app never accepts referred installs.";
-  if (provider === "direct_link") return "Use `handleDeepLink(_:)` for installed-app links that already contain `grsf`, `ref`, or `referredBy`, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`.";
+  if (provider === "direct_link") return "Use `handleDeepLink(_:)` for installed-app links that contain referral identity, supported UTM values, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`." + VISIT_CAPTURE_TEXT;
   if (provider === "google_play") {
     return "Google Play Install Referrer is Android-only. Skip iOS attribution handling unless you also support direct links or a provider callback on iOS.";
   }
   if (provider === "all") {
-    return "Use `handleDeepLink(_:)` for installed-app links and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before calling `addReferredParticipant()`. If GrowSurf-hosted referral links are enabled, configure the campaign's iOS attribution URL so iOS clicks route through the provider with `grsf` attached. For Branch DEFERRED (no-app-installed) referrals on iOS, also enable Branch NativeLink (dashboard) and call `Branch.getInstance().checkPasteboardOnInstall()` before `initSession()` — iOS 14+ requires NativeLink's clipboard token for deferred matching. iOS deferred is provider-specific and not interchangeable: Adjust uses LinkMe (optional clipboard), Singular uses Clipboard-Based DDL (optional, enterprise), and AppsFlyer uses server-side Unified Deep Linking (no clipboard); see the per-provider guidance." + IOS_DEFERRED_BEST_EFFORT;
+    return "Use `handleDeepLink(_:)` for installed-app links and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before calling `addReferredParticipant()`. If GrowSurf-hosted referral links are enabled, configure the campaign's iOS attribution URL so iOS clicks route through the provider with `grsf` attached. For Branch DEFERRED (no-app-installed) referrals on iOS, also enable Branch NativeLink (dashboard) and call `Branch.getInstance().checkPasteboardOnInstall()` before `initSession()` — iOS 14+ requires NativeLink's clipboard token for deferred matching. iOS deferred is provider-specific and not interchangeable: Adjust uses LinkMe (optional clipboard), Singular uses Clipboard-Based DDL (optional, enterprise), and AppsFlyer uses server-side Unified Deep Linking (no clipboard); see the per-provider guidance." + VISIT_CAPTURE_TEXT + IOS_DEFERRED_BEST_EFFORT;
   }
   const callbackProvider = providerCallbackFor(provider);
   if (callbackProvider) {
-    const base = `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(_:provider:)\` before calling \`addReferredParticipant()\`. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, or a GrowSurf-hosted share URL.`;
+    const base = `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(_:provider:)\` before calling \`addReferredParticipant()\`. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, supported UTM values, or a GrowSurf-hosted share URL.${VISIT_CAPTURE_TEXT}`;
     if (callbackProvider === "branch") {
       return `${base} For Branch DEFERRED (no-app-installed) referrals on iOS you must use Branch NativeLink, because iOS 14+ removed the device matching Branch previously used for deferred installs: (1) enable NativeLink in the Branch dashboard (Configuration → Enable NativeLink) with a link that is NOT web-only (the iOS redirect must be allowed to open the app), and (2) call \`Branch.getInstance().checkPasteboardOnInstall()\` BEFORE \`initSession()\` so the SDK reads the NativeLink clipboard token on first launch (iOS 16+ shows a one-time "Pasted from …" prompt, or use \`BranchPasteControl\`). Without NativeLink, an iOS user who installs from a referral link opens the app with no referral data. The installed-app flow does not need this.${IOS_DEFERRED_BEST_EFFORT}`;
     }
@@ -87,14 +89,14 @@ const iosAttributionText = (provider: AttributionProvider) => {
 
 const androidAttributionText = (provider: AttributionProvider) => {
   if (provider === "none") return "Skip attribution handling only if this app never accepts referred installs.";
-  if (provider === "direct_link") return "Use `handleDeepLink(uri)` for installed-app links that already contain `grsf`, `ref`, or `referredBy`, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`.";
-  if (provider === "google_play") return "Call `handleDeferredDeepLink()` before referral-only signup tracking, or let `addReferredParticipant()` check Google Play Install Referrer once when no pending attribution exists. This is Android's native, deterministic deferred channel — no clipboard workaround is needed (unlike iOS NativeLink/LinkMe). The referrer is delivered only for genuine Google Play Store installs; sideloaded/`adb`/non-Play installs return no referrer.";
+  if (provider === "direct_link") return "Use `handleDeepLink(uri)` for installed-app links that contain referral identity, supported UTM values, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`." + VISIT_CAPTURE_TEXT;
+  if (provider === "google_play") return "Call `handleDeferredDeepLink()` before referral-only signup tracking, or let `addReferredParticipant()` check Google Play Install Referrer once when no pending attribution exists. This is Android's native, deterministic deferred channel — no clipboard workaround is needed (unlike iOS NativeLink/LinkMe). The referrer is delivered only for genuine Google Play Store installs; sideloaded/`adb`/non-Play installs return no referrer." + VISIT_CAPTURE_TEXT;
   if (provider === "all") {
-    return "Use `handleDeepLink(uri)` for installed-app links, `handleDeferredDeepLink()` for Google Play installs, and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before calling `addReferredParticipant()`. Provider payloads may contain `grsf`, `ref`, `referredBy`, or a GrowSurf-hosted share URL. On Android, deferred (no-app-installed) referrals are carried by the Google Play Install Referrer — a native, deterministic channel that the providers also use — so the iOS clipboard mechanisms (Branch NativeLink, Adjust LinkMe, Singular Clipboard-Based DDL) are NOT needed on Android; the referrer is delivered only for genuine Google Play Store installs.";
+    return "Use `handleDeepLink(uri)` for installed-app links, `handleDeferredDeepLink()` for Google Play installs, and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before calling `addReferredParticipant()`. Provider payloads may contain `grsf`, `ref`, `referredBy`, supported UTM values, or a GrowSurf-hosted share URL. On Android, deferred (no-app-installed) referrals are carried by the Google Play Install Referrer — a native, deterministic channel that the providers also use — so the iOS clipboard mechanisms (Branch NativeLink, Adjust LinkMe, Singular Clipboard-Based DDL) are NOT needed on Android; the referrer is delivered only for genuine Google Play Store installs." + VISIT_CAPTURE_TEXT;
   }
   const callbackProvider = providerCallbackFor(provider);
   if (callbackProvider) {
-    return `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(parameters, provider = "${callbackProvider}")\` before calling \`addReferredParticipant()\`. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, or a GrowSurf-hosted share URL. For DEFERRED (no-app-installed) referrals on Android, the Google Play Install Referrer is the native deterministic channel — call \`handleDeferredDeepLink()\` to read it via GrowSurf, or let ${providerDisplayName(callbackProvider)} resolve it. No clipboard is needed on Android (the iOS NativeLink/LinkMe/Clipboard-Based DDL workarounds do not apply); the referrer is delivered only for genuine Google Play Store installs.`;
+    return `Use ${providerDisplayName(callbackProvider)} callback payloads with \`handleAttributionParameters(parameters, provider = "${callbackProvider}")\` before calling \`addReferredParticipant()\`. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, supported UTM values, or a GrowSurf-hosted share URL. For DEFERRED (no-app-installed) referrals on Android, the Google Play Install Referrer is the native deterministic channel — call \`handleDeferredDeepLink()\` to read it via GrowSurf, or let ${providerDisplayName(callbackProvider)} resolve it. No clipboard is needed on Android (the iOS NativeLink/LinkMe/Clipboard-Based DDL workarounds do not apply); the referrer is delivered only for genuine Google Play Store installs.${VISIT_CAPTURE_TEXT}`;
   }
   return "";
 };
@@ -121,6 +123,8 @@ const renderIosAttributionSnippet = (provider: AttributionProvider) => {
         '        "grsf": "referrer_id",',
         '        "click_id": "click_123",',
         '        "unique": "true",',
+        '        "utm_source": "newsletter",',
+        '        "utm_campaign": "launch",',
         "    ],",
         `    provider: "${callbackProvider}"`,
         ")",
@@ -157,6 +161,8 @@ const renderAndroidAttributionSnippet = (provider: AttributionProvider) => {
         '        "grsf" to "referrer_id",',
         '        "click_id" to "click_123",',
         '        "unique" to "true",',
+        '        "utm_source" to "newsletter",',
+        '        "utm_campaign" to "launch",',
         "    ),",
         `    provider = "${callbackProvider}",`,
         ")",
@@ -384,7 +390,9 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
     "- The recommended mobile referral portal is the native GrowSurf Window opened from your own app UI.",
     "- For signed-in users, mint a participant-scoped mobile token on your backend and pass it to the SDK.",
     "- The built-in GrowSurf Window can email a returning participant a sign-in link. The link opens the hosted web portal; it does not authenticate the native app. Continue creating the participant token on your backend for native sessions.",
-    "- Use `validateReferrer()` when you only need to check referral attribution. Use `recordAttribution()` only when you intentionally want to record an impression.",
+    "- Deep-link, deferred-link, and provider handlers queue a versioned visit automatically. Do not call `recordAttribution()` after a handler. Use it only for a visit the app constructs itself.",
+    "- GrowSurf keeps server-signed first-visit and last-visit receipts and sends them during participant creation. The server applies the program's first-click or last-click setting.",
+    "- Use `validateReferrer()` when you only need to check referral identity without creating a participant.",
     "- Use `addReferredParticipant()` for referral-only signup tracking.",
     "- Use `addParticipant()` only when the app intentionally creates every signup. Check `affiliateApplicationMode` first so reviewed affiliate applicants use the configured GrowSurf Program Page.",
     "- When `addReferredParticipant()` or `addParticipant()` returns a `participantToken`, the SDK stores it automatically.",

@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createGrowSurfMcpServer } from "../src/index.js";
+import { createToolInputGuard } from "../src/toolInputValidation.js";
 
 const originalFetch = globalThis.fetch;
 
@@ -144,6 +145,79 @@ describe("rejected tool input", () => {
       await server.close();
     }
   });
+
+  it.each([
+    ["growsurf_trigger_referral", { participantId: "participant_1", delayInDays: 0 }, "delayInDays"],
+    ["growsurf_trigger_referral", { participantId: "participant_1", delayInDays: -1 }, "delayInDays"],
+    ["growsurf_trigger_referral", { participantId: "participant_1", delayInDays: 91 }, "delayInDays"],
+    ["growsurf_update_campaign", { currencyISO: "ZZZZ" }, "currencyISO"],
+    ["growsurf_get_campaign", { campaignId: 123 }, "campaignId"],
+    ["growsurf_list_campaigns", { unexpectedField: true }, "unexpectedField"],
+  ] as const)("rejects invalid %s input and identifies %s", async (toolName, args, expectedField) => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const server = createGrowSurfMcpServer({
+      env: { GROWSURF_API_KEY: "api_key", GROWSURF_CAMPAIGN_ID: "abc123" },
+    });
+    const client = new Client({ name: "input-contract-test-client", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    try {
+      const result = await client.callTool({ name: toolName, arguments: args });
+
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ text: string }>)[0]!.text;
+      expect(text).not.toBe("Request failed.");
+      const parsed = JSON.parse(text) as {
+        code?: string;
+        status?: number;
+        errors?: Array<{ field?: string }>;
+      };
+      expect(parsed.code).toBe("INVALID_TOOL_INPUT");
+      expect(parsed.status).toBe(400);
+      expect(parsed.errors?.some((error) => error.field === expectedField)).toBe(true);
+      if (expectedField === "delayInDays") {
+        expect(text).toContain("between 1 and 90");
+      }
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("rejects undeclared input fields for every listed tool", async () => {
+    const server = createGrowSurfMcpServer({
+      env: { GROWSURF_API_KEY: "api_key", GROWSURF_CAMPAIGN_ID: "abc123" },
+    });
+    const client = new Client({ name: "input-catalog-test-client", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    try {
+      const { tools } = await client.listTools();
+      expect(tools.length).toBeGreaterThan(0);
+
+      for (const tool of tools) {
+        let thrown: unknown;
+        try {
+          createToolInputGuard(tool.inputSchema)({ unexpectedField: true });
+        } catch (error) {
+          thrown = error;
+        }
+        expect(thrown, `${tool.name} must reject undeclared fields`).toMatchObject({
+          code: "INVALID_TOOL_INPUT",
+          status: 400,
+          errors: [{ field: "unexpectedField", code: "unrecognized_key" }],
+        });
+      }
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  }, 20_000);
 
   it("accepts an empty string on the optional participant fields, like the REST endpoint", async () => {
     const fetchMock = vi.fn(async () =>
