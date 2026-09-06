@@ -18,6 +18,8 @@ describe("GrowSurf MCP prompts", () => {
     expect(names).toContain("set_rewards");
     expect(names).toContain("wire_webhooks");
     expect(names).toContain("read_analytics");
+    expect(names).toContain("advise_program_design");
+    expect(names).toContain("troubleshoot_referral_tracking");
     expect(names).not.toContain("growsurf_set_rewards");
     expect(names).not.toContain("growsurf_get_campaign");
     expect(names).not.toContain("growsurf_list_participants");

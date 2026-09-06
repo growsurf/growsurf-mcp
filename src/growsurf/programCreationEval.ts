@@ -47,7 +47,7 @@ export const renderAgentProgramCreationEval = (
     "",
     "### Required tool sequence",
     "",
-    "1. Call `growsurf_create_campaign` first. Use `REFERRAL` or `AFFILIATE`; include `name`, `companyName`, `companyLogoImageUrl` when the user provides it, and `currencyISO` when it is not `USD`.",
+    "1. When the person has not named the incentive or the qualifying action, call `growsurf_program_design_advisor` with the closest `industry` and `goal` before creating anything, and use its recommendation in the questions you ask. Then call `growsurf_create_campaign`. Use `REFERRAL` or `AFFILIATE`; include `name`, `companyName`, `companyLogoImageUrl` when the user provides it, and `currencyISO` when it is not `USD`.",
     "2. Save the returned `id` and pass it as `campaignId` to every campaign-scoped tool.",
     "3. Fetch `growsurf_get_campaign_design`, `growsurf_get_campaign_emails`, `growsurf_get_campaign_options`, `growsurf_get_campaign_installation`, and `growsurf_list_campaign_rewards` before patching.",
     "4. Treat the type-specific starter content as the default source for Window copy, referred-friend copy, email copy, share settings, landing-page content, and rewards. Patch only what the user's goal requires.",

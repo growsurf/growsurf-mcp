@@ -16,10 +16,13 @@ const MARKDOWN_TOOLS = [
   "growsurf_client_snippets",
   "growsurf_embeddable_element_snippet",
   "growsurf_grsf_config_snippet",
+  "growsurf_program_design_advisor",
+  "growsurf_troubleshoot_referral_tracking",
 ];
 
 const MARKDOWN_TOOL_ARGS: Record<string, Record<string, unknown>> = {
   growsurf_embeddable_element_snippet: { element: "form" },
+  growsurf_troubleshoot_referral_tracking: { symptom: "referral_not_credited" },
 };
 
 const connectClient = async () => {
@@ -87,7 +90,7 @@ describe("tool output schemas", () => {
       const text = Array.isArray(result.content) && result.content[0]?.type === "text" ? result.content[0].text : "";
       expect(text.length, `${name} should return a document`).toBeGreaterThan(0);
       // The text block stays raw markdown, and structuredContent repeats it for the schema.
-      expect(result.structuredContent, `${name} should carry structuredContent`).toEqual({ markdown: text });
+      expect(result.structuredContent, `${name} should carry structuredContent`).toMatchObject({ markdown: text });
     }
   });
 
@@ -598,7 +601,7 @@ describe("tool output schemas", () => {
     expect(templates.affiliateApplicationStatusLink.description).toMatch(/\{\{applicationStatusLink\}\}/);
   });
 
-  it("returns structuredContent matching the JSON text for REST-backed tools", async () => {
+  it("preserves API fields and delivers reward evidence to structured-only clients", async () => {
     const participant = {
       id: "part_1",
       email: "richard@piedpiper.com",
@@ -631,10 +634,13 @@ describe("tool output schemas", () => {
     });
 
     expect(result.isError).toBeFalsy();
-    expect(result.structuredContent).toEqual(participant);
+    expect(result.structuredContent).toEqual({ ...participant, rewardEvidence: expect.objectContaining({ basis: "this_response_only", deliveryStatus: "unknown" }) });
     const text = Array.isArray(result.content) && result.content[0]?.type === "text" ? result.content[0].text : "";
     expect(text).toBe(JSON.stringify(participant));
     expect(JSON.parse(text)).toEqual(participant);
+    const guidance = Array.isArray(result.content) && result.content[1]?.type === "text" ? result.content[1].text : "";
+    expect(result.structuredContent?.rewardEvidence).toEqual(JSON.parse(guidance));
+    expect(JSON.parse(guidance)).toMatchObject({ approvalPolicy: "unknown", automaticFulfillmentMarking: null });
   });
 
   it("returns structuredContent on both webhook_normalize outcomes", async () => {

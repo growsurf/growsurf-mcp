@@ -48,8 +48,8 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
         `Business profile: ${businessType}.`,
         "",
         "Use this sequence:",
-        "1. Before calling growsurf_create_campaign, ask at most two short questions when missing details would materially change the program. Resolve the business profile, qualifying action, incentive, and reward funding or fulfillment. Do not ask filler questions when the user already supplied them.",
-        "2. Create a REFERRAL campaign with growsurf_create_campaign. Use the campaignName, companyName, and USD unless the user asks for another currency.",
+        "1. Before calling growsurf_create_campaign, call growsurf_program_design_advisor with the closest `industry` and `goal`. Present its `configurationPlan` with the returned `tool` and `arguments` objects, and use `decisions.qualifyingAction` consistently throughout the offer, rules, and tracking plan. Resolve `decisions.unresolved` with at most two short questions at a time. Do not ask for details the user already supplied.",
+        "2. Create a REFERRAL campaign with growsurf_create_campaign. Use the campaignName, companyName, and USD unless the user asks for another currency. Use the creation `goal` from `configurationPlan`, not the advisor's goal enum. Leave `rewards` out until the user names the incentive and funding; a budget alone does not choose an amount.",
         "3. Capture the returned id and pass it as campaignId on every campaign-scoped tool call.",
         "4. Review the seeded starter Design, Emails, Options, Installation, rewards, and GrowSurf Window content before changing anything. Treat this starter content as the default source for Window copy, referred-friend copy, email copy, share settings, landing-page content, and rewards.",
         "5. Match LinkedIn visibility to the stated business profile unless the user explicitly overrides it: set `share.type.linkedin.isVisible` to `true` for B2B SaaS and `false` for B2C, FinTech, Online Education, Online Insurance, Newsletter Publisher, and Pre-Launch Waitlist programs.",
@@ -89,11 +89,11 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
         `Commission preference: ${commissionModel}.`,
         "",
         "Use this sequence:",
-        "1. Before calling growsurf_create_campaign, ask at most two short questions when missing details would materially change the program. Resolve the qualifying event, commission terms, and payout or fulfillment operation. Do not ask filler questions when the user already supplied them.",
-        "2. Create an AFFILIATE campaign with growsurf_create_campaign. Use the campaignName, companyName, and USD unless the user asks for another currency.",
+        "1. Before calling growsurf_create_campaign, call growsurf_program_design_advisor with `programType: AFFILIATE` and the available context. Present its `configurationPlan` with the returned `tool` and `arguments` objects. Resolve `decisions.unresolved`, including the qualifying event, commission terms, and payout or fulfillment operation, with at most two short questions at a time. Do not ask for details the user already supplied.",
+        "2. Create an AFFILIATE campaign with growsurf_create_campaign. Use the campaignName, companyName, and USD unless the user asks for another currency. Use the creation `goal` from `configurationPlan`, not the advisor's goal enum. Leave `rewards` out until the user names the commission terms and funding.",
         "3. Capture the returned id and pass it as campaignId on every campaign-scoped tool call.",
         "4. Review the seeded affiliate reward config and starter content before changing it, including Design, Emails, Options, Installation, and GrowSurf Window content. Treat this starter content as the default source for Window copy, referred-friend copy, email copy, share settings, landing-page content, and affiliate portal content. Do not enable payout exposure until the user confirms commission terms and payout operations.",
-        "5. Review `affiliateApplicationMode` and the configured GrowSurf Program Page before launch. Public applicants in `MANUAL_REVIEW` or `AUTO_APPROVE` must use the application flow, not trusted REST Add Participant.",
+        "5. Read growsurf_get_campaign_options before changing application review. The options patch uses `fields.affiliateApplicationMode` with `MANUAL_REVIEW`, `AUTO_APPROVE`, or `OPEN_ENROLLMENT`; it is not a creation field. Review the configured GrowSurf Program Page before launch. Public applicants in `MANUAL_REVIEW` or `AUTO_APPROVE` must use the application flow, not trusted REST Add Participant.",
         "6. Preserve starter content unless the user asks for a specific override. Tune only the fields needed for the user's affiliate motion, especially affiliate portal sections, commissions, payouts, participant settings, and email templates.",
         "7. Generate tracking and install guidance with growsurf_client_snippets and growsurf_api_library_snippets. If the user's stack has Stripe, PayPal, or Wise, use growsurf_get_integration_connect_link and hand them the matching integration connect link.",
         "8. Fetch the campaign, Design, Emails, Options, Installation, and Rewards again. Review those returned settings before reporting back.",
@@ -291,6 +291,55 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
         "Keep statuses distinct: `referralCreditPendings` counts referred friends whose referral credit has not yet been awarded. Campaign `statusCounts.rewardStatus` and participant `analytics.rewardStatus` contain only `unapproved`, `unfulfilled`, and `completed`. Never equate referral-credit pending with reward status.",
         "When diagnosing one participant, use growsurf_get_participant_analytics with `include=activation`; add `series` only for covered portal-view and share-action trends. Use growsurf_get_participant_activity_logs for event context.",
         "Report plain-language findings, likely causes, and the next concrete action. Separate measured facts from hypotheses.",
+      ].join("\n");
+    },
+  },
+  {
+    name: "advise_program_design",
+    title: "Advise on program design",
+    description: "Recommend a referral program design for a business before creating or changing rewards.",
+    arguments: [
+      { name: "companyName", description: "Company or product name." },
+      { name: "industry", description: "Closest segment: fintech, SaaS, newsletter, healthcare, education, consumer, or other." },
+      { name: "goal", description: "What a successful referral means: paid conversion, signup, lead, subscriber, or waitlist." },
+      { name: "budget", description: "What the business can spend per successful referral." },
+    ],
+    render: (args) => {
+      const { companyName, goal } = programContext(args);
+      const industry = value(args, "industry", "the closest segment");
+      const budget = value(args, "budget", "unknown");
+      return [
+        `Advise ${companyName} on their referral program design.`,
+        "",
+        `Industry: ${industry}.`,
+        `Goal: ${goal}.`,
+        `Budget per referral: ${budget}.`,
+        "",
+        "Call growsurf_program_design_advisor with the closest `industry` and `goal` values and any budget, business model, audience, and qualifying action the user gave. Present its `configurationPlan` using the returned `tool` and `arguments` objects, and keep `decisions.qualifyingAction` the same throughout the offer, rules, and tracking plan.",
+        "Leave `decisions.unresolved` open. Do not turn budget limits or benchmarks into incentive amounts, sample offers, or participant-facing copy. Keep every reward non-awarding until the user confirms the incentive and its funding.",
+      ].join("\n");
+    },
+  },
+  {
+    name: "troubleshoot_referral_tracking",
+    title: "Troubleshoot referral tracking",
+    description: "Diagnose why referrals, participants, rewards, or emails are not behaving as expected.",
+    arguments: [
+      { name: "campaignId", description: "GrowSurf program id." },
+      { name: "problem", description: "The problem in the user's words." },
+      { name: "participant", description: "Affected participant id or email, if any." },
+    ],
+    render: (args) => {
+      const campaignId = value(args, "campaignId", "the target campaignId");
+      const problem = value(args, "problem", "the reported problem");
+      const participant = value(args, "participant", "none named");
+      return [
+        `Troubleshoot program ${campaignId}.`,
+        "",
+        `Problem: ${problem}.`,
+        `Affected participant: ${participant}.`,
+        "",
+        "Call growsurf_troubleshoot_referral_tracking with the matching `symptom` (or the problem as `description`), the `campaignId`, and the participant when known, then follow its output: run the checks in order with the named read tools before drawing a conclusion.",
       ].join("\n");
     },
   },
