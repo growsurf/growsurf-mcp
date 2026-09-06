@@ -11,7 +11,7 @@ export const PUBLIC_GROWSURF_RESOURCES = [
 
 const GROWSURF_AGENT_INDEX_MARKDOWN = `# GrowSurf agent and developer index
 
-GrowSurf is referral program software and affiliate program software for B2C and product-led companies.
+GrowSurf is referral program software and affiliate program software for marketing and product teams at digital businesses with an established audience and a trackable referral outcome.
 
 ## Tools on this connection
 
