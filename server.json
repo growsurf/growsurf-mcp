@@ -3,7 +3,7 @@
   "name": "com.growsurf/growsurf",
   "title": "GrowSurf",
   "description": "Build and manage GrowSurf referral and affiliate programs through AI assistants.",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "websiteUrl": "https://docs.growsurf.com/build-with-ai",
   "icons": [
     {
@@ -20,7 +20,7 @@
     {
       "registryType": "npm",
       "identifier": "@growsurfteam/growsurf-mcp",
-      "version": "0.13.0",
+      "version": "0.14.0",
       "transport": {
         "type": "stdio"
       },

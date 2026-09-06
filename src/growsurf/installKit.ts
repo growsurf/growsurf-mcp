@@ -260,6 +260,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
       "",
       "- It **calls GrowSurf REST** for happy-path server-side actions (campaign, add participant, trigger referral, record sale).",
       "- It **guides implementation** for web, backend, and native iOS/Android SDK 0.4.0 paths.",
+      "- It **advises on program design** with `growsurf_program_design_advisor` and **diagnoses tracking, reward, and email problems** symptom-first with `growsurf_troubleshoot_referral_tracking`.",
       "- For native mobile apps, use `growsurf_mobile_sdk_guide` for Mobile SDK, attribution, `trackShare`, and native GrowSurf Window examples.",
       "- It **helps compute participant-auth hashes** and create participant-scoped mobile SDK tokens.",
       "- For broader production REST API coverage, use `growsurf_api_library_snippets` and the official GrowSurf API Libraries: https://docs.growsurf.com/developer-tools/rest-api/api-libraries",

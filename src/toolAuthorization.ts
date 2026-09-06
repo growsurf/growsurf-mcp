@@ -143,6 +143,8 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_integration_guide: unrestricted(TOOL_BEHAVIOR.READ),
   growsurf_agent_program_creation_eval: unrestricted(TOOL_BEHAVIOR.READ),
   growsurf_mobile_sdk_guide: unrestricted(TOOL_BEHAVIOR.READ),
+  growsurf_program_design_advisor: unrestricted(TOOL_BEHAVIOR.READ),
+  growsurf_troubleshoot_referral_tracking: unrestricted(TOOL_BEHAVIOR.READ),
   growsurf_api_library_snippets: unrestricted(TOOL_BEHAVIOR.READ),
   growsurf_get_campaign: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_list_campaigns: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),

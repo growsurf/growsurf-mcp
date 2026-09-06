@@ -79,6 +79,14 @@ Use this skill to turn a user goal into a real GrowSurf program, not just API ca
 
 Use `growsurf_integration_guide` for the user's stack. If no stack is known, give the universal install snippet and ask where their signup event happens. Verify the installed script with the campaign's Installation config and the user's site URL when available. When placing or styling a GrowSurf Window launcher or embeddable element inside the user's app, use `frontend-design` or the closest available design-focused workflow before changing UI. If the user wants screenshot proof of the installed site, drive the real page with the host browser automation tool instead of asking them to inspect it manually.
 
+### Design A Program
+
+Before proposing rewards or a qualifying action, call `growsurf_program_design_advisor` with the closest `industry` and `goal`, plus any budget, business model, audience, and qualifying action the user gave, and follow its output. Turn the returned configuration plan into the create and patch calls above, and keep rewards non-awarding until the user confirms the incentive and its funding.
+
+### Troubleshoot Referral Tracking
+
+When referrals, participants, rewards, or emails misbehave, call `growsurf_troubleshoot_referral_tracking` with the matching `symptom` (or the problem as `description`), the `campaignId`, and the affected participant when known, then follow its output: run the checks in order with the named read tools before drawing a conclusion.
+
 ### Check Agent Steering
 
 Use `growsurf_agent_program_creation_eval` when you need one-shot eval prompts or acceptance checks for program creation. A passing eval creates a program through MCP, reviews starter content, keeps rewards conservative, and verifies the config for visible motivators, share options, header copy, and clean public copy.

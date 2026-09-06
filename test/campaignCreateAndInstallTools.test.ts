@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createGrowSurfMcpServer } from "../src/index.js";
+import { createGrowSurfMcpServer, type ProgramDesignAdvice } from "../src/index.js";
 
 const originalFetch = globalThis.fetch;
 
@@ -101,6 +101,43 @@ describe("growsurf_create_campaign goal", () => {
         arguments: { type: "REFERRAL", goal: "NOT_A_GOAL" },
       });
       expect(rejected.isError).toBe(true);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+});
+
+describe("advisor configuration plan", () => {
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  // Proposed configuration is a public contract: both client output paths must receive the
+  // same valid tool calls, and requesting a draft must never execute those calls.
+  it("returns the same validated plan in structured output and Markdown without API writes", async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const { server, client } = await connect();
+    try {
+      await client.listTools();
+      for (const input of [
+        {},
+        { programType: "AFFILIATE", industry: "saas_ai", goal: "paid_conversions" },
+        { industry: "other", goal: "signups", qualifyingAction: "Complete a paid appointment" },
+      ]) {
+        const result = await client.callTool({ name: "growsurf_program_design_advisor", arguments: input });
+        expect(result.isError, textOf(result)).toBeFalsy();
+        const advice = result.structuredContent as unknown as ProgramDesignAdvice;
+        expect(advice.configurationPlan.length).toBeGreaterThan(0);
+        expect(advice.decisions.unresolved.length).toBeGreaterThan(0);
+        const text = textOf(result);
+        const jsonDocuments = [...text.matchAll(/```json\n([\s\S]*?)\n```/g)].map((match) => JSON.parse(match[1]!));
+        expect(jsonDocuments).toContainEqual(advice.configurationPlan);
+        expect(advice.markdown).toBe(text);
+      }
+      expect(fetchMock).not.toHaveBeenCalled();
     } finally {
       await client.close();
       await server.close();

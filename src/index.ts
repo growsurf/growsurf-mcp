@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.13.0";
+export const GROWSURF_MCP_VERSION = "0.14.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -36,7 +36,20 @@ import {
   agentProgramCreationEvalInputSchema,
   renderAgentProgramCreationEval,
 } from "./growsurf/programCreationEval.js";
+import {
+  playbookSymptomKeys,
+  programDesignAdvisorInputSchema,
+  buildProgramDesignAdvice,
+  renderTroubleshootingGuide,
+  troubleshootReferralTrackingInputSchema,
+  type GrowSurfInsightsBundle,
+  ADVISOR_GOALS,
+  ADVISOR_INDUSTRIES,
+  ADVISOR_SALES_MOTIONS,
+  ADVISOR_DETAILS,
+} from "./growsurf/insights.js";
 import { PUBLIC_GROWSURF_RESOURCES, readPublicGrowSurfResource } from "./growsurf/resources.js";
+import { buildRewardAssessment, type RewardAssessmentKind } from "./growsurf/rewardEvidence.js";
 import { normalizeWebhook } from "./growsurf/webhooks.js";
 import { getGrowSurfPrompt, listGrowSurfPrompts } from "./prompts.js";
 import { createToolInputValidationError, toToolErrorText } from "./toolError.js";
@@ -63,6 +76,26 @@ export {
   type ToolRiskTier,
   type VerifiedCredentialContext,
 } from "./toolAuthorization.js";
+
+export {
+  ADVISOR_GOALS,
+  ADVISOR_INDUSTRIES,
+  DEFAULT_TROUBLESHOOTING_PLAYBOOK,
+  HOSTED_MCP_URL,
+  TROUBLESHOOT_SYMPTOMS,
+  buildProgramDesignAdvice,
+  matchPlaybookSymptom,
+  playbookSymptomKeys,
+  renderProgramDesignAdvisor,
+  renderTroubleshootingGuide,
+  type AdvisorGoal,
+  type AdvisorIndustry,
+  type GrowSurfInsightsBundle,
+  type PlaybookSymptom,
+  type ProgramDesignInsights,
+  type ProgramDesignAdvice,
+  type TroubleshootingPlaybook,
+} from "./growsurf/insights.js";
 
 const optionalNonEmptyString = () =>
   z
@@ -190,14 +223,26 @@ const GROWSURF_SERVER_INSTRUCTIONS = [
   "GrowSurf runs a customer's live referral or affiliate program. The settings you write are what",
   "their participants see, and the reward amounts you write are what the customer pays out.",
   "",
-  "Before creating a program, resolve these with the person, asking at most two short questions and",
+  "To design, recommend, or draft a referral or affiliate program, first call",
+  "`growsurf_program_design_advisor` with the available context. Drafting is read-only; give the",
+  "first draft before asking creation questions. Present its `configurationPlan` as tool calls,",
+  "preserving each `tool` and `arguments` object. Use `decisions.qualifyingAction` consistently",
+  "in the offer, rules, and tracking plan. Leave `decisions.unresolved` choices undecided.",
+  "For any benchmark or metric-definition question, call the advisor. Quote its `benchmarkFacts`",
+  "as complete statements. Request `detail: full` for additional cuts. Copy each metric label,",
+  "median, Q1, Q3, sample, and source together.",
+  "Do not rename a ratio, change its denominator, or turn quartiles into a full range. If space",
+  "is limited, omit figures instead of shortening away their meaning. Do not add outside figures.",
+  "",
+  "Before executing a program creation, resolve these with the person, asking at most two short questions and",
   "skipping anything they already told you:",
   "",
-  "- What the program is for, so share settings match the audience. Pass it as `goal` on",
-  "  `growsurf_create_campaign`.",
+  "- What the program is for, so share settings match the audience. Use the creation `goal`",
+  "  from `configurationPlan`; the advisor's `goal` uses a different enum.",
   "- The incentive, and who funds and fulfills it.",
   "",
-  "Never choose a reward or commission amount yourself. If the person has not named one, omit",
+  "Never choose a reward or commission amount yourself, including sample offers and copy. A budget",
+  "is a spending limit, not a confirmed incentive. If the person has not named an incentive, omit",
   "`rewards` from `growsurf_create_campaign`. The program is then created with GrowSurf's starter",
   "rewards switched off, so it awards nothing until they decide the amount and turn one on. Say that,",
   "rather than reporting an amount you picked.",
@@ -206,6 +251,17 @@ const GROWSURF_SERVER_INSTRUCTIONS = [
   "an existing value the customer already set, such as the program's Share URL, as theirs: to make",
   "GrowSurf work on another origin, add that origin to `allowedUrls` instead of replacing the Share",
   "URL, and ask before changing one that is already set.",
+  "",
+  "Call `growsurf_program_design_advisor` before proposing rewards or a qualifying action, and for",
+  "any question about what other GrowSurf programs do: typical or median reward amounts, how common",
+  "a reward type or qualifying action is, or any benchmark figure. It is the only source of those",
+  "figures. Every input is optional, so call it with what the person already said instead of asking",
+  "for a company name or budget first.",
+  "",
+  "When anything about a program misbehaves (referrals not credited, emails not sending, rewards not",
+  "issued, participants missing, the Universal Code not detected, an integration or CRM not syncing,",
+  "a Zapier error, fraud flags, analytics numbers that look wrong), call",
+  "`growsurf_troubleshoot_referral_tracking` first and run its checks before concluding.",
 ].join("\n");
 
 // Shared JSON-schema property injected into every campaign-scoped tool's input schema (see the
@@ -233,6 +289,15 @@ const jsonToolResult = (result: unknown, appendText = ""): ToolResult => {
     return { content, structuredContent: result as Record<string, unknown> };
   }
   return { content };
+};
+
+/** Preserve API fields and carry evidence limits to clients that read structured results only. */
+const rewardReadToolResult = (result: unknown, kind: RewardAssessmentKind): ToolResult => {
+  const assessment = buildRewardAssessment(result, kind);
+  const response = jsonToolResult(result);
+  response.content.push({ type: "text", text: safeJson(assessment) });
+  if (response.structuredContent) response.structuredContent = { ...response.structuredContent, rewardEvidence: assessment };
+  return response;
 };
 
 // Build the result for a tool whose output is a markdown document. The text block stays the raw
@@ -1028,6 +1093,11 @@ const bulkDeleteParticipantsSchema = z.object({
 export type CreateGrowSurfMcpServerOptions = {
   env?: Env;
   resolveCredentialContext?: ResolveVerifiedCredentialContext;
+  // Optional aggregate insights (program-design figures, advisor rules, troubleshooting playbook)
+  // that a hosted deployment loads for `growsurf_program_design_advisor` and
+  // `growsurf_troubleshoot_referral_tracking`. Without it those tools return documentation-based
+  // guidance and point at the hosted server.
+  insights?: GrowSurfInsightsBundle;
 };
 
 export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions = {}) => {
@@ -1134,6 +1204,56 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           },
         },
         {
+          name: "growsurf_program_design_advisor",
+          description:
+            "Use for program designs, benchmarks, typical rewards, and metric definitions, including participant-to-referral and lead-to-referral ratios. Read-only; call with known context before asking questions. Returns a short draft, complete `benchmarkFacts` to quote, exact `configurationPlan` tool calls, and unresolved `decisions`. Preserve the calls and leave unresolved incentives open. Use the default summary for first designs and configuration drafts; use `detail: full` when the user requests detailed benchmark tables or a specific figure absent from the summary. Hosted figures describe GrowSurf's high-performing programs; without a bundle, guidance is documentation-based. Use `programType: AFFILIATE` for affiliates and `industry: other` for local services, pets, hospitality, or agencies. All inputs are optional.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              programType: { type: "string", enum: ["REFERRAL", "AFFILIATE"], default: "REFERRAL" },
+              industry: {
+                type: "string",
+                enum: [...ADVISOR_INDUSTRIES],
+                default: "other",
+                description: "Closest industry segment: `financial_services_fintech` (banking, lending, investing, insurance, payments, crypto), `saas_ai` (software sold to businesses, developer tools, AI products), `media_newsletters` (newsletters, podcasts, publishers, content brands), `healthcare_wellness` (clinics, telehealth, fitness, nutrition, mental health, supplements), `education_workforce` (courses, bootcamps, tutoring, hiring and job platforms), `consumer_subscriptions_commerce` (consumer apps, e-commerce, marketplaces, subscription boxes). Use `other` when no segment clearly fits (local services, pets, hospitality, agencies) rather than stretching one; `other` returns the platform-wide figures.",
+              },
+              goal: {
+                type: "string",
+                enum: [...ADVISOR_GOALS],
+                default: "other",
+                description: "What a successful referral means for the business. `paid_conversions` and `leads` imply a qualifying action; `signups`, `subscribers`, and `waitlist` count the signup unless a separate `qualifyingAction` needs clarification. This is the advisor's goal enum; use the separate creation goal returned in `configurationPlan` for `growsurf_create_campaign`.",
+              },
+              businessModel: { type: "string", maxLength: 500, description: "One line on what the business sells and how. Also set `salesMotion` when the buying process is known." },
+              salesMotion: { type: "string", enum: [...ADVISOR_SALES_MOTIONS], description: "Use `sales_led` for demos, sales calls, negotiated pricing, or signed contracts; use `self_service` when customers buy directly. This selects the reward structure. Omit when unknown." },
+              audience: { type: "string", maxLength: 500, description: "Who refers whom." },
+              qualifyingAction: { type: "string", maxLength: 500, description: "The action a referred friend must complete, in the customer's words." },
+              rewardBudgetPerReferral: { type: "number", minimum: 0, description: "The customer's spending limit per successful referral, in major currency units. A budget does not select an incentive amount or commission rate. Budget comparisons omit the mixed-currency reward amount bands." },
+              currencyISO: { type: "string", pattern: "^[A-Za-z]{3}$", description: "ISO 4217 code. Non-USD advice omits the dollar reward bands. No exchange rate or equivalent-currency benchmark is available." },
+              companyName: { type: "string", minLength: 1, maxLength: 200, description: "Used in the heading and proposed program name; omit it when unknown." },
+              detail: { type: "string", enum: [...ADVISOR_DETAILS], default: "summary", description: "Use summary for a first design or configuration draft, including a reward structure recommendation. Use full only for requested detailed benchmark tables or specific figures absent from the summary, such as reward amounts, share channels, or integration proportions." },
+              includeRules: { type: "boolean", default: false, description: "Append guidance on applying the recommendations. Off by default." },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_troubleshoot_referral_tracking",
+          description:
+            "Call first for a program problem, even without a program or participant ID. It returns initial checks; ask for IDs before reading records. Covers referrals not credited, participant emails not sending, rewards not issued, participants not added, Universal Code not detected, an integration or CRM (HubSpot, Mailchimp, and others) not syncing, Zapier errors, fraud flags, analytics numbers that look wrong, and more. Returns the checks to run in order (with the read tool and field for each), the likely causes most common first, fixes, and doc links. Pass a `symptom` key; unknown keys return the available symptoms; a `description` is matched only when it contains a symptom's label or alias verbatim, otherwise the symptom list is returned.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              symptom: { type: "string", minLength: 1, maxLength: 100, examples: playbookSymptomKeys(options.insights), description: `The symptom to diagnose. Known keys: ${playbookSymptomKeys(options.insights).map((key) => "`" + key + "`").join(", ")}. Unknown keys return the symptom list.` },
+              description: { type: "string", minLength: 3, maxLength: 2000, description: "The problem in the customer's words, when `symptom` is unknown." },
+              campaignId: { ...CAMPAIGN_ID_JSON_PROP, minLength: 1 },
+              participantId: { type: "string", minLength: 1, description: "Affected participant id, echoed into participant-level checks." },
+              participantEmail: { type: "string", minLength: 3, description: "Affected participant email, when the id is unknown." },
+            },
+            anyOf: [{ required: ["symptom"] }, { required: ["description"] }],
+            additionalProperties: false,
+          },
+        },
+        {
           name: "growsurf_mobile_sdk_guide",
           description:
             "Generate native iOS/Android SDK 0.4.0 guidance, including attribution, shareUrl sharing, trackShare, and the native GrowSurf Window.",
@@ -1195,7 +1315,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign",
           description:
-            "Fetch your GrowSurf campaign (program) details via REST. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch your GrowSurf campaign (program) details via REST. Embedded reward settings do not establish that an individual reward was earned, approved, or delivered; read the affected participant for earned reward records. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -1261,7 +1381,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         },
         {
           name: "growsurf_list_campaign_rewards",
-          description: "List your GrowSurf program's configured rewards (reward configs). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          description: "List your GrowSurf program's configured rewards. These settings do not establish that a participant earned or received a reward; inspect their `rewards` with `growsurf_get_participant`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -1694,7 +1814,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_options",
           description:
-            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, affiliate enrollment and application review, notifications, and other behavior options). Returns the full object with every field and its current value — the same shape you send back on update. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, affiliate enrollment and application review, notifications, and other behavior options). Returns the full object with every field and its current value, the same shape you send back on update. `autoFulfillRewards: false` permits manual fulfillment and does not prove that any reward went undelivered. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -1829,7 +1949,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_analytics",
           description:
-            "Fetch analytics for your GrowSurf program: participants, referrals, impressions, per-channel shares, and affiliate revenue, commission, and payout metrics when applicable. Pass `interval` (`day`, `week`, or `month`) for a per-period `series`. Pass comma-separated `include` values for `previousPeriod`, `statusCounts`, `rates`, `email`, or `engagement`. `engagement` groups unique active, sharing, repeat, and retained participants by when portal views and share actions occurred. Its `coverageStartAt`, `state`, and `reason` distinguish measured zeroes from partial or unavailable history. Scope the timeframe with `days` (default 365, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). `timezone` and `platform` apply to engagement only. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Fetch analytics for your GrowSurf program: participants, referrals, impressions, per-channel shares, and affiliate revenue, commission, and payout metrics when applicable. For what impressions, unique impressions, leads, and referrals mean, or why counts differ from another analytics tool, call `growsurf_troubleshoot_referral_tracking` with symptom `numbers_do_not_match` rather than guessing. Pass `interval` (`day`, `week`, or `month`) for a per-period `series`. Pass comma-separated `include` values for `previousPeriod`, `statusCounts`, `rates`, `email`, or `engagement`. `engagement` groups unique active, sharing, repeat, and retained participants by when portal views and share actions occurred. Its `coverageStartAt`, `state`, and `reason` distinguish measured zeroes from partial or unavailable history. Scope the timeframe with `days` (default 365, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). `timezone` and `platform` apply to engagement only. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1980,7 +2100,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_participant",
           description:
-            "Fetch a single participant by GrowSurf participant ID or email address. Use `growsurf_list_participants` first if you need to find a participant ID. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch a single participant by GrowSurf participant ID or email address. `referralStatus` describes credit to their referrer; `referralCount` counts referrals this participant generated, so zero is consistent with `CREDIT_AWARDED`. In `rewards`, `approved` records approval; `status`, `isFulfilled`, and `fulfilledAt` record fulfillment marking, not confirmation of delivery. Use `growsurf_list_participants` first if you need to find a participant ID. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2502,6 +2622,27 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const text = renderAgentProgramCreationEval(input);
           return markdownToolResult(text);
         }
+        case "growsurf_program_design_advisor": {
+          const input = programDesignAdvisorInputSchema.parse(request.params.arguments ?? {});
+          const advice = buildProgramDesignAdvice(input, options.insights);
+          // A proposed call must satisfy the same public input contract as an executed call.
+          // This checks the plan without performing any of its writes.
+          for (const step of advice.configurationPlan) {
+            const target = (toolsWithMetadataCache ??= buildToolsWithMetadata()).find((tool) => tool.name === step.tool);
+            if (!target) throw new Error(`Unknown tool in configuration plan: ${step.tool}`);
+            let inputGuard = toolInputGuards.get(target.name);
+            if (!inputGuard) {
+              inputGuard = createToolInputGuard(target.inputSchema);
+              toolInputGuards.set(target.name, inputGuard);
+            }
+            inputGuard(step.arguments);
+          }
+          return { ...markdownToolResult(advice.markdown), structuredContent: advice };
+        }
+        case "growsurf_troubleshoot_referral_tracking": {
+          const input = troubleshootReferralTrackingInputSchema.parse(request.params.arguments ?? {});
+          return markdownToolResult(renderTroubleshootingGuide(input, options.insights, { campaignId: env.GROWSURF_CAMPAIGN_ID }));
+        }
         case "growsurf_mobile_sdk_guide": {
           const input = mobileSdkGuideInputSchema.parse(request.params.arguments ?? {});
           const text = renderMobileSdkGuide(input, { campaignId: env.GROWSURF_CAMPAIGN_ID });
@@ -2515,7 +2656,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         case "growsurf_get_campaign": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaign();
-          return jsonToolResult(result);
+          return rewardReadToolResult(result, "configuration");
         }
         case "growsurf_list_campaigns": {
           const growsurf = requireGrowSurfApiKey(env);
@@ -2564,7 +2705,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         case "growsurf_list_campaign_rewards": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.listCampaignRewards();
-          return jsonToolResult(result);
+          return rewardReadToolResult(result, "configuration");
         }
         case "growsurf_create_campaign_reward": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -2689,7 +2830,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         case "growsurf_get_campaign_options": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.getCampaignOptions();
-          return jsonToolResult(result);
+          return rewardReadToolResult(result, "options");
         }
         case "growsurf_update_campaign_options": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -2848,7 +2989,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             nextId?: string;
           };
           const result = await growsurf.listParticipants(query);
-          return jsonToolResult(result);
+          return rewardReadToolResult(result, "participant");
         }
         case "growsurf_get_participant": {
           const growsurf = resolveCampaignClient(env, toolArgs);
@@ -2856,7 +2997,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = input.participantId
             ? await growsurf.getParticipantById(input.participantId)
             : await growsurf.getParticipantByEmail(input.participantEmail!);
-          return jsonToolResult(result);
+          return rewardReadToolResult(result, "participant");
         }
         case "growsurf_add_participant": {
           const growsurf = resolveCampaignClient(env, toolArgs);

@@ -13,6 +13,16 @@ const GROWSURF_AGENT_INDEX_MARKDOWN = `# GrowSurf agent and developer index
 
 GrowSurf is referral program software and affiliate program software for B2C and product-led companies.
 
+## Tools on this connection
+
+This index lists documentation links. Program data and advice are available through MCP tools:
+
+- Call \`growsurf_program_design_advisor\` for program design, reward recommendations, and benchmarks. Every input is optional. It reports whether this connection has aggregate figures or documentation-based guidance. Use \`programType: "AFFILIATE"\` for affiliate advice; use \`industry: "other"\` for local services such as dog grooming.
+- Call \`growsurf_troubleshoot_referral_tracking\` for a program problem. Pass a symptom or description, then follow the checks it returns.
+- Call \`growsurf_get_campaign\`, \`growsurf_get_campaign_installation\`, and \`growsurf_get_participant\` to inspect program and participant records. These records are not MCP resources.
+
+Call the relevant tool before concluding that advice, benchmarks, or program records are unavailable.
+
 ## Start here
 
 - Client-neutral REST onboarding: https://growsurf.com/agent-start.md

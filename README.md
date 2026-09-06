@@ -39,7 +39,7 @@ This MCP server is NOT for:
   - Affiliate sale / transaction tracking
   - Webhooks
 - **Agent Recipes**:
-  - MCP prompts for creating referral programs, creating affiliate programs, embedding the widget, listing and fetching programs and participants, configuring rewards, wiring webhooks, and reading analytics
+  - MCP prompts for creating referral programs, creating affiliate programs, advising on program design, troubleshooting referral tracking, embedding the widget, listing and fetching programs and participants, configuring rewards, wiring webhooks, and reading analytics
   - Installable Agent Skill bundle at `skills/growsurf-agent-toolkit`
   - Steering to review starter Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching
   - One-shot program-creation eval prompts and acceptance checks for starter content and configuration review
@@ -267,6 +267,8 @@ node dist/cli.js
 
 Every tool declares an MCP output schema and returns `structuredContent`, so hosts know each tool's result shape. REST tools return the API response (plus a JSON text block for older clients); the guidance and snippet tools return their markdown document under `markdown`.
 
+Program, reward-configuration, options, and participant reads also include a `rewardEvidence` object in `structuredContent`. It records what this response establishes about approval policy and automatic fulfillment marking. Delivery remains unknown without the relevant fulfillment records. This assessment applies to this response only; combine it with other evidence. The API fields and original JSON text remain unchanged.
+
 ### Guided Integration
 
 - `growsurf_integration_guide`
@@ -280,6 +282,16 @@ Every tool declares an MCP output schema and returns `structuredContent`, so hos
 
 - `growsurf_get_integration_connect_link`
   Get a dashboard link that opens a specific integration's connect panel (Stripe, PayPal, Tango Card, Mailchimp, and many more). Hand it to the user when they want to connect one. Connecting happens in the dashboard, not through the API.
+
+### Program design and troubleshooting
+
+- `growsurf_program_design_advisor`
+  Returns a short first draft by default. Set `detail: "full"` for the complete report, including reward, sharing, and integration figures. `benchmarkFacts` carries complete statements with each ratio's unit, median, quartiles, sample, and source. Quote these statements together so a referral ratio cannot be mistaken for the percentage of people who refer.
+
+  Recommend a qualifying action, reward structure, fulfillment path, safeguards, share channels, and integrations. The result includes `markdown`, a `configurationPlan` with exact tool arguments, and `decisions` with the qualifying action and unresolved customer choices. Call it before proposing rewards. Preserve the returned call shapes; the advisor and program-creation tools use different `goal` enums. Replace each `<new-program-id>` with the `id` returned by program creation. Drafts leave reward amounts and commission terms open until the customer chooses them; a budget is a limit, not an incentive. Set `salesMotion` to `sales_led` for demos or negotiated contracts, or `self_service` for direct purchases. When the host supplies insights, advice includes aggregate figures; without insights it uses documentation. Non-USD advice and budget comparisons omit dollar reward bands because the data mixes dollar currencies.
+
+- `growsurf_troubleshoot_referral_tracking`
+  Symptom-first diagnosis: referrals not credited, participant emails not sending, rewards not issued, participants not added, Universal Code not detected, integrations not syncing, Zapier errors, fraud flags, dashboard numbers that look wrong, and more. Returns the checks to run in order (with the read tool and field for each), the likely causes most common first, fixes, and doc links. Pass a `symptom` key, or a `description` that names the symptom.
 
 ### Client & UI Snippets
 

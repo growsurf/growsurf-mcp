@@ -16,6 +16,28 @@ export type ToolOutputSchema = { type: "object"; [key: string]: unknown };
 // being duplicated on every tool that returns it; the description says where the full shape lives.
 const sameShapeAs = (description: string): ToolOutputSchema => ({ type: "object", description });
 
+/** Adds interpretation guidance without changing the API fields in a read result. */
+const withRewardEvidence = (schema: ToolOutputSchema): ToolOutputSchema => ({
+  ...schema,
+  properties: {
+    ...(schema.properties as Record<string, unknown>),
+    rewardEvidence: {
+      type: "object",
+      description: "What this response establishes about rewards. Combine with other reads; unknown here does not override evidence elsewhere.",
+      properties: {
+        basis: { type: "string", enum: ["this_response_only"] },
+        conclusion: { type: "string" },
+        deliveryStatus: { type: "string", enum: ["unknown"] },
+        integrationConnection: { type: "string", enum: ["not_established"] },
+        programReferralTrigger: { type: "string", enum: ["not_established"] },
+        approvalPolicy: { type: "string", enum: ["manual", "automatic", "unknown"], description: "Referral reward approval policy from requireManualRewardApproval, not affiliate commission approval or an individual reward state." },
+        automaticFulfillmentMarking: { type: ["boolean", "null"], description: "The autoFulfillRewards setting, when returned by an options read. Null means unknown; this controls marking, not delivery." },
+        nextStep: { type: "string" },
+      },
+    },
+  },
+});
+
 const MONEY_MINOR_UNITS = "in minor currency units (e.g. cents)";
 
 const METADATA = {
@@ -35,7 +57,7 @@ const PARTICIPANT_REWARD = {
       type: "string",
       enum: ["PENDING", "FULFILLED", "CANCELLED"],
       description:
-        "Fulfillment status of the earned reward. `CANCELLED` means an unpaid Lead reward was reversed before fulfillment.",
+        "Fulfillment marking of the earned reward. `FULFILLED` records that it was marked fulfilled, not proof of delivery. `CANCELLED` means an unpaid Lead reward was reversed before fulfillment.",
     },
     unread: { type: "boolean", description: "`true` until the participant sees the reward in a GrowSurf window." },
     approved: { type: "boolean", description: "`true` once the reward is approved." },
@@ -45,14 +67,14 @@ const PARTICIPANT_REWARD = {
     },
     fulfilledAt: {
       type: ["integer", "null"],
-      description: "When the reward was fulfilled, as a Unix timestamp in milliseconds. `null` until fulfilled.",
+      description: "When the reward was marked fulfilled, as a Unix timestamp in milliseconds. `null` until marked fulfilled; this is not a delivery receipt.",
     },
     isReferrer: {
       type: "boolean",
       description: "`true` if earned as the referrer, `false` if earned as the referred friend (double-sided rewards).",
     },
     isAvailable: { type: "boolean", description: "`true` if the reward is available for the participant to claim or redeem." },
-    isFulfilled: { type: "boolean", description: "`true` once the reward has been fulfilled." },
+    isFulfilled: { type: "boolean", description: "`true` once the reward is marked fulfilled. Confirm actual delivery through fulfillment records." },
     referredId: { type: "string", description: "Id of the friend that was referred." },
     referrerId: { type: "string", description: "Id of the participant that made the referral." },
     commissionStructure: {
@@ -538,7 +560,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         isOfferPopupConfettiEnabled: { type: "boolean", description: "Whether to show confetti after a claim." },
         isOfferPopupShownOnAllPages: { type: "boolean", description: "Whether the popup can appear on every installed page." },
         offerPopupSecondaryLinkText: { type: ["string", "null"], maxLength: 100, description: "Optional post-claim link text." },
-        offerPopupSecondaryLinkUrl: { type: ["string", "null"], maxLength: 255, description: "Optional post-claim link destination." },
+        offerPopupSecondaryLinkUrl: { type: ["string", "null"], maxLength: 255, description: "Optional post-claim link destination. When saving, use `http://` or `https://`. Send `null` or an empty string to clear it." },
         isOfferPopupOverlayDimmed: { type: "boolean", description: "Whether a centered popup dims the page behind it." },
       },
     },
@@ -720,7 +742,7 @@ const CAMPAIGN_OPTIONS: ToolOutputSchema = {
     },
     autoFulfillRewards: {
       type: "boolean",
-      description: "Referral programs only. Automatically mark earned rewards as fulfilled.",
+      description: "Referral programs only. Automatically mark earned rewards as fulfilled. `false` permits manual fulfillment and does not establish a delivery failure.",
     },
     requireManualFraudApproval: {
       type: "boolean",
@@ -2007,6 +2029,39 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
     "Program-creation eval prompts and acceptance checks, as a markdown document.",
   ),
   growsurf_mobile_sdk_guide: markdownDocument("Native iOS/Android SDK guidance, as a markdown document."),
+  growsurf_program_design_advisor: {
+    type: "object",
+    description: "Program-design advice and proposed tool calls. The plan is read-only until its calls are executed after the customer resolves the open choices.",
+    properties: {
+      markdown: { type: "string", description: "The requested summary or full advice, including the same configuration calls and their conditions." },
+      benchmarkFacts: { type: "array", items: { type: "string" }, description: "Complete benchmark statements with metric units, median, Q1, Q3, sample, and source. Quote each statement intact. Empty when no suitable figures are available." },
+      configurationPlan: {
+        type: "array",
+        description: "Proposed calls using the listed tools' argument shapes. Preserve each tool and arguments object when presenting the plan; replace <new-program-id> with the creation response's id before execution.",
+        items: {
+          type: "object",
+          properties: {
+            tool: { type: "string", description: "Exact GrowSurf tool name." },
+            arguments: { type: "object", description: "Arguments for this tool, including an explicit campaignId for later program-scoped calls." },
+            note: { type: "string", description: "Effect and conditions for this step." },
+          },
+        },
+      },
+      decisions: {
+        type: "object",
+        description: "Use one qualifying action throughout the draft. Unresolved choices require a customer decision before configuration.",
+        properties: {
+          referralTrigger: { type: ["string", "null"], enum: ["CUSTOM", "ON_SIGNUP", null] },
+          qualifyingAction: { type: ["string", "null"], description: "The action the referred friend must complete. Null means the action still needs a decision." },
+          rewardType: { type: "string", enum: ["AFFILIATE", "MILESTONE", "SINGLE_SIDED", "DOUBLE_SIDED"] },
+          unresolved: { type: "array", items: { type: "string" }, description: "Choices the plan leaves open, including incentive amounts and funding." },
+        },
+      },
+    },
+  },
+  growsurf_troubleshoot_referral_tracking: markdownDocument(
+    "Ordered diagnostic checks, likely causes, fixes, and doc references for one symptom, as a markdown document.",
+  ),
   growsurf_api_library_snippets: markdownDocument(
     "REST API integration snippets for the official libraries, as a markdown document.",
   ),
@@ -2021,12 +2076,12 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
   ),
   growsurf_participant_auth_hash: PARTICIPANT_AUTH_HASH,
   growsurf_capture_referral_flow_screenshots: REFERRAL_FLOW_SCREENSHOTS,
-  growsurf_get_campaign: CAMPAIGN,
+  growsurf_get_campaign: withRewardEvidence(CAMPAIGN),
   growsurf_list_campaigns: CAMPAIGN_LIST_RESPONSE,
   growsurf_create_campaign: sameShapeAs("The created program. Same shape as the `growsurf_get_campaign` result."),
   growsurf_update_campaign: sameShapeAs("The updated program. Same shape as the `growsurf_get_campaign` result."),
   growsurf_clone_campaign: sameShapeAs("The newly cloned program. Same shape as the `growsurf_get_campaign` result."),
-  growsurf_list_campaign_rewards: CAMPAIGN_REWARD_LIST_RESPONSE,
+  growsurf_list_campaign_rewards: withRewardEvidence(CAMPAIGN_REWARD_LIST_RESPONSE),
   growsurf_create_campaign_reward: sameShapeAs(
     "The created campaign reward. Same shape as the items in the `growsurf_list_campaign_rewards` result.",
   ),
@@ -2051,7 +2106,7 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
   growsurf_update_campaign_emails: sameShapeAs(
     "The full updated email configuration. Same shape as the `growsurf_get_campaign_emails` result.",
   ),
-  growsurf_get_campaign_options: CAMPAIGN_OPTIONS,
+  growsurf_get_campaign_options: withRewardEvidence(CAMPAIGN_OPTIONS),
   growsurf_update_campaign_options: sameShapeAs(
     "The full updated options. Same shape as the `growsurf_get_campaign_options` result.",
   ),
@@ -2075,8 +2130,8 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
   ),
   growsurf_delete_campaign_webhook: DELETE_WEBHOOK_RESPONSE,
   growsurf_test_campaign_webhook: WEBHOOK_TEST_RESPONSE,
-  growsurf_list_participants: PARTICIPANT_LIST_RESPONSE,
-  growsurf_get_participant: PARTICIPANT,
+  growsurf_list_participants: withRewardEvidence(PARTICIPANT_LIST_RESPONSE),
+  growsurf_get_participant: withRewardEvidence(PARTICIPANT),
   growsurf_add_participant: sameShapeAs(
     "The created participant, or the existing participant when the email already exists (`isNew` is `false`). Same shape as the `growsurf_get_participant` result.",
   ),

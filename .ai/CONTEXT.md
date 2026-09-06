@@ -13,6 +13,7 @@ This repo owns the public GrowSurf Model Context Protocol server package `@grows
 - Publishes standard MCP safety annotations for every tool. Scoped business writes remain available; API-key rotation remains a client helper but is intentionally not an MCP tool.
 - Exposes a deliberately curated subset of the REST API. Affiliate application review, affiliate invites, commissions, and payout records stay REST-only and are intentionally not MCP tools; payout destinations are the exception, with `growsurf_get_participant_payout_destination` and `growsurf_request_participant_payout_destination_confirmation` shipping as MCP tools. Program settings those features rely on — such as the affiliate enrollment fields in `CAMPAIGN_OPTIONS` — are still readable and writable through the campaign options tools.
 - Builds TypeScript from `src/` into `dist/` for the published package.
+- Accepts an optional `insights` bundle in `createGrowSurfMcpServer` (aggregate program-design figures, advisor rules, and a troubleshooting playbook). A hosted deployment supplies it; this package ships none, and the two insight tools fall back to documentation-based guidance without it.
 - Lists MCP prompts with short names like `set_rewards` and `read_analytics` because clients already namespace them by server (for example `/growsurf:set_rewards`). Legacy `growsurf_*` prompt aliases may still resolve for compatibility, but should not be listed to clients.
 
 ## Key Files
@@ -22,6 +23,7 @@ This repo owns the public GrowSurf Model Context Protocol server package `@grows
 | `src/index.ts` | MCP server entry point |
 | `src/growsurf/client.ts` | GrowSurf API client helpers |
 | `src/growsurf/mobileSdkGuide.ts` | Mobile SDK guidance surfaced through MCP |
+| `src/growsurf/insights.ts` | Program-design advisor and referral-tracking troubleshooter; render an optional insights bundle passed as `createGrowSurfMcpServer({ insights })` |
 | `src/growsurf/apiLibrarySnippets.ts` | API/library install and usage snippets |
 | `src/growsurf/participantAuth.ts` | Participant token/auth guidance |
 | `src/growsurf/webhooks.ts` | Webhook guidance |
