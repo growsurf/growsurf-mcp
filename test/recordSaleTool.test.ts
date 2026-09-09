@@ -11,6 +11,31 @@ describe("growsurf_record_sale", () => {
     vi.restoreAllMocks();
   });
 
+  it.each(["stripe", "chargebee", "recurly"].flatMap(provider =>
+    ["growsurf_record_sale", "growsurf_refund_transaction"].map(name => ({ provider, name })),
+  ))("$name preserves an explicit live $provider payment identity", async ({ provider, name }) => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: { "content-type": "application/json" },
+    }));
+    globalThis.fetch = fetchMock as typeof fetch;
+    const server = createGrowSurfMcpServer({ env: { GROWSURF_API_KEY: "api_key", GROWSURF_CAMPAIGN_ID: "abc123" } });
+    const client = new Client({ name: "payment-scope-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const arguments_ = { participantId: "customer", paymentProvider: provider, transactionId: "payment-1",
+        ...(name === "growsurf_record_sale" ? { currency: "USD", grossAmount: 1234 } : {}) };
+      expect((await client.callTool({ name, arguments: arguments_ })).isError).toBe(true);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect((await client.callTool({ name, arguments: { ...arguments_, testMode: false } })).isError).not.toBe(true);
+      const options = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1];
+      expect(JSON.parse(String(options.body))).toMatchObject({ paymentProvider: provider, testMode: false, transactionId: "payment-1" });
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it("advertises and forwards the full transaction totals contract, including zero values", async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ id: "transaction_1" }), {

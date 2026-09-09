@@ -422,6 +422,8 @@ const TRANSACTION_IDENTIFIER_JSON_REQUIREMENT = {
 
 const recordSaleSchema = z
   .object({
+    paymentProvider: z.enum(["stripe", "chargebee", "recurly"]).optional(),
+    testMode: z.boolean().optional(),
     participantId: z.string().min(1).optional(),
     participantEmail: z.string().min(3).optional(),
     currency: z.string().length(3).regex(/^[A-Za-z]{3}$/),
@@ -455,10 +457,15 @@ const recordSaleSchema = z
   // creating a second commission (symmetric with the refund endpoint).
   .refine(hasTransactionIdentifier, {
     message: `Provide ${TRANSACTION_IDENTIFIER_HINT} so the sale can be de-duplicated.`,
+  })
+  .refine(v => v.paymentProvider ? typeof v.testMode === "boolean" && Boolean(v.transactionId) : v.testMode === undefined, {
+    message: "Provider payments require `paymentProvider`, `transactionId` and an explicit `testMode`.",
   });
 
 const refundTransactionSchema = z
   .object({
+    paymentProvider: z.enum(["stripe", "chargebee", "recurly"]).optional(),
+    testMode: z.boolean().optional(),
     participantId: z.string().min(1).optional(),
     participantEmail: z.string().min(3).optional(),
     amendmentType: z.enum(["REFUND", "CHARGEBACK"]).optional(),
@@ -483,6 +490,9 @@ const refundTransactionSchema = z
   })
   .refine(hasTransactionIdentifier, {
     message: `Provide ${TRANSACTION_IDENTIFIER_HINT}.`,
+  })
+  .refine(v => v.paymentProvider ? typeof v.testMode === "boolean" && Boolean(v.transactionId) : v.testMode === undefined, {
+    message: "Provider payments require `paymentProvider`, `transactionId` and an explicit `testMode`.",
   });
 
 // Create = type + identity + inline rewards only. Editor-tab config (options, design,
@@ -2357,6 +2367,9 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               participantEmail: { type: "string" },
               currency: { type: "string", minLength: 3, maxLength: 3, pattern: "^[A-Za-z]{3}$" },
               grossAmount: { type: "integer", minimum: 1 },
+              paymentProvider: { type: "string", enum: ["stripe", "chargebee", "recurly"],
+                description: "Connected provider for this payment. Requires `transactionId` and `testMode`. Supply matching `grossAmount` and `currency`; other payment IDs and tax or net-amount overrides are not accepted. GrowSurf reads payment details from the provider and detects duplicate webhook/API/manual submissions." },
+              testMode: { type: "boolean", description: "Required with `paymentProvider`: `true` for test or `false` for live. Otherwise omit." },
               invoiceId: { type: "string" },
               chargeId: { type: "string" },
               paymentIntentId: { type: "string" },
@@ -2408,6 +2421,9 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               participantId: { type: "string" },
               participantEmail: { type: "string" },
               amendmentType: { type: "string", enum: ["REFUND", "CHARGEBACK"] },
+              paymentProvider: { type: "string", enum: ["stripe", "chargebee", "recurly"],
+                description: "Connected provider for the original payment. Requires its `transactionId` and `testMode`. This amends GrowSurf records without sending a refund through the provider." },
+              testMode: { type: "boolean", description: "Original payment mode: `true` for test or `false` for live. Requires `paymentProvider`." },
               amountRefunded: { type: "integer" },
               amount: { type: "integer" },
               refundId: {
@@ -3134,6 +3150,8 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = recordSaleSchema.parse(request.params.arguments ?? {});
           const sale = omitUndefined({
+            paymentProvider: input.paymentProvider,
+            testMode: input.testMode,
             currency: input.currency,
             grossAmount: input.grossAmount,
             invoiceId: input.invoiceId,
@@ -3167,6 +3185,8 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = refundTransactionSchema.parse(request.params.arguments ?? {});
           const amendment = omitUndefined({
+            paymentProvider: input.paymentProvider,
+            testMode: input.testMode,
             amendmentType: input.amendmentType,
             amountRefunded: input.amountRefunded,
             amount: input.amount,
