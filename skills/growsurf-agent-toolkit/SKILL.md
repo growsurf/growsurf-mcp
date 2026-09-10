@@ -95,6 +95,14 @@ Use `growsurf_agent_program_creation_eval` when you need one-shot eval prompts o
 
 Use `growsurf_list_campaign_rewards` first. Prefer updating existing reward configs over creating duplicates. For new rewards, state whether the reward is visible, active, referrer-only or double-sided, and whether the value has tax-reporting implications.
 
+### Connect an Integration
+
+Use `growsurf_list_integrations` first to see what the program can connect and what is already on. An
+integration that is `connected` but not `enabled` needs switching back on, not reconnecting, and one
+that is `autoDisabled` keeps its credentials but delivers nothing until the user reconnects it. Then
+call `growsurf_get_integration_connect_link` and hand the user the link — connecting an account
+happens in the GrowSurf dashboard, never through the API, and you cannot do it for them.
+
 ### Wire Webhooks
 
 Use `growsurf_list_campaign_webhooks`, then create or update with the exact event list the user requested. Use `growsurf_test_campaign_webhook` after saving. Never expose or echo webhook secrets.

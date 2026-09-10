@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACCEPTED_INTEGRATION_KEYS,
   buildIntegrationConnectUrl,
   DASHBOARD_BASE_URL,
   getIntegration,
@@ -9,7 +10,7 @@ import {
 
 describe("integrations registry", () => {
   it("includes Tango Card as a connectable gift-card integration", () => {
-    const tango = getIntegration("tangocard");
+    const tango = getIntegration("tangoCard");
     expect(tango).toBeDefined();
     expect(tango?.label).toBe("Tango Card");
     expect(tango?.category).toBe("Payouts & gift cards");
@@ -47,13 +48,19 @@ describe("integrations registry", () => {
     expect(INTEGRATION_KEYS).not.toContain("xtrm");
   });
 
-  it("keeps the camelCase deep-link keys verbatim (they must match the dashboard card id)", () => {
+  it("keeps the camelCase keys verbatim (they must match what the API and JS SDK report)", () => {
     for (const key of ["constantContact", "campaignMonitor", "helpScout", "pabblyConnect", "baskHealth"]) {
       expect(INTEGRATION_KEYS).toContain(key);
     }
-    // Tango Card's deep-link key is lowercase, not the camelCase storage key.
-    expect(INTEGRATION_KEYS).toContain("tangocard");
-    expect(INTEGRATION_KEYS).not.toContain("tangoCard");
+    // Tango Card is the one entry whose dashboard card id differs from its public key, so the key
+    // stays camelCase (matching REST and the JS SDK) and the lowercase card id is carried apart.
+    expect(INTEGRATION_KEYS).toContain("tangoCard");
+    expect(INTEGRATION_KEYS).not.toContain("tangocard");
+    expect(getIntegration("tangoCard")?.cardId).toBe("tangocard");
+    // The spelling published before the alignment still resolves, so a caller pinned to an earlier
+    // release does not start failing validation.
+    expect(getIntegration("tangocard")?.key).toBe("tangoCard");
+    expect(ACCEPTED_INTEGRATION_KEYS).toContain("tangocard");
   });
 
   it("has unique keys and a non-empty label + category on every entry", () => {
@@ -71,6 +78,12 @@ describe("buildIntegrationConnectUrl", () => {
   it("builds the editor integrations deep link for the given program", () => {
     expect(buildIntegrationConnectUrl("abc123", "stripe")).toBe(
       "https://app.growsurf.com/editor/abc123/options/integrations?integration=stripe",
+    );
+  });
+
+  it("deep-links Tango Card with its dashboard card id, not its public key", () => {
+    expect(buildIntegrationConnectUrl("abc123", "tangoCard")).toBe(
+      "https://app.growsurf.com/editor/abc123/options/integrations?integration=tangocard",
     );
   });
 

@@ -482,6 +482,12 @@ export class GrowSurfClient {
     );
   }
 
+  // Integration status — read-only. Connecting an integration is an OAuth or credential handshake
+  // completed in the dashboard, so there is no write path here.
+  async listIntegrations(): Promise<unknown> {
+    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/integrations`);
+  }
+
   // Campaign webhooks — mirrors the campaign-reward CRUD shape. Secrets are write-only and never
   // returned; the webhook id is `primary` for the program's primary webhook.
   async listWebhooks(): Promise<unknown> {

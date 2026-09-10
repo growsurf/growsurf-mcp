@@ -35,8 +35,18 @@ export const INTEGRATION_CATEGORIES = [
 export type IntegrationCategory = (typeof INTEGRATION_CATEGORIES)[number];
 
 export type Integration = {
-  /** Deep-link key. Must equal the dashboard card's `integration.id` exactly. */
+  /**
+   * Public integration key. Matches the id the REST API reports and the key the
+   * client/JS SDK emits in `campaign.integrations`, so every GrowSurf surface
+   * calls an integration by the same name.
+   */
   key: string;
+  /**
+   * The dashboard card's `integration.id`, set only where it differs from `key`.
+   * That id is what the editor matches against the `?integration=` query param,
+   * and Tango Card is the one place the two spellings diverge.
+   */
+  cardId?: string;
   /** Human display label, taken from the dashboard. */
   label: string;
   category: IntegrationCategory;
@@ -52,12 +62,13 @@ export type Integration = {
 export const INTEGRATIONS: readonly Integration[] = [
   // Payments & billing
   { key: "stripe", label: "Stripe", category: "Payments & billing" },
-  { key: "chargebee", label: "Chargebee", category: "Payments & billing", referralOnly: true },
-  { key: "recurly", label: "Recurly", category: "Payments & billing", referralOnly: true },
+  { key: "chargebee", label: "Chargebee", category: "Payments & billing" },
+  { key: "recurly", label: "Recurly", category: "Payments & billing" },
   // Payouts & gift cards
   { key: "paypal", label: "PayPal", category: "Payouts & gift cards" },
   { key: "wisecom", label: "Wise", category: "Payouts & gift cards", affiliateOnly: true },
-  { key: "tangocard", label: "Tango Card", category: "Payouts & gift cards", referralOnly: true },
+  { key: "tangoCard", cardId: "tangocard", label: "Tango Card", category: "Payouts & gift cards", referralOnly: true },
+  { key: "tremendous", label: "Tremendous", category: "Payouts & gift cards", referralOnly: true },
   // CRM & marketing automation
   { key: "hubspot", label: "HubSpot", category: "CRM & marketing automation" },
   { key: "salesforce", label: "Salesforce", category: "CRM & marketing automation" },
@@ -65,6 +76,7 @@ export const INTEGRATIONS: readonly Integration[] = [
   // Email & ESP
   { key: "mailchimp", label: "Mailchimp", category: "Email & ESP" },
   { key: "activecampaign", label: "ActiveCampaign", category: "Email & ESP" },
+  { key: "braze", label: "Braze", category: "Email & ESP" },
   { key: "bentonow", label: "Bento", category: "Email & ESP" },
   { key: "mailerlite", label: "MailerLite", category: "Email & ESP" },
   { key: "resenddotcom", label: "Resend", category: "Email & ESP" },
@@ -106,22 +118,45 @@ export const INTEGRATIONS: readonly Integration[] = [
   // Custom & webhooks
   { key: "webhook", label: "Webhooks", category: "Custom & webhooks" },
   // Other
-  { key: "baskHealth", label: "Bask Health", category: "Other" },
+  { key: "baskHealth", label: "Bask Health", category: "Other", referralOnly: true },
 ] as const;
 
 /** All connectable integration keys, in registry order. */
 export const INTEGRATION_KEYS: readonly string[] = INTEGRATIONS.map((i) => i.key);
 
-/** Look up one integration by its deep-link key. */
-export const getIntegration = (key: string): Integration | undefined =>
-  INTEGRATIONS.find((i) => i.key === key);
+/**
+ * Keys that earlier releases accepted and that callers may still send. Tango Card shipped as
+ * `tangocard` before its key was aligned with the id the REST API and the JS SDK report, so it is
+ * still accepted on input rather than failing validation for an agent that learned the old value.
+ */
+export const LEGACY_INTEGRATION_KEY_ALIASES: Readonly<Record<string, string>> = { tangocard: "tangoCard" };
+
+/** Every value accepted as an `integration` argument: current keys plus the legacy aliases. */
+export const ACCEPTED_INTEGRATION_KEYS: readonly string[] = [
+  ...INTEGRATION_KEYS,
+  ...Object.keys(LEGACY_INTEGRATION_KEY_ALIASES),
+];
+
+/** Look up one integration by its key, accepting a legacy alias. */
+export const getIntegration = (key: string): Integration | undefined => {
+  const resolved = LEGACY_INTEGRATION_KEY_ALIASES[key] ?? key;
+  return INTEGRATIONS.find((i) => i.key === resolved);
+};
 
 /**
  * Build the dashboard deep link that opens a specific integration's connect
  * panel in the Program Editor. `campaignId` is the program's public id — the
  * same value the REST API uses as the campaign id, which is also the editor URL
  * slug — so no lookup is needed to construct the link.
+ *
+ * This is the offline fallback: it always points at the production dashboard.
+ * `growsurf_get_integration_connect_link` prefers the `connectUrl` the API
+ * returns, which is built for whichever GrowSurf environment answered.
  */
-export const buildIntegrationConnectUrl = (campaignId: string, integrationKey: string): string =>
-  `${DASHBOARD_BASE_URL}/editor/${encodeURIComponent(campaignId)}/options/integrations` +
-  `?integration=${encodeURIComponent(integrationKey)}`;
+export const buildIntegrationConnectUrl = (campaignId: string, integrationKey: string): string => {
+  const cardId = getIntegration(integrationKey)?.cardId ?? integrationKey;
+  return (
+    `${DASHBOARD_BASE_URL}/editor/${encodeURIComponent(campaignId)}/options/integrations` +
+    `?integration=${encodeURIComponent(cardId)}`
+  );
+};

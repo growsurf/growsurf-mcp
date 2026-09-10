@@ -11,7 +11,7 @@ import { z } from "zod";
 
 export const GROWSURF_MCP_VERSION = "0.14.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
-import { resolveCampaignClient } from "./growsurf/campaignScope.js";
+import { resolveCampaignClient, resolveCampaignId } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
 import {
   clientSnippetsSchema,
@@ -26,7 +26,7 @@ import {
 import {
   buildIntegrationConnectUrl,
   getIntegration,
-  INTEGRATION_KEYS,
+  ACCEPTED_INTEGRATION_KEYS,
 } from "./growsurf/integrations.js";
 import { mobileSdkGuideInputSchema, renderMobileSdkGuide } from "./growsurf/mobileSdkGuide.js";
 import { TOOL_OUTPUT_SCHEMAS, type ToolOutputSchema } from "./growsurf/outputSchemas.js";
@@ -195,6 +195,7 @@ const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
   "growsurf_capture_referral_flow_screenshots",
   "growsurf_get_campaign_analytics",
   "growsurf_get_campaign_activation_analytics",
+  "growsurf_list_integrations",
   "growsurf_list_campaign_webhooks",
   "growsurf_create_campaign_webhook",
   "growsurf_update_campaign_webhook",
@@ -876,10 +877,21 @@ const webhookNormalizeSchema = z.object({
   payload: z.unknown(),
 });
 
+// The `growsurf_list_integrations` payload, as read by the connect-link tool.
+type IntegrationListPayload = {
+  integrations?: Array<{
+    id?: string;
+    connected?: boolean;
+    enabled?: boolean;
+    autoDisabled?: boolean;
+    connectUrl?: string;
+  }>;
+};
+
 // Integration connect-link tool. `integration` must be one of the connectable keys
 // (see ./growsurf/integrations); `campaignId` overrides GROWSURF_CAMPAIGN_ID as the link target.
 const integrationConnectLinkSchema = z.object({
-  integration: z.enum(INTEGRATION_KEYS as unknown as [string, ...string[]]),
+  integration: z.enum(ACCEPTED_INTEGRATION_KEYS as unknown as [string, ...string[]]),
   campaignId: z.string().min(1).optional(),
 });
 
@@ -2028,6 +2040,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           },
         },
         {
+          name: "growsurf_list_integrations",
+          description:
+            "List every integration your GrowSurf program can connect (Stripe, PayPal, Wise, Mailchimp, Slack, Zapier, Webhooks, and more) with its current state, so you can check whether an integration is connected before you act on it. Each entry has `connected` (credentials are stored), `enabled` (switched on and working), `autoDisabled` (GrowSurf switched it off after repeated delivery failures — the credentials are still stored, but nothing is delivered until the user reconnects it), and `connectUrl` (the dashboard link to hand the user). Integrations that do not apply to the program type are omitted (for example, Wise on a referral program). Read-only: connecting an integration happens in the GrowSurf dashboard, not through the API — call `growsurf_get_integration_connect_link` for the link to hand the user. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
           name: "growsurf_list_campaign_webhooks",
           description: "List your GrowSurf program's webhooks (secrets are never returned). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
@@ -2574,13 +2592,15 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_integration_connect_link",
           description:
-            "Return a dashboard link that opens a specific integration's connect panel in the GrowSurf Program Editor (Options > Integrations). Use this whenever a user says they want to connect an integration, for example \"connect Stripe\", \"set up PayPal or Wise payouts\", \"send Tango Card gift cards\", or \"sync signups to Mailchimp\": call it with the `integration` key and give the user the returned `url` to open. Connecting an integration happens in the dashboard, not through the API. GrowSurf cannot link a Stripe, PayPal, Wise, or other account on the user's behalf, so hand them the link. `integration` must be one of the supported keys (some are camelCase, e.g. `constantContact`, `helpScout`). The link points at GROWSURF_CAMPAIGN_ID; pass `campaignId` to target a different program. Chargebee, Recurly, and Tango Card apply to referral programs only. Wise applies to affiliate programs only.",
+            "Return a dashboard link that opens a specific integration's connect panel in the GrowSurf Program Editor (Options > Integrations). Use this whenever a user says they want to connect an integration, for example \"connect Stripe\", \"set up PayPal or Wise payouts\", \"send Tango Card gift cards\", or \"sync signups to Mailchimp\": call it with the `integration` key and give the user the returned `url` to open. Connecting an integration happens in the dashboard, not through the API. GrowSurf cannot link a Stripe, PayPal, Wise, or other account on the user's behalf, so hand them the link. `integration` must be one of the supported keys (some are camelCase, e.g. `constantContact`, `helpScout`). The link points at GROWSURF_CAMPAIGN_ID; pass `campaignId` to target a different program. The program is checked before the link is returned, and the result also reports whether the integration is already `connected`, `enabled`, or `autoDisabled`, so you can skip handing over a link the user does not need. Tango Card, Tremendous, and Bask Health apply to referral programs only. Wise applies to affiliate programs only.",
           inputSchema: {
             type: "object",
             properties: {
               integration: {
                 type: "string",
-                enum: [...INTEGRATION_KEYS],
+                // Includes the legacy `tangocard` spelling so a caller pinned to an earlier
+                // release keeps working; the tool resolves it to `tangoCard`.
+                enum: [...ACCEPTED_INTEGRATION_KEYS],
                 description:
                   "The integration to connect. Must exactly match one of the supported keys (for example `wisecom`; some are camelCase, e.g. `constantContact`, `campaignMonitor`, `helpScout`, `pabblyConnect`, `baskHealth`).",
               },
@@ -2967,6 +2987,11 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = await growsurf.getCampaignActivationAnalytics(query);
           return jsonToolResult(result);
         }
+        case "growsurf_list_integrations": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const result = await growsurf.listIntegrations();
+          return jsonToolResult(result);
+        }
         case "growsurf_list_campaign_webhooks": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const result = await growsurf.listWebhooks();
@@ -3273,22 +3298,36 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         }
         case "growsurf_get_integration_connect_link": {
           const input = integrationConnectLinkSchema.parse(request.params.arguments ?? {});
-          const campaignId = input.campaignId ?? env.GROWSURF_CAMPAIGN_ID;
-          if (!campaignId) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: "Missing program id. Set GROWSURF_CAMPAIGN_ID or pass campaignId so the link points at your program.",
-                },
-              ],
-              isError: true,
-            };
-          }
           const integration = getIntegration(input.integration);
           if (!integration) {
             return {
               content: [{ type: "text", text: `Unknown integration: ${input.integration}` }],
+              isError: true,
+            };
+          }
+          // The link used to be built here from the program id alone, so a mistyped id produced a
+          // real-looking URL that 404s when the user opens it — and a non-production host still got
+          // a production link. Reading the program's live integration list fixes both: the API
+          // rejects an unknown program (404 CampaignNotFound) before we hand anything over, and it
+          // returns the link for its own environment alongside the integration's current state.
+          const growsurf = resolveCampaignClient(env, input);
+          const campaignId = resolveCampaignId(env, input);
+          const statuses = ((await growsurf.listIntegrations()) as IntegrationListPayload).integrations ?? [];
+          const status = statuses.find((entry) => entry?.id === integration.key);
+          if (!status) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `${integration.label} is not available on this program${
+                    integration.referralOnly
+                      ? " because it applies to referral programs only"
+                      : integration.affiliateOnly
+                        ? " because it applies to affiliate programs only"
+                        : ""
+                  }. Call growsurf_list_integrations to see what this program can connect.`,
+                },
+              ],
               isError: true,
             };
           }
@@ -3298,8 +3337,17 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             category: integration.category,
             referralOnly: integration.referralOnly ?? false,
             affiliateOnly: integration.affiliateOnly ?? false,
-            url: buildIntegrationConnectUrl(campaignId, integration.key),
-            note: `Open this link and connect ${integration.label} from the Program Editor. Connecting an integration happens in the GrowSurf dashboard, not through the API.`,
+            connected: status.connected === true,
+            enabled: status.enabled === true,
+            autoDisabled: status.autoDisabled === true,
+            url: status.connectUrl ?? buildIntegrationConnectUrl(campaignId, integration.key),
+            note: status.autoDisabled === true
+              ? `${integration.label} is connected but GrowSurf switched it off after repeated delivery failures. Open this link to reconnect it from the Program Editor.`
+              : status.enabled === true
+                ? `${integration.label} is already connected and switched on. Open this link to review or change its settings in the Program Editor.`
+                : status.connected === true
+                  ? `${integration.label} is connected but switched off. Open this link to switch it back on from the Program Editor.`
+                  : `Open this link and connect ${integration.label} from the Program Editor. Connecting an integration happens in the GrowSurf dashboard, not through the API.`,
           };
           return jsonToolResult(result);
         }

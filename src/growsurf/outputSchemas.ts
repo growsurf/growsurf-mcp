@@ -1795,6 +1795,42 @@ const MOBILE_PARTICIPANT_TOKEN_RESPONSE: ToolOutputSchema = {
   },
 };
 
+const INTEGRATION: ToolOutputSchema = {
+  type: "object",
+  description: "One integration a program can connect, with its current state.",
+  properties: {
+    id: {
+      type: "string",
+      description:
+        "Stable integration key, the same value `growsurf_get_integration_connect_link` takes as its `integration` argument.",
+    },
+    name: { type: "string", description: "Display name, matching what the GrowSurf dashboard calls this integration." },
+    connected: { type: "boolean", description: "Whether the program has stored credentials for this integration." },
+    enabled: { type: "boolean", description: "Whether the integration is switched on and currently working." },
+    autoDisabled: {
+      type: "boolean",
+      description:
+        "Whether GrowSurf switched the integration off after repeated delivery failures. Its credentials are still stored, but it delivers nothing until the user reconnects it in the dashboard.",
+    },
+    connectUrl: {
+      type: "string",
+      description:
+        "Dashboard link that opens this integration's connect panel in the GrowSurf Program Editor. Hand it to the user — connecting an account is a step they complete in the dashboard, and you cannot do it for them.",
+    },
+  },
+};
+
+const INTEGRATION_LIST_RESPONSE: ToolOutputSchema = {
+  type: "object",
+  properties: {
+    integrations: {
+      type: "array",
+      items: INTEGRATION,
+      description: "Every integration this program can connect, in the order the GrowSurf dashboard lists them.",
+    },
+  },
+};
+
 const WEBHOOK: ToolOutputSchema = {
   type: "object",
   description: "A program webhook's configuration plus read-only delivery-health fields.",
@@ -2121,6 +2157,7 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
   growsurf_resend_team_owner_verification_email: VERIFICATION_EMAIL_RESPONSE,
   growsurf_get_campaign_analytics: CAMPAIGN_ANALYTICS_RESPONSE,
   growsurf_get_campaign_activation_analytics: CAMPAIGN_ACTIVATION_ANALYTICS_RESPONSE,
+  growsurf_list_integrations: INTEGRATION_LIST_RESPONSE,
   growsurf_list_campaign_webhooks: WEBHOOK_LIST_RESPONSE,
   growsurf_create_campaign_webhook: sameShapeAs(
     "The created webhook. Same shape as the items in the `growsurf_list_campaign_webhooks` result.",
