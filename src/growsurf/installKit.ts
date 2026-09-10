@@ -185,8 +185,8 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
   const stackKeyExamples = isAffiliateOnly
     ? "`stripe`, `paypal`, `wisecom`, `mailchimp`, `salesforce`, or `googleanalytics`"
     : isReferralOnly
-      ? "`stripe`, `tangocard`, `mailchimp`, `salesforce`, or `googleanalytics`"
-      : "`stripe`, `paypal`, `wisecom`, `tangocard`, `mailchimp`, `salesforce`, or `googleanalytics`";
+      ? "`stripe`, `tangoCard`, `mailchimp`, `salesforce`, or `googleanalytics`"
+      : "`stripe`, `paypal`, `wisecom`, `tangoCard`, `mailchimp`, `salesforce`, or `googleanalytics`";
 
   const connectSection = [
     "### Connect integrations (recommend based on the user's stack)",
@@ -213,7 +213,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
 
   if (!isAffiliateOnly && !isReferralOnly) {
     connectSection.push(
-      "Chargebee, Recurly, and Tango Card apply to referral programs only (they're hidden on affiliate programs).",
+      "Tango Card, Tremendous, and Bask Health apply to referral programs only (they're hidden on affiliate programs).",
       "Wise applies to affiliate programs only.",
       "",
     );

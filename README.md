@@ -280,8 +280,11 @@ Program, reward-configuration, options, and participant reads also include a `re
 - `growsurf_api_library_snippets`
   Official REST API library snippets for TypeScript, Python, PHP, Ruby, and Java.
 
+- `growsurf_list_integrations`
+  List every integration the program can connect, each with `connected`, `enabled`, `autoDisabled`, and the dashboard `connectUrl`. Check this before acting on an integration.
+
 - `growsurf_get_integration_connect_link`
-  Get a dashboard link that opens a specific integration's connect panel (Stripe, PayPal, Tango Card, Mailchimp, and many more). Hand it to the user when they want to connect one. Connecting happens in the dashboard, not through the API.
+  Get a dashboard link that opens a specific integration's connect panel (Stripe, PayPal, Tango Card, Mailchimp, and many more). Hand it to the user when they want to connect one. The program is checked first, and the result reports whether the integration is already connected. Connecting happens in the dashboard, not through the API.
 
 ### Program design and troubleshooting
 

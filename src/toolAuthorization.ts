@@ -185,6 +185,7 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   ),
   growsurf_get_campaign_analytics: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.ANALYTICS_READ),
   growsurf_get_campaign_activation_analytics: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.ANALYTICS_READ),
+  growsurf_list_integrations: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_list_campaign_webhooks: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_create_campaign_webhook: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_update_campaign_webhook: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
@@ -213,7 +214,9 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_client_snippets: unrestricted(TOOL_BEHAVIOR.READ),
   growsurf_embeddable_element_snippet: unrestricted(TOOL_BEHAVIOR.READ),
   growsurf_grsf_config_snippet: unrestricted(TOOL_BEHAVIOR.READ),
-  growsurf_get_integration_connect_link: unrestricted(TOOL_BEHAVIOR.READ),
+  // Reads the program's live integration list to reject an unknown program id and report whether
+  // the integration is already connected, so it needs the same scope as any other program read.
+  growsurf_get_integration_connect_link: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
 } as const satisfies Record<string, ToolAuthorizationRequirement>;
 
 // Adds the manifest-owned standard MCP annotations to one listed tool. Throwing preserves the
