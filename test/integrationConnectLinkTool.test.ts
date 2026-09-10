@@ -121,6 +121,42 @@ describe("growsurf_get_integration_connect_link", () => {
     }
   });
 
+  // This tool answered offline before it started verifying the program, and connecting an
+  // integration is a dashboard step either way. A token that cannot read the integration list must
+  // still get the link rather than nothing.
+  it.each([
+    ["a token without program:read", 403, { GROWSURF_API_KEY: "api_key", GROWSURF_CAMPAIGN_ID: "abc123" }],
+    ["an unavailable API", 503, { GROWSURF_API_KEY: "api_key", GROWSURF_CAMPAIGN_ID: "abc123" }],
+    ["no API key at all", 401, { GROWSURF_CAMPAIGN_ID: "abc123" }],
+  ])("still returns an unverified link for %s", async (_label, status, env) => {
+    globalThis.fetch = vi.fn(async () =>
+      jsonResponse({ code: "InsufficientScope", message: "Denied" }, status),
+    ) as typeof fetch;
+
+    const { client, close } = await connect(env);
+    try {
+      const result = await client.callTool({
+        name: "growsurf_get_integration_connect_link",
+        arguments: { integration: "stripe" },
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(result.structuredContent).toMatchObject({
+        integration: "stripe",
+        programVerified: false,
+        url: "https://app.growsurf.com/editor/abc123/options/integrations?integration=stripe",
+      });
+      expect(result.structuredContent).toHaveProperty("note", expect.stringContaining("could not be read"));
+      // Unknown state must stay absent. Reporting `false` would read as "not connected" and send
+      // the user to connect an integration that may already be working.
+      expect(result.structuredContent).not.toHaveProperty("connected");
+      expect(result.structuredContent).not.toHaveProperty("enabled");
+      expect(result.structuredContent).not.toHaveProperty("autoDisabled");
+    } finally {
+      await close();
+    }
+  });
+
   it("refuses an integration the program type has no card for", async () => {
     globalThis.fetch = vi.fn(async () =>
       jsonResponse({

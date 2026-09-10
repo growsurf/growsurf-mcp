@@ -751,7 +751,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const parseProgramResourceUploadAllowedOrigins = (value: string | undefined): Set<string> => {
   if (!value) {
     throw programResourceUploadError(
-      "Program Resource file upload is disabled because no upload origin allowlist is configured.",
+      "Program Resource file upload is disabled because no upload origin allowlist is configured. Set `GROWSURF_UPLOAD_ALLOWED_ORIGINS` to the exact HTTPS origins GrowSurf may upload to, then retry. `LINK` and `TEXT` resources need no such configuration.",
     );
   }
 

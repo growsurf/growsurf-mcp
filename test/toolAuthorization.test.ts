@@ -278,9 +278,9 @@ describe("MCP tool authorization", () => {
     "advertises both participant and transaction identifier requirements for %s",
     async (toolName) => {
       const tool = (await listTools()).find((candidate) => candidate.name === toolName);
-      const allOf = (tool?.inputSchema as { allOf?: Array<{ anyOf?: unknown[] }> } | undefined)?.allOf;
+      const allOf = (tool?.inputSchema as { allOf?: Array<{ anyOf?: unknown[]; if?: unknown; then?: unknown }> } | undefined)?.allOf;
 
-      expect(allOf).toHaveLength(2);
+      expect(allOf).toHaveLength(4);
       expect(allOf?.[0]?.anyOf).toEqual([
         { required: ["participantId"] },
         { required: ["participantEmail"] },
@@ -294,6 +294,17 @@ describe("MCP tool authorization", () => {
         { required: ["paymentIntentId"] },
         { required: ["chargeId"] },
       ]);
+      // A provider payment is priced from the connected provider, so the advertised schema has to
+      // demand that provider's own transaction id and an explicit live/test mode, and reject a
+      // stray `testMode` without a provider. The handler rejects the same combinations.
+      expect(allOf?.[2]).toEqual({
+        if: { required: ["paymentProvider"] },
+        then: { required: ["testMode", "transactionId"] },
+      });
+      expect(allOf?.[3]).toEqual({
+        if: { not: { required: ["paymentProvider"] } },
+        then: { not: { required: ["testMode"] } },
+      });
     },
   );
 
