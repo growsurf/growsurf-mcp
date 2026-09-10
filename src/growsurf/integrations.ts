@@ -47,7 +47,12 @@ export type Integration = {
    * and Tango Card is the one place the two spellings diverge.
    */
   cardId?: string;
-  /** Human display label, taken from the dashboard. */
+  /**
+   * Human display label, taken from the dashboard. Kit and Brevo additionally carry their former
+   * brand name (`Kit (formerly ConvertKit)`, `Brevo (formerly Sendinblue)`) so an agent matches a
+   * customer who still says "ConvertKit" or "Sendinblue"; the dashboard and the REST API report the
+   * current name alone.
+   */
   label: string;
   category: IntegrationCategory;
   /**
