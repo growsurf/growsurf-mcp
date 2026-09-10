@@ -215,8 +215,10 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_embeddable_element_snippet: unrestricted(TOOL_BEHAVIOR.READ),
   growsurf_grsf_config_snippet: unrestricted(TOOL_BEHAVIOR.READ),
   // Reads the program's live integration list to reject an unknown program id and report whether
-  // the integration is already connected, so it needs the same scope as any other program read.
-  growsurf_get_integration_connect_link: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
+  // the integration is already connected, but falls back to the offline dashboard link when that
+  // read is unavailable. It stays unrestricted so a credential without `program:read` still gets
+  // the link, which is all this tool ever returned before the live check existed.
+  growsurf_get_integration_connect_link: unrestricted(TOOL_BEHAVIOR.READ),
 } as const satisfies Record<string, ToolAuthorizationRequirement>;
 
 // Adds the manifest-owned standard MCP annotations to one listed tool. Throwing preserves the

@@ -11,7 +11,7 @@ import { z } from "zod";
 
 export const GROWSURF_MCP_VERSION = "0.14.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
-import { resolveCampaignClient, resolveCampaignId } from "./growsurf/campaignScope.js";
+import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
 import {
   clientSnippetsSchema,
@@ -420,6 +420,14 @@ const TRANSACTION_IDENTIFIER_JSON_REQUIREMENT = {
     { required: ["chargeId"] },
   ],
 };
+
+// A provider payment is read from the connected provider, so it needs that provider's own
+// `transactionId` and an explicit live/test mode, and `testMode` means nothing without a provider.
+// The handler rejects any other combination, so `tools/list` has to say so too.
+const PROVIDER_PAYMENT_JSON_REQUIREMENTS = [
+  { if: { required: ["paymentProvider"] }, then: { required: ["testMode", "transactionId"] } },
+  { if: { not: { required: ["paymentProvider"] } }, then: { not: { required: ["testMode"] } } },
+];
 
 const recordSaleSchema = z
   .object({
@@ -1393,6 +1401,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                   "Lifecycle transition. IN_PROGRESS publishes/resumes the program; COMPLETE ends it. These are the only accepted targets — DRAFT/PENDING/CANCELLED are rejected by the API.",
               },
             },
+            // `campaignId` only targets a program, so it does not count as a field to update.
+            anyOf: [
+              { required: ["name"] },
+              { required: ["companyName"] },
+              { required: ["companyLogoImageUrl"] },
+              { required: ["status"] },
+            ],
             additionalProperties: false,
           },
         },
@@ -1583,7 +1598,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_prepare_program_resource_file",
           description:
-            "Prepare a local file for a `FILE` Program Resource. Pass the safe file name, matching supported MIME type, and padded base64 bytes (10 MB maximum). GrowSurf requests a one-time ticket and uploads only to the secure HTTPS destination selected by GrowSurf. The result contains only `uploadTicket` and `uploadResult`; pass both unchanged to `growsurf_create_program_resource` or `growsurf_update_program_resource`. The tool does not accept upload URLs or credentials and never retries an ambiguous upload. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Prepare a local file for a `FILE` Program Resource. Pass the safe file name, matching supported MIME type, and padded base64 bytes (10 MB maximum). GrowSurf requests a one-time ticket and uploads only to the secure HTTPS destination selected by GrowSurf. The result contains only `uploadTicket` and `uploadResult`; pass both unchanged to `growsurf_create_program_resource` or `growsurf_update_program_resource`. The tool does not accept upload URLs or credentials and never retries an ambiguous upload. This tool is the only source of `uploadTicket` and `uploadResult`, and it needs `GROWSURF_UPLOAD_ALLOWED_ORIGINS` set on the server; without it, `FILE` resources are unavailable and only `LINK` and `TEXT` resources can be created. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2080,6 +2095,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               isEnabled: { type: "boolean" },
             },
             required: ["webhookId"],
+            // `webhookId` and `campaignId` address the webhook; one real field has to change too.
+            anyOf: [
+              { required: ["payloadUrl"] },
+              { required: ["events"] },
+              { required: ["secret"] },
+              { required: ["isEnabled"] },
+            ],
             additionalProperties: false,
           },
         },
@@ -2425,7 +2447,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               description: { type: "string", maxLength: 500 },
             },
             required: ["currency", "grossAmount"],
-            allOf: [PARTICIPANT_IDENTIFIER_JSON_REQUIREMENT, TRANSACTION_IDENTIFIER_JSON_REQUIREMENT],
+            allOf: [PARTICIPANT_IDENTIFIER_JSON_REQUIREMENT, TRANSACTION_IDENTIFIER_JSON_REQUIREMENT, ...PROVIDER_PAYMENT_JSON_REQUIREMENTS],
             additionalProperties: false,
           },
         },
@@ -2467,7 +2489,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               paymentId: { type: "string" },
               description: { type: "string" },
             },
-            allOf: [PARTICIPANT_IDENTIFIER_JSON_REQUIREMENT, TRANSACTION_IDENTIFIER_JSON_REQUIREMENT],
+            allOf: [PARTICIPANT_IDENTIFIER_JSON_REQUIREMENT, TRANSACTION_IDENTIFIER_JSON_REQUIREMENT, ...PROVIDER_PAYMENT_JSON_REQUIREMENTS],
             additionalProperties: false,
           },
         },
@@ -2592,7 +2614,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_integration_connect_link",
           description:
-            "Return a dashboard link that opens a specific integration's connect panel in the GrowSurf Program Editor (Options > Integrations). Use this whenever a user says they want to connect an integration, for example \"connect Stripe\", \"set up PayPal or Wise payouts\", \"send Tango Card gift cards\", or \"sync signups to Mailchimp\": call it with the `integration` key and give the user the returned `url` to open. Connecting an integration happens in the dashboard, not through the API. GrowSurf cannot link a Stripe, PayPal, Wise, or other account on the user's behalf, so hand them the link. `integration` must be one of the supported keys (some are camelCase, e.g. `constantContact`, `helpScout`). The link points at GROWSURF_CAMPAIGN_ID; pass `campaignId` to target a different program. The program is checked before the link is returned, and the result also reports whether the integration is already `connected`, `enabled`, or `autoDisabled`, so you can skip handing over a link the user does not need. Tango Card, Tremendous, and Bask Health apply to referral programs only. Wise applies to affiliate programs only.",
+            "Return a dashboard link that opens a specific integration's connect panel in the GrowSurf Program Editor (Options > Integrations). Use this whenever a user says they want to connect an integration, for example \"connect Stripe\", \"set up PayPal or Wise payouts\", \"send Tango Card gift cards\", or \"sync signups to Mailchimp\": call it with the `integration` key and give the user the returned `url` to open. Connecting an integration happens in the dashboard, not through the API. GrowSurf cannot link a Stripe, PayPal, Wise, or other account on the user's behalf, so hand them the link. `integration` must be one of the supported keys (some are camelCase, e.g. `constantContact`, `helpScout`). The link points at GROWSURF_CAMPAIGN_ID; pass `campaignId` to target a different program. The program is checked before the link is returned, and the result also reports whether the integration is already `connected`, `enabled`, or `autoDisabled`, so you can skip handing over a link the user does not need. If that check cannot run, `programVerified` comes back `false` and you still get a working production link. Tango Card, Tremendous, and Bask Health apply to referral programs only. Wise applies to affiliate programs only.",
           inputSchema: {
             type: "object",
             properties: {
@@ -3310,11 +3332,35 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           // a production link. Reading the program's live integration list fixes both: the API
           // rejects an unknown program (404 CampaignNotFound) before we hand anything over, and it
           // returns the link for its own environment alongside the integration's current state.
-          const growsurf = resolveCampaignClient(env, input);
-          const campaignId = resolveCampaignId(env, input);
-          const statuses = ((await growsurf.listIntegrations()) as IntegrationListPayload).integrations ?? [];
-          const status = statuses.find((entry) => entry?.id === integration.key);
-          if (!status) {
+          // Building the link needs only the program id, so this tool stays usable without
+          // credentials, the way it worked before it gained a live check.
+          const campaignId = input.campaignId ?? env.GROWSURF_CAMPAIGN_ID;
+          if (!campaignId) {
+            return {
+              content: [{
+                type: "text",
+                text: "No program (campaign) id. Pass campaignId to this tool (for example the id returned by growsurf_create_campaign), or set GROWSURF_CAMPAIGN_ID.",
+              }],
+              isError: true,
+            };
+          }
+          // The live read is what verifies the program and reports current state, but it needs an
+          // API key with `program:read` and a reachable API. Without either, the offline link is
+          // still the right answer. A rejected program id is the exception: that link would open a
+          // page that does not exist, so 400 and 404 still fail instead of falling back.
+          let statuses: IntegrationListPayload["integrations"] | undefined;
+          if (env.GROWSURF_API_KEY) {
+            try {
+              const growsurf = resolveCampaignClient(env, input);
+              statuses = ((await growsurf.listIntegrations()) as IntegrationListPayload).integrations ?? [];
+            } catch (error) {
+              const status = (error as { status?: unknown } | null)?.status;
+              if (status === 400 || status === 404) throw error;
+              statuses = undefined;
+            }
+          }
+          const status = statuses?.find((entry) => entry?.id === integration.key);
+          if (statuses && !status) {
             return {
               content: [
                 {
@@ -3337,11 +3383,18 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             category: integration.category,
             referralOnly: integration.referralOnly ?? false,
             affiliateOnly: integration.affiliateOnly ?? false,
-            connected: status.connected === true,
-            enabled: status.enabled === true,
-            autoDisabled: status.autoDisabled === true,
-            url: status.connectUrl ?? buildIntegrationConnectUrl(campaignId, integration.key),
-            note: status.autoDisabled === true
+            programVerified: status !== undefined,
+            ...(status
+              ? {
+                  connected: status.connected === true,
+                  enabled: status.enabled === true,
+                  autoDisabled: status.autoDisabled === true,
+                }
+              : {}),
+            url: status?.connectUrl ?? buildIntegrationConnectUrl(campaignId, integration.key),
+            note: status === undefined
+              ? `Open this link and connect ${integration.label} from the Program Editor. This program's integration list could not be read, so the link points at the production dashboard and was not checked against the program. Connecting an integration happens in the GrowSurf dashboard, not through the API.`
+              : status.autoDisabled === true
               ? `${integration.label} is connected but GrowSurf switched it off after repeated delivery failures. Open this link to reconnect it from the Program Editor.`
               : status.enabled === true
                 ? `${integration.label} is already connected and switched on. Open this link to review or change its settings in the Program Editor.`

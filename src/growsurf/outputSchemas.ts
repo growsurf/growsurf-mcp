@@ -1979,6 +1979,18 @@ const INTEGRATION_CONNECT_LINK: ToolOutputSchema = {
     category: { type: "string", description: "The integration's category." },
     referralOnly: { type: "boolean", description: "`true` when the integration applies to referral programs only." },
     affiliateOnly: { type: "boolean", description: "`true` when the integration applies to affiliate programs only." },
+    programVerified: {
+      type: "boolean",
+      description:
+        "`true` when the program's live integration list was read, so the program id is confirmed and the three state fields below are present and current. `false` when that read was unavailable, for example without an API key or `program:read`: the link still works but points at the production dashboard, and the state fields are omitted because the state is unknown. Never treat an absent state field as `false`.",
+    },
+    connected: { type: "boolean", description: "Whether the program has stored credentials for this integration. Present only when `programVerified` is `true`." },
+    enabled: { type: "boolean", description: "Whether the integration is switched on and currently working. Present only when `programVerified` is `true`." },
+    autoDisabled: {
+      type: "boolean",
+      description:
+        "Whether GrowSurf switched the integration off after repeated delivery failures. Present only when `programVerified` is `true`.",
+    },
     url: { type: "string", description: "Dashboard link that opens the integration's connect panel." },
     note: { type: "string", description: "Instructions to relay to the user." },
   },

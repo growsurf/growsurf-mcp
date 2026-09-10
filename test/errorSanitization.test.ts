@@ -259,4 +259,39 @@ describe("rejected tool input", () => {
       await server.close();
     }
   });
+  // The hosted MCP server runs on Cloudflare Workers, which refuse `eval` and `new Function`. A
+  // validator that compiles each schema into a function throws there on the first tool call while
+  // `tools/list` keeps working, so nothing catches it before customers do.
+  it("validates tool input without dynamic code generation", async () => {
+    const server = createGrowSurfMcpServer({
+      env: { GROWSURF_API_KEY: "api_key", GROWSURF_CAMPAIGN_ID: "abc123" },
+    });
+    const client = new Client({ name: "no-codegen-test-client", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const realFunction = globalThis.Function;
+    const denyCodeGeneration = () => {
+      throw new EvalError("Code generation from strings disallowed for this context");
+    };
+
+    try {
+      const { tools } = await client.listTools();
+      expect(tools.length).toBeGreaterThan(0);
+
+      globalThis.Function = new Proxy(realFunction, {
+        construct: denyCodeGeneration,
+        apply: denyCodeGeneration,
+      });
+
+      for (const tool of tools) {
+        const guard = createToolInputGuard(tool.inputSchema);
+        expect(() => guard({ unexpectedField: true }), `${tool.name} must reject without codegen`).toThrow();
+      }
+    } finally {
+      globalThis.Function = realFunction;
+      await client.close();
+      await server.close();
+    }
+  });
 });
