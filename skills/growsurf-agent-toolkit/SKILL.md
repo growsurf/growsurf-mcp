@@ -9,7 +9,7 @@ Use this skill to turn a user goal into a real GrowSurf program, not just API ca
 
 ## Ground Rules
 
-- Use the user's own GrowSurf API key. If they do not have an account, call `growsurf_create_account`, give them the verification step, and pause until the key is usable.
+- Use the user's own GrowSurf API key. If they do not have an account, call `growsurf_create_account`, give them the verification step, and pause until the key is usable. The key comes back once and cannot be recovered through the API, so if you cannot store a secret past the current conversation, have the user connect `https://mcp.growsurf.com` and sign in instead.
 - If the user wants to work on an existing program and did not provide a `campaignId`, call `growsurf_list_campaigns` first and pick or confirm the target program.
 - If the user wants to inspect or operate on an existing participant and did not provide a participant ID/email, call `growsurf_list_participants` first.
 - After `growsurf_create_campaign`, pass the returned `id` as `campaignId` to every campaign-scoped tool. Do not rely on a process-level default after creating a new program.
