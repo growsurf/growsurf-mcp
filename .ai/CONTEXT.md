@@ -34,6 +34,12 @@ This repo owns the public GrowSurf Model Context Protocol server package `@grows
 | `test/` | Vitest coverage for MCP behavior and snippets |
 | `README.md` | Public package documentation |
 
+## Reserved npm Names
+
+`growsurf` and `growsurf-cli` are published on npm as `0.0.1` reservation stubs: `README.md` plus `LICENSE`, no code, no `bin`, no dependencies. They hold the names for the CLI and point readers at `@growsurfteam/growsurf-mcp`.
+
+When this package gains real subcommands, republish `growsurf` as the CLI entry point under a new version. npm never allows overwriting a published version, so `0.0.1` stays fetchable; only `latest` moves.
+
 ## Verification
 
 - `npm run test` runs Vitest.
