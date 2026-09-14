@@ -1656,8 +1656,16 @@ const PARTICIPANT_LIST_RESPONSE: ToolOutputSchema = {
 const BULK_DELETE_PARTICIPANTS_RESPONSE: ToolOutputSchema = {
   type: "object",
   description:
-    "Bulk delete outcome. A `200` response can still include `NOT_FOUND` or `ERROR` rows, so check the summary.",
+    "Bulk delete outcome. A `202` response includes `analyticsErasure` when analytics erasure is pending. Both `200` and `202` responses can include `NOT_FOUND` or `ERROR` rows, so check the summary.",
   properties: {
+    analyticsErasure: {
+      type: "object",
+      description: "Analytics erasure is pending. Reports can retain removed participants until erasure completes. Do not repeat successful deletions.",
+      properties: {
+        status: { type: "string", enum: ["pending"], description: "Erasure has been accepted but is not confirmed complete." },
+        operationId: { type: "string", description: "Opaque reference for support inquiries about this analytics erasure." },
+      },
+    },
     summary: {
       type: "object",
       description: "Counts across all submitted entries.",

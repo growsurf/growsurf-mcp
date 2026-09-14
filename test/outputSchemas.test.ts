@@ -662,3 +662,24 @@ describe("tool output schemas", () => {
     expect(invalid.structuredContent).toMatchObject({ ok: false });
   });
 });
+
+// Public contract: a successful MCP deletion retains the pending receipt through structured output.
+it("returns pending analytics erasure from HTTP 202 through the MCP tool", async () => {
+  const body = { summary: { total: 1, deletedCount: 1, notFoundCount: 0, duplicateCount: 0, errorCount: 0 },
+    results: [{ index: 0, identifier: "participant", status: "DELETED" }],
+    analyticsErasure: { status: "pending", operationId: "receipt" } };
+  const fetchMock = vi.fn(async () => new Response(JSON.stringify(body), {
+    status: 202, headers: { "content-type": "application/json" },
+  }));
+  globalThis.fetch = fetchMock as typeof fetch;
+  const client = await connectClient();
+  try {
+    const result = await client.callTool({ name: "growsurf_bulk_delete_participants",
+      arguments: { participants: ["participant"] } });
+    expect(result.structuredContent).toEqual(body);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  } finally {
+    await client.close();
+    globalThis.fetch = originalFetch;
+  }
+});
