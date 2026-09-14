@@ -1,0 +1,836 @@
+{
+  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "GrowSurf",
+    "subtitle": "Run your referral program",
+    "description": "GrowSurf lets you build and run a referral or affiliate program without leaving ChatGPT. Set up a program from a proven template, decide the reward, and get the snippet to install it on your site or in your iOS or Android app. Once it is live, add and update participants, credit referrals, record sales and refunds, and read program and participant analytics. When something looks wrong, a symptom-first troubleshooter walks through the checks in order and points at the field to look at. Program and participant data stays inside the GrowSurf team you connect.",
+    "category": "BUSINESS"
+  },
+  "tools": {
+    "growsurf_integration_guide": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns a written GrowSurf integration plan and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only returns a written GrowSurf integration plan and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_agent_program_creation_eval": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns program-creation prompts and acceptance checks as text and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only returns program-creation prompts and acceptance checks as text and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_mobile_sdk_guide": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns native iOS and Android SDK guidance as text and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only returns native iOS and Android SDK guidance as text and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_program_design_advisor": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns program design guidance and aggregate benchmark figures and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only returns program design guidance and aggregate benchmark figures and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_troubleshoot_referral_tracking": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns ordered troubleshooting checks and likely causes as text and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only returns ordered troubleshooting checks and likely causes as text and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_api_library_snippets": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns REST API code snippets as text and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only returns REST API code snippets as text and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_get_campaign": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads one program's settings and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only reads one program's settings and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_list_campaigns": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only lists the programs the credential can access and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only lists the programs the credential can access and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_create_campaign": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it creates a program in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only creates a new program in draft status and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_update_campaign": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it overwrites program settings in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it overwrites a program's name, branding,, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_clone_campaign": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it creates a program copy in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only copies an existing program into a new draft program and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_list_campaign_rewards": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only lists a program's configured campaign rewards and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only lists a program's configured campaign rewards and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_create_campaign_reward": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it adds a reward configuration in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only adds a new campaign reward configuration to a program and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_update_campaign_reward": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it overwrites a reward configuration in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it overwrites an existing campaign reward configuration, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_delete_campaign_reward": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it removes a reward configuration in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it removes a campaign reward configuration from a program, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_list_program_resources": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only lists a program's participant-facing resources and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only lists a program's participant-facing resources and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_prepare_program_resource_file": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it uploads a file and returns a single-use upload ticket.",
+        "open_world_justification": "Uploads to an external storage origin outside the GrowSurf workspace, so it reaches an entity beyond the bound account.",
+        "destructive_justification": "Only uploads a caller-supplied file to the storage origin GrowSurf selects and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_create_program_resource": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it adds a resource in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only adds a participant-facing resource to a program and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_update_program_resource": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it overwrites a resource in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it overwrites an existing participant resource, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_delete_program_resource": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it removes a resource in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it removes a participant resource from a program, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_get_campaign_design": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads a program's design settings and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only reads a program's design settings and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_update_campaign_design": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it overwrites design settings in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it overwrites a program's design settings, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_get_campaign_emails": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads a program's email settings and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only reads a program's email settings and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_update_campaign_emails": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it overwrites email settings in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it overwrites a program's email content settings, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_get_campaign_options": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads a program's behavior options and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only reads a program's behavior options and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_update_campaign_options": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it overwrites program options in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it overwrites a program's behavior options, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_get_campaign_installation": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads a program's installation settings and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only reads a program's installation settings and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_update_campaign_installation": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it overwrites installation settings in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it overwrites a program's installation settings, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_capture_referral_flow_screenshots": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it generates preview images in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only generates temporary preview images of the program's own referral experience and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_create_account": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it creates a new GrowSurf account.",
+        "open_world_justification": "Creates an account for an arbitrary email address that is not yet inside any bound GrowSurf workspace.",
+        "destructive_justification": "Destructive because it creates a new GrowSurf account for an email address the caller supplies, and a sent message cannot be recalled."
+      }
+    },
+    "growsurf_get_team": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads the bound team's profile and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only reads the bound team's profile and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_update_team": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it overwrites team profile fields in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it overwrites the bound team's profile fields, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_request_team_verification": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it starts verification in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only starts the team verification process and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_resend_team_owner_verification_email": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it sends a verification email on the customer's behalf.",
+        "open_world_justification": "Delivers mail to an external inbox outside the GrowSurf workspace.",
+        "destructive_justification": "Destructive because it sends a verification email to the team owner, and a sent message cannot be recalled."
+      }
+    },
+    "growsurf_get_campaign_analytics": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads aggregate program analytics and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only reads aggregate program analytics and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_get_campaign_activation_analytics": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads participant activation analytics for one enrollment cohort and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only reads participant activation analytics for one enrollment cohort and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_list_integrations": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only lists the integrations connected to a program and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only lists the integrations connected to a program and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_list_campaign_webhooks": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only lists a program's configured webhooks and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only lists a program's configured webhooks and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_create_campaign_webhook": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it adds a webhook subscription in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only adds a webhook subscription to a program and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_update_campaign_webhook": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it overwrites a webhook subscription in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it overwrites an existing webhook subscription, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_delete_campaign_webhook": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it removes a webhook subscription in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it removes a webhook subscription from a program, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_test_campaign_webhook": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it sends a test event to the customer's webhook endpoint.",
+        "open_world_justification": "Sends an HTTP request to a customer-chosen external URL, which is an open-ended destination.",
+        "destructive_justification": "Destructive because it sends a test event to the customer's configured webhook URL, and a sent message cannot be recalled."
+      }
+    },
+    "growsurf_list_participants": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only lists a program's participants and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only lists a program's participants and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_get_participant": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads one participant's record and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only reads one participant's record and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_add_participant": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it adds a participant in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only adds a participant to a program and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_update_participant": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it overwrites participant fields in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it overwrites fields on an existing participant record, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_bulk_delete_participants": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it deletes participant records in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it deletes participants from a program in bulk, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_email_participant": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it sends a program email on the customer's behalf.",
+        "open_world_justification": "Delivers mail to a participant's external inbox outside the GrowSurf workspace.",
+        "destructive_justification": "Destructive because it sends a program email to a participant's address, and a sent message cannot be recalled."
+      }
+    },
+    "growsurf_get_participant_analytics": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads one participant's analytics and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only reads one participant's analytics and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_get_participant_activity_logs": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads one participant's activity history and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only reads one participant's activity history and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_trigger_referral": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it credits a referral and can issue a reward in the customer's GrowSurf account.",
+        "open_world_justification": "Can issue a reward through an external payout or gift-card provider outside the GrowSurf workspace.",
+        "destructive_justification": "Destructive because crediting a referral can issue a real reward to a participant, which cannot be recalled once sent."
+      }
+    },
+    "growsurf_cancel_delayed_referral": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it cancels a pending referral in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it cancels a referral that has not yet been credited, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_get_participant_payout_destination": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads one participant's payout-destination status and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only reads one participant's payout-destination status and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_request_participant_payout_destination_confirmation": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it sends a confirmation link to a participant.",
+        "open_world_justification": "Delivers a confirmation link to a participant's external inbox outside the GrowSurf workspace.",
+        "destructive_justification": "Destructive because it sends a participant a one-time payout-confirmation link, and a sent message cannot be recalled."
+      }
+    },
+    "growsurf_record_sale": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it records a sale in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only records a sale against a participant so commission can be calculated and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_refund_transaction": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it reverses a recorded sale and its commission in the customer's GrowSurf account.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Destructive because it refunds a recorded sale, which replaces or removes prior state that cannot be restored from this tool."
+      }
+    },
+    "growsurf_create_mobile_participant_token": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not read-only because it mints a new short-lived participant token.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only mints a short-lived participant token for a mobile app session and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_participant_auth_hash": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only computes an authentication hash locally from values the caller supplies and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only computes an authentication hash locally from values the caller supplies and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_webhook_normalize": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only validates and normalizes a webhook payload the caller supplies and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only validates and normalizes a webhook payload the caller supplies and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_client_snippets": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns client-side install snippets as text and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only returns client-side install snippets as text and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_embeddable_element_snippet": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns an HTML snippet for an embeddable element and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only returns an HTML snippet for an embeddable element and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_grsf_config_snippet": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns a configuration snippet for participant auto-authentication and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only returns a configuration snippet for participant auto-authentication and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    },
+    "growsurf_get_integration_connect_link": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns a dashboard link for connecting an integration and does not create, change, or remove anything.",
+        "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
+        "destructive_justification": "Only returns a dashboard link for connecting an integration and never deletes, overwrites, revokes access, or performs an irreversible action."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "Create a new referral program from a template.",
+      "user_prompt": "Create a referral program in GrowSurf for my SaaS product.",
+      "file_attachment_urls": null,
+      "tools_triggered": "growsurf_create_campaign",
+      "expected_output": "Creates a draft program with starter content and returns the new program id, with rewards left switched off until the user names an incentive.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Look up a participant and their referral history.",
+      "user_prompt": "Look up the GrowSurf participant with email test@example.com and show their referrals.",
+      "file_attachment_urls": null,
+      "tools_triggered": "growsurf_get_participant",
+      "expected_output": "Returns the participant's record, including referral count and reward status, or reports that no participant matches.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Read program performance over a period.",
+      "user_prompt": "How is my GrowSurf referral program performing this month?",
+      "file_attachment_urls": null,
+      "tools_triggered": "growsurf_get_campaign_analytics",
+      "expected_output": "Returns aggregate program analytics such as participants, shares, and credited referrals for the requested period.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Get the install snippet for the site.",
+      "user_prompt": "Give me the code to install GrowSurf on my website.",
+      "file_attachment_urls": null,
+      "tools_triggered": "growsurf_client_snippets",
+      "expected_output": "Returns copy-pasteable client-side snippets with placement guidance and requires no credentials.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Diagnose a referral that was not credited.",
+      "user_prompt": "A customer referred a friend in GrowSurf but the referral was never credited. What is wrong?",
+      "file_attachment_urls": null,
+      "tools_triggered": "growsurf_troubleshoot_referral_tracking",
+      "expected_output": "Returns ordered checks with the read tool and field for each, the most common causes first, and the matching fixes.",
+      "expected_output_url": null
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Do not trigger for unrelated email marketing requests.",
+      "user_prompt": "Write and send a newsletter to my mailing list.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because sending newsletters is outside its supported workflows.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not trigger for general web research about referral marketing.",
+      "user_prompt": "What are the best referral marketing tactics for ecommerce in 2026?",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because the request asks for general advice and does not touch the user's GrowSurf account.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not trigger for payment processing outside GrowSurf.",
+      "user_prompt": "Refund my customer's Stripe charge from last week.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because it cannot act on charges in an external payment processor.",
+      "expected_output_url": null
+    }
+  ]
+}
