@@ -24,6 +24,10 @@ const packageJson = JSON.parse(
   types?: string;
   version?: string;
 };
+const pluginManifests = [".claude-plugin/plugin.json", ".codex-plugin/plugin.json"].map((path) => ({
+  path,
+  manifest: JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), "utf8")) as { version?: string },
+}));
 const serverJson = JSON.parse(
   readFileSync(new URL("../server.json", import.meta.url), "utf8"),
 ) as {
@@ -40,6 +44,11 @@ describe("package distribution", () => {
     expect(GROWSURF_MCP_VERSION).toBe(packageJson.version);
     expect(serverJson.version).toBe(packageJson.version);
     expect(serverJson.packages?.[0]?.version).toBe(packageJson.version);
+    // The plugin directories mirror this repo on every push, so a stale manifest version is what
+    // users see. Assert parity here rather than catching the drift a release later.
+    for (const { path, manifest } of pluginManifests) {
+      expect(manifest.version, path).toBe(packageJson.version);
+    }
     expect(packageJson.types).toBe("./dist/index.d.ts");
     expect(packageJson.exports).toMatchObject({
       "./server": {
