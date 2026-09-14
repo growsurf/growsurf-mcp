@@ -140,22 +140,28 @@ jobs:
           mcp-publisher --version
 
       # The registry verifies ownership by reading `mcpName` out of the published npm package, so
-      # it can only run once npm actually serves this version.
+      # it can only run once npm actually serves this version. npm answers the publish with "your
+      # package is being processed and may take a few minutes to become available", and 0.15.1 took
+      # about four of them. A 2.5-minute ceiling turned that ordinary lag into a failed release that
+      # published to npm and skipped the registry, so keep the window well clear of it. Waiting
+      # costs one idle runner; timing out costs a hand-run rerun and a registry left a version behind.
       - name: Wait for npm to serve this version
         if: steps.registry.outputs.exists == 'false'
         env:
           NAME: ${{ steps.pkg.outputs.name }}
           VERSION: ${{ steps.pkg.outputs.version }}
         run: |
-          for attempt in $(seq 1 10); do
+          attempts=60
+          delay=15
+          for attempt in $(seq 1 "${attempts}"); do
             if npm view "${NAME}@${VERSION}" version >/dev/null 2>&1; then
-              echo "npm serves ${NAME}@${VERSION}."
+              echo "npm serves ${NAME}@${VERSION} after $(( (attempt - 1) * delay ))s."
               exit 0
             fi
-            echo "Attempt ${attempt}: npm does not serve ${NAME}@${VERSION} yet."
-            sleep 15
+            echo "Attempt ${attempt}/${attempts}: npm does not serve ${NAME}@${VERSION} yet."
+            sleep "${delay}"
           done
-          echo "::error::npm never served ${NAME}@${VERSION}; the registry publish would fail ownership validation."
+          echo "::error::npm never served ${NAME}@${VERSION} within $(( attempts * delay / 60 )) minutes; the registry publish would fail ownership validation. Re-run this job once npm serves it; the npm publish is skipped because the version already exists."
           exit 1
 
       - name: Publish to the Official MCP Registry
