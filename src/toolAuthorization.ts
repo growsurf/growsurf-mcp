@@ -47,6 +47,8 @@ type ToolSafetyAnnotations = Required<
   Pick<ToolAnnotations, "readOnlyHint" | "destructiveHint" | "idempotentHint" | "openWorldHint">
 >;
 
+type ToolDisplayAnnotations = ToolSafetyAnnotations & Required<Pick<ToolAnnotations, "title">>;
+
 type ToolBehavior = {
   riskTier: ToolRiskTier;
   annotations: ToolSafetyAnnotations;
@@ -221,16 +223,91 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_get_integration_connect_link: unrestricted(TOOL_BEHAVIOR.READ),
 } as const satisfies Record<string, ToolAuthorizationRequirement>;
 
+// Human-readable display names for every listed tool. MCP gives `annotations.title` precedence
+// over the raw `growsurf_*` identifier, and the Claude connectors directory requires a title on
+// every tool, so titles live beside the manifest and a new tool fails the completeness check
+// until it has one.
+export const TOOL_TITLES = {
+  growsurf_integration_guide: "Integration Guide",
+  growsurf_agent_program_creation_eval: "Program Creation Evals",
+  growsurf_mobile_sdk_guide: "Mobile SDK Guide",
+  growsurf_program_design_advisor: "Program Design Advisor",
+  growsurf_troubleshoot_referral_tracking: "Troubleshoot Referral Tracking",
+  growsurf_api_library_snippets: "API Library Snippets",
+  growsurf_get_campaign: "Get Program",
+  growsurf_list_campaigns: "List Programs",
+  growsurf_create_campaign: "Create Program",
+  growsurf_update_campaign: "Update Program",
+  growsurf_clone_campaign: "Clone Program",
+  growsurf_list_campaign_rewards: "List Campaign Rewards",
+  growsurf_create_campaign_reward: "Create Campaign Reward",
+  growsurf_update_campaign_reward: "Update Campaign Reward",
+  growsurf_delete_campaign_reward: "Delete Campaign Reward",
+  growsurf_list_program_resources: "List Program Resources",
+  growsurf_prepare_program_resource_file: "Prepare Program Resource File",
+  growsurf_create_program_resource: "Create Program Resource",
+  growsurf_update_program_resource: "Update Program Resource",
+  growsurf_delete_program_resource: "Delete Program Resource",
+  growsurf_get_campaign_design: "Get Program Design",
+  growsurf_update_campaign_design: "Update Program Design",
+  growsurf_get_campaign_emails: "Get Program Emails",
+  growsurf_update_campaign_emails: "Update Program Emails",
+  growsurf_get_campaign_options: "Get Program Options",
+  growsurf_update_campaign_options: "Update Program Options",
+  growsurf_get_campaign_installation: "Get Program Installation",
+  growsurf_update_campaign_installation: "Update Program Installation",
+  growsurf_capture_referral_flow_screenshots: "Capture Referral Flow Screenshots",
+  growsurf_create_account: "Create GrowSurf Account",
+  growsurf_get_team: "Get Team",
+  growsurf_update_team: "Update Team",
+  growsurf_request_team_verification: "Request Team Verification",
+  growsurf_resend_team_owner_verification_email: "Resend Team Owner Verification Email",
+  growsurf_get_campaign_analytics: "Get Program Analytics",
+  growsurf_get_campaign_activation_analytics: "Get Activation Analytics",
+  growsurf_list_integrations: "List Integrations",
+  growsurf_list_campaign_webhooks: "List Webhooks",
+  growsurf_create_campaign_webhook: "Create Webhook",
+  growsurf_update_campaign_webhook: "Update Webhook",
+  growsurf_delete_campaign_webhook: "Delete Webhook",
+  growsurf_test_campaign_webhook: "Send Test Webhook",
+  growsurf_list_participants: "List Participants",
+  growsurf_get_participant: "Get Participant",
+  growsurf_add_participant: "Add Participant",
+  growsurf_update_participant: "Update Participant",
+  growsurf_bulk_delete_participants: "Bulk Delete Participants",
+  growsurf_email_participant: "Email Participant",
+  growsurf_get_participant_analytics: "Get Participant Analytics",
+  growsurf_get_participant_activity_logs: "Get Participant Activity Logs",
+  growsurf_trigger_referral: "Trigger Referral",
+  growsurf_cancel_delayed_referral: "Cancel Delayed Referral",
+  growsurf_get_participant_payout_destination: "Get Payout Destination",
+  growsurf_request_participant_payout_destination_confirmation: "Request Payout Destination Confirmation",
+  growsurf_record_sale: "Record Sale",
+  growsurf_refund_transaction: "Refund Transaction",
+  growsurf_create_mobile_participant_token: "Create Mobile Participant Token",
+  growsurf_participant_auth_hash: "Compute Participant Auth Hash",
+  growsurf_webhook_normalize: "Normalize Webhook Payload",
+  growsurf_client_snippets: "Client Snippets",
+  growsurf_embeddable_element_snippet: "Embeddable Element Snippet",
+  growsurf_grsf_config_snippet: "Participant Auto-Auth Snippet",
+  growsurf_get_integration_connect_link: "Get Integration Connect Link",
+} as const satisfies Record<keyof typeof TOOL_AUTHORIZATION_MANIFEST, string>;
+
 // Adds the manifest-owned standard MCP annotations to one listed tool. Throwing preserves the
 // completeness guarantee if a future tool bypasses the manifest.
 export const withToolAuthorizationMetadata = <T extends { name: string; _meta?: Record<string, unknown> }>(
   tool: T,
-): T & { annotations: ToolSafetyAnnotations; _meta: Record<string, unknown> } => {
+): T & { title: string; annotations: ToolDisplayAnnotations; _meta: Record<string, unknown> } => {
   const requirement = TOOL_AUTHORIZATION_MANIFEST[tool.name as keyof typeof TOOL_AUTHORIZATION_MANIFEST];
   if (!requirement) throw new Error(`Missing authorization metadata for MCP tool: ${tool.name}`);
+  const title = TOOL_TITLES[tool.name as keyof typeof TOOL_TITLES];
+  if (!title) throw new Error(`Missing display title for MCP tool: ${tool.name}`);
   return {
     ...tool,
-    annotations: requirement.annotations,
+    // Clients that read base metadata use the top-level field; the annotation is what MCP tells
+    // them to prefer, so both carry the same title.
+    title,
+    annotations: { ...requirement.annotations, title },
     _meta: { ...(tool._meta ?? {}), [TOOL_RISK_META_KEY]: requirement.riskTier },
   };
 };

@@ -10,6 +10,7 @@ import {
   TOOL_AUTHORIZATION_MANIFEST,
   TOOL_RISK_META_KEY,
   TOOL_RISK_TIERS,
+  TOOL_TITLES,
 } from "../src/index.js";
 
 const env = {
@@ -191,6 +192,21 @@ describe("MCP tool authorization", () => {
       },
     });
     expect(participantAnalytics?.inputSchema).not.toHaveProperty("properties.include.enum");
+  });
+
+  it("gives every tool a display title on both the annotation and the base metadata", async () => {
+    const tools = await listTools();
+
+    for (const tool of tools) {
+      const title = TOOL_TITLES[tool.name as keyof typeof TOOL_TITLES];
+      expect(title, tool.name).toBeTruthy();
+      expect(tool.annotations?.title, tool.name).toBe(title);
+      expect(tool.title, tool.name).toBe(title);
+      expect(title, tool.name).not.toMatch(/growsurf_/);
+    }
+
+    const titles = tools.map((tool) => tool.annotations?.title);
+    expect(new Set(titles).size, "titles must be unique").toBe(titles.length);
   });
 
   it("publishes standard safety annotations and one control-plane risk tier for every tool", async () => {

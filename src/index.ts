@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.14.0";
+export const GROWSURF_MCP_VERSION = "0.15.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -68,6 +68,7 @@ export {
   TOOL_AUTHORIZATION_MANIFEST,
   TOOL_RISK_META_KEY,
   TOOL_RISK_TIERS,
+  TOOL_TITLES,
   withToolAuthorizationMetadata,
   type CredentialType,
   type MachineScope,

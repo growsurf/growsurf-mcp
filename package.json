@@ -1,6 +1,6 @@
 {
   "name": "@growsurfteam/growsurf-mcp",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "mcpName": "com.growsurf/growsurf",
   "description": "Official GrowSurf CLI and Model Context Protocol (MCP) server for referral and affiliate programs.",
   "publishConfig": {
@@ -63,6 +63,7 @@
     "LICENSE"
   ],
   "scripts": {
+    "audit:dependencies": "node scripts/dependency-audit.mjs",
     "build": "rm -rf dist && tsc -p tsconfig.json",
     "dev": "tsx src/cli.ts",
     "lint": "eslint .",

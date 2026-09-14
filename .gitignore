@@ -10,3 +10,6 @@ pnpm-debug.log*
 # Local doc scratchpad (not part of package)
 growsurf-docs
 
+
+# Local and CI dependency audit reports
+/audit-reports/
