@@ -51,10 +51,18 @@ Applies to anything an MCP consumer reads: tool names/descriptions, guidance tex
 
 **Never run `npm publish` from a laptop, and never tell the user to.** GitHub Actions owns publishing:
 
-- Push to `main` → `.github/workflows/publish.yml` runs the full test/typecheck/lint/build gate, publishes to npm with provenance through OIDC trusted publishing, tags `v<version>`, and creates a GitHub release. No npm token is stored anywhere, and none is needed.
+- Push to `main` → `.github/workflows/publish.yml` runs the full test/typecheck/lint/build gate, publishes to npm with provenance through OIDC trusted publishing, tags `v<version>`, creates a GitHub release, and publishes `server.json` to the Official MCP Registry.
 - The workflow skips the publish when the version already exists, so re-pushing `main` is safe.
+- The npm publish and the registry publish are gated separately. The registry step checks the registry's own state, so a version that reached npm but not the registry is published on the next run rather than drifting further behind.
 
-To prepare a release: bump `version` in `package.json` (and the `GROWSURF_MCP_VERSION` literal in `src/index.ts` plus its assertion in `test/package.test.ts`, which are pinned to it), then run local verification. A push to `main` publishes externally, so an AI agent must present the exact version and revision and receive separate immediate approval for that npm/GitHub release before pushing. Ordinary permission to push code is not release approval unless it explicitly covers that publication.
+The Official MCP Registry is a second, independent publication. Install metadata that customers see in MCP clients comes from the registry, not from npm, so a registry entry left behind npm ships stale install instructions. Two things outside this repo make the registry step work, and both already exist:
+
+- A `v=MCPv1; k=ed25519; p=<public key>` TXT record on `growsurf.com`, which proves the `com.growsurf/growsurf` namespace.
+- A repository secret `MCP_REGISTRY_DNS_PRIVATE_KEY` holding the hex-encoded ed25519 private key that matches it. The workflow fails with an explicit message when the secret is missing, rather than publishing to npm and silently skipping the registry.
+
+The registry verifies ownership by reading `mcpName` from the published npm package, so the registry step waits for npm to serve the version before publishing. Keep `mcpName` in `package.json` and keep `server.json`'s `version` and its npm package `version` equal to `package.json`'s; `test/package.test.ts` asserts that parity.
+
+To prepare a release: bump `version` in `package.json` (and the `GROWSURF_MCP_VERSION` literal in `src/index.ts`, the `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` manifests, `server.json`, and the assertions in `test/package.test.ts`, which are all pinned to it), then run local verification. A push to `main` publishes externally, so an AI agent must present the exact version and revision and receive separate immediate approval for that npm/GitHub release before pushing. Ordinary permission to push code is not release approval unless it explicitly covers that publication.
 
 A local `npm publish` fails with a misleading `404 Not Found - PUT` when the local token is missing or expired, because npm masks auth failures as 404 on scoped packages. Do not chase that error or ask the user to `npm login`; push to `main` instead.
 

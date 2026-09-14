@@ -56,8 +56,10 @@ jobs:
         run: |
           name=$(node -e "console.log(require('./package.json').name)")
           version=$(node -e "console.log(require('./package.json').version)")
+          server=$(node -e "console.log(encodeURIComponent(require('./server.json').name))")
           echo "name=${name}" >> "$GITHUB_OUTPUT"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "server=${server}" >> "$GITHUB_OUTPUT"
       - name: Check whether version is already published
         id: npm
         run: |
@@ -93,3 +95,85 @@ jobs:
         run: |
           tag="v${VERSION}"
           gh release create "${tag}" --title "${tag}" --generate-notes
+
+      # The Official MCP Registry is a separate publication from npm. It is gated on the registry's
+      # own state, not on the npm step, so a version already on npm but missing from the registry
+      # is published on the next run instead of drifting further behind.
+      - name: Check whether the MCP Registry already has this version
+        id: registry
+        env:
+          SERVER: ${{ steps.pkg.outputs.server }}
+          VERSION: ${{ steps.pkg.outputs.version }}
+        run: |
+          url="https://registry.modelcontextprotocol.io/v0.1/servers/${SERVER}/versions/${VERSION}"
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 --retry 3 --retry-connrefused "${url}")
+          case "${code}" in
+            200)
+              echo "exists=true" >> "$GITHUB_OUTPUT"
+              echo "MCP Registry already serves ${VERSION}. Skipping registry publish."
+              ;;
+            404)
+              echo "exists=false" >> "$GITHUB_OUTPUT"
+              echo "MCP Registry does not have ${VERSION} yet."
+              ;;
+            *)
+              echo "::error::Unexpected status ${code} from the MCP Registry at ${url}."
+              exit 1
+              ;;
+          esac
+
+      - name: Install mcp-publisher
+        if: steps.registry.outputs.exists == 'false'
+        env:
+          MCP_PUBLISHER_VERSION: '1.8.1'
+        run: |
+          base="https://github.com/modelcontextprotocol/registry/releases/download/v${MCP_PUBLISHER_VERSION}"
+          archive="mcp-publisher_linux_amd64.tar.gz"
+          work="${RUNNER_TEMP}/mcp-publisher"
+          mkdir -p "${work}"
+          cd "${work}"
+          curl -fsSL --retry 3 -o "${archive}" "${base}/${archive}"
+          curl -fsSL --retry 3 -o checksums.txt "${base}/registry_${MCP_PUBLISHER_VERSION}_checksums.txt"
+          grep " ${archive}\$" checksums.txt | sha256sum --check --strict -
+          tar -xzf "${archive}" mcp-publisher
+          sudo install -m 0755 mcp-publisher /usr/local/bin/mcp-publisher
+          mcp-publisher --version
+
+      # The registry verifies ownership by reading `mcpName` out of the published npm package, so
+      # it can only run once npm actually serves this version.
+      - name: Wait for npm to serve this version
+        if: steps.registry.outputs.exists == 'false'
+        env:
+          NAME: ${{ steps.pkg.outputs.name }}
+          VERSION: ${{ steps.pkg.outputs.version }}
+        run: |
+          for attempt in $(seq 1 10); do
+            if npm view "${NAME}@${VERSION}" version >/dev/null 2>&1; then
+              echo "npm serves ${NAME}@${VERSION}."
+              exit 0
+            fi
+            echo "Attempt ${attempt}: npm does not serve ${NAME}@${VERSION} yet."
+            sleep 15
+          done
+          echo "::error::npm never served ${NAME}@${VERSION}; the registry publish would fail ownership validation."
+          exit 1
+
+      - name: Publish to the Official MCP Registry
+        if: steps.registry.outputs.exists == 'false'
+        env:
+          MCP_REGISTRY_DNS_PRIVATE_KEY: ${{ secrets.MCP_REGISTRY_DNS_PRIVATE_KEY }}
+        run: |
+          if [ -z "${MCP_REGISTRY_DNS_PRIVATE_KEY}" ]; then
+            echo "::error::Repository secret MCP_REGISTRY_DNS_PRIVATE_KEY is not set. It is the hex-encoded ed25519 private key matching the 'v=MCPv1' TXT record on growsurf.com."
+            exit 1
+          fi
+          mcp-publisher login dns \
+            -algorithm ed25519 \
+            -domain growsurf.com \
+            -private-key "${MCP_REGISTRY_DNS_PRIVATE_KEY}"
+          mcp-publisher publish
+
+      - name: Clear the registry publisher session
+        if: always()
+        run: |
+          command -v mcp-publisher >/dev/null 2>&1 && mcp-publisher logout || true
