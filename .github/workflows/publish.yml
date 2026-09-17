@@ -105,7 +105,7 @@ jobs:
           SERVER: ${{ steps.pkg.outputs.server }}
           VERSION: ${{ steps.pkg.outputs.version }}
         run: |
-          url="https://registry.modelcontextprotocol.io/v0.1/servers/${SERVER}/versions/${VERSION}"
+          url="https://registry.modelcontextprotocol.io/v0/servers/${SERVER}/versions/${VERSION}"
           code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 --retry 3 --retry-connrefused "${url}")
           case "${code}" in
             200)
