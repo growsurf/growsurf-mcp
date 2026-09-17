@@ -312,7 +312,7 @@ export class GrowSurfClient {
       }
       form.append(name, String(value));
     }
-    form.append("file", new Blob([input.bytes], { type: input.mimeType }), input.fileName);
+    form.append("file", new Blob([new Uint8Array(input.bytes)], { type: input.mimeType }), input.fileName);
 
     let uploadResponse: Response;
     try {
