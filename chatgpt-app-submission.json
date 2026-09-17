@@ -775,11 +775,11 @@
       "expected_output_url": null
     },
     {
-      "description": "Look up a participant and their referral history.",
-      "user_prompt": "Look up the GrowSurf participant with email test@example.com and show their referrals.",
+      "description": "Find the top referrer in a program.",
+      "user_prompt": "List the participants in my GrowSurf program and show me the one with the most referrals.",
       "file_attachment_urls": null,
-      "tools_triggered": "growsurf_get_participant",
-      "expected_output": "Returns the participant's record, including referral count and reward status, or reports that no participant matches.",
+      "tools_triggered": "growsurf_list_participants",
+      "expected_output": "Returns the program's participants with their referral counts, so the highest referrer can be identified.",
       "expected_output_url": null
     },
     {
