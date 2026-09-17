@@ -147,10 +147,18 @@ export class GrowSurfClient {
     return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}`);
   }
 
-  async listParticipants(query: { limit?: number; nextId?: string } = {}): Promise<unknown> {
+  async listParticipants(
+    query: { limit?: number; nextId?: string; metadata?: Record<string, string> } = {},
+  ): Promise<unknown> {
+    const { metadata, ...rest } = query;
+    // The REST filter is one `metadata[key]=value` pair per key.
+    const flat: Record<string, string | number | undefined> = { ...rest };
+    for (const [key, value] of Object.entries(metadata ?? {})) {
+      flat[`metadata[${key}]`] = value;
+    }
     return this.requestJson(
       "GET",
-      `/campaign/${encodeURIComponent(this.campaignId)}/participants${toQueryString(query)}`,
+      `/campaign/${encodeURIComponent(this.campaignId)}/participants${toQueryString(flat)}`,
     );
   }
 

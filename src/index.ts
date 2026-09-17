@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.15.1";
+export const GROWSURF_MCP_VERSION = "0.16.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -1008,6 +1008,12 @@ const getCampaignActivationAnalyticsSchema = z
 const listParticipantsSchema = z.object({
   limit: z.number().int().min(1).max(100).optional(),
   nextId: z.string().min(1).optional(),
+  metadata: z
+    .record(z.string().min(1).max(40), z.union([z.string(), z.number(), z.boolean()]).transform(String))
+    .refine((value) => Object.keys(value).length >= 1 && Object.keys(value).length <= 3, {
+      message: "metadata accepts 1 to 3 keys.",
+    })
+    .optional(),
 });
 
 // The participant is addressed by GrowSurf participant ID OR email (identical path parameter),
@@ -2136,7 +2142,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_list_participants",
           description:
-            "List participants in your GrowSurf program, newest page first. `limit` is 1-100 (default 10). Pass response `nextId` into the next call to continue paging. Use this when you need a participant ID before calling participant-scoped tools. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "List participants in your GrowSurf program, newest page first. `limit` is 1-100 (default 10). Pass response `nextId` into the next call to continue paging. Pass `metadata` to return only participants whose stored metadata matches every given key and value exactly, for example `{ \"customerId\": \"12345\" }` to look someone up by your own customer ID; filtered results are ordered by participant ID. Use this when you need a participant ID before calling participant-scoped tools. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2144,6 +2150,14 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               nextId: {
                 type: "string",
                 description: "Participant ID returned as `nextId` from the previous page.",
+              },
+              metadata: {
+                type: "object",
+                description:
+                  "Exact-match filter on participant metadata, up to 3 keys, for example `{ \"customerId\": \"12345\" }`. Values compare as strings.",
+                additionalProperties: { type: "string" },
+                minProperties: 1,
+                maxProperties: 3,
               },
             },
             additionalProperties: false,
@@ -3059,9 +3073,10 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         case "growsurf_list_participants": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = listParticipantsSchema.parse(request.params.arguments ?? {});
-          const query = omitUndefined({ limit: input.limit, nextId: input.nextId }) as {
+          const query = omitUndefined({ limit: input.limit, nextId: input.nextId, metadata: input.metadata }) as {
             limit?: number;
             nextId?: string;
+            metadata?: Record<string, string>;
           };
           const result = await growsurf.listParticipants(query);
           return rewardReadToolResult(result, "participant");

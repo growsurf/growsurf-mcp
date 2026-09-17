@@ -404,7 +404,7 @@ Program, reward-configuration, options, and participant reads also include a `re
   Add a participant (or referred participant) during signup.
 
 - `growsurf_list_participants`
-  List participants in the current program, paginated by `nextId`. Use this to find a participant ID before calling participant-scoped tools.
+  List participants in the current program, paginated by `nextId`. Pass `metadata` (up to 3 keys) to return only participants whose metadata matches exactly, such as looking someone up by your own customer ID. Use this to find a participant ID before calling participant-scoped tools.
 
 - `growsurf_get_participant`
   Fetch one participant by GrowSurf participant ID or email address.

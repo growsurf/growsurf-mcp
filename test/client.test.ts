@@ -839,6 +839,19 @@ describe("GrowSurfClient", () => {
     );
   });
 
+  it("lists participants filtered by metadata as one bracketed query pair per key", async () => {
+    const fetchMock = mockJson({ participants: [], limit: 10, nextId: null });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+    await client.listParticipants({ metadata: { customerId: "12345", planTier: "pro" } });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.growsurf.com/v2/campaign/abc123/participants?metadata%5BcustomerId%5D=12345&metadata%5BplanTier%5D=pro",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
   it("gets a participant by email address with a GET on the participant path", async () => {
     const fetchMock = mockJson({ id: "part_1", email: "richard@piedpiper.com" });
     globalThis.fetch = fetchMock as typeof fetch;
