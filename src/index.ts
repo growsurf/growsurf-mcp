@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.16.0";
+export const GROWSURF_MCP_VERSION = "0.17.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -521,7 +521,10 @@ const CAMPAIGN_GOALS = [
   "B2C_SUBSCRIPTIONS",
   "FINANCIAL_SERVICES",
   "ONLINE_EDUCATION",
+  "INSURANCE",
   "ONLINE_INSURANCE",
+  "TELEHEALTH",
+  "HEALTHCARE_PROVIDERS",
 ] as const;
 
 const createCampaignSchema = z.object({
@@ -1378,7 +1381,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 type: "string",
                 enum: [...CAMPAIGN_GOALS],
                 description:
-                  "What the program is for, which seeds share settings that suit that audience. Programs selling to businesses (`CUSTOMERS`, `USERS`, `B2B_SAAS_SELF_SERVICE`, `B2B_SAAS_ENTERPRISE`) start with the LinkedIn share button visible. Consumer, financial, education, insurance, newsletter, and waitlist programs (`B2C_SUBSCRIPTIONS`, `FINANCIAL_SERVICES`, `ONLINE_EDUCATION`, `ONLINE_INSURANCE`, `SUBSCRIBERS`, `WAITLIST`) start with it hidden. Omit `goal` and every share button keeps its standard default. Change any of it afterward with `growsurf_update_campaign_design`. Set only at creation; `growsurf_update_campaign` does not accept it.",
+                  "What the program is for, which seeds share settings that suit that audience. Programs whose participants refer other businesses (`CUSTOMERS`, `USERS`, `B2B_SAAS_SELF_SERVICE`, `B2B_SAAS_ENTERPRISE`, `HEALTHCARE_PROVIDERS`) start with the LinkedIn share button visible. Consumer, financial, education, insurance, telehealth, newsletter, and waitlist programs (`B2C_SUBSCRIPTIONS`, `FINANCIAL_SERVICES`, `ONLINE_EDUCATION`, `INSURANCE`, `ONLINE_INSURANCE`, `TELEHEALTH`, `SUBSCRIBERS`, `WAITLIST`) start with it hidden. `TELEHEALTH` is for consumer telehealth and wellness subscriptions, where patients refer friends; `HEALTHCARE_PROVIDERS` is for provider networks and clinician-facing products, where practices refer peer practices. `INSURANCE` replaces `ONLINE_INSURANCE`, which is still accepted and behaves identically. Omit `goal` and every share button keeps its standard default. Change any of it afterward with `growsurf_update_campaign_design`. Set only at creation; `growsurf_update_campaign` does not accept it.",
               },
               rewards: {
                 type: "array",
@@ -1821,13 +1824,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_design",
           description:
-            "Fetch the configured design fields for your GrowSurf program, including GrowSurf Window content, colors, sharing sections, participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and country-name overrides under `countryLabels`. `participantAvatarStyle` is `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`; missing or unknown values mean `INITIALS`. The confirmation section is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the configured design fields for your GrowSurf program, including GrowSurf Window content, colors, sharing sections, participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget`, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and country-name overrides under `countryLabels`. `participantAvatarStyle` is `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`; missing or unknown values mean `INITIALS`. The confirmation section is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_design",
           description:
-            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, participant sign-in copy under `login`, and payout-destination confirmation page copy under `payoutDestinationConfirmation`. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Fetch the configuration first, preserve starter content unless the user asked to change it, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget` (a button or a card in a corner of the site, its placement, when it appears, and which pages it appears on), participant sign-in copy under `login`, and payout-destination confirmation page copy under `payoutDestinationConfirmation`. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Fetch the configuration first, preserve starter content unless the user asked to change it, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {

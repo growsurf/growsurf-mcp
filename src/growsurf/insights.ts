@@ -262,13 +262,18 @@ const CAMPAIGN_GOAL_FOR_PROFILE: Record<AdvisorIndustry, string | null> = {
   financial_services_fintech: "FINANCIAL_SERVICES",
   saas_ai: "B2B_SAAS_SELF_SERVICE",
   media_newsletters: "SUBSCRIBERS",
-  healthcare_wellness: "B2C_SUBSCRIPTIONS",
+  healthcare_wellness: "TELEHEALTH",
   education_workforce: "ONLINE_EDUCATION",
   consumer_subscriptions_commerce: "B2C_SUBSCRIPTIONS",
   other: null,
 };
 
 const SALES_LED_SAAS_GOAL = "B2B_SAAS_ENTERPRISE";
+// Healthcare splits by who refers whom, not by segment. A consumer telehealth subscription has
+// patients referring friends (`TELEHEALTH`, the profile default); a clinician-facing product sold
+// into practices has practices referring peer practices, which is a different program and seeds
+// LinkedIn visible.
+const SALES_LED_HEALTHCARE_GOAL = "HEALTHCARE_PROVIDERS";
 const PENDING_REFERRAL_SAMPLE_RULE = "This sample includes programs with pending referrals whose successful-referral count does not exceed their pending count.";
 
 const CAMPAIGN_GOAL_FOR_GOAL: Partial<Record<AdvisorGoal, string>> = {
@@ -391,11 +396,20 @@ type Decisions = {
 /** Keeps the creation goal, sharing defaults, and reward recommendation on the same business profile. */
 const decide = (input: ProgramDesignAdvisorInput): Decisions => {
   const salesLed = input.salesMotion ? input.salesMotion === "sales_led" : /sales[- ]led|negotiated|enterprise sales|account executive/i.test(input.businessModel ?? "");
-  const campaignGoal = CAMPAIGN_GOAL_FOR_GOAL[input.goal] ?? (input.industry === "saas_ai" && salesLed ? SALES_LED_SAAS_GOAL : CAMPAIGN_GOAL_FOR_PROFILE[input.industry]);
+  const salesLedGoal = salesLed
+    ? input.industry === "saas_ai"
+      ? SALES_LED_SAAS_GOAL
+      : input.industry === "healthcare_wellness"
+        ? SALES_LED_HEALTHCARE_GOAL
+        : null
+    : null;
+  const campaignGoal = CAMPAIGN_GOAL_FOR_GOAL[input.goal] ?? salesLedGoal ?? CAMPAIGN_GOAL_FOR_PROFILE[input.industry];
   return {
     trigger: decideTrigger(input),
     campaignGoal,
-    linkedInVisible: campaignGoal === CAMPAIGN_GOAL_FOR_PROFILE.saas_ai || campaignGoal === SALES_LED_SAAS_GOAL,
+    // Mirrors GOAL_SHARE_VISIBILITY in growsurf-api rest-campaign-write.service.js. These are the
+    // goals whose participants refer other businesses, so they start with LinkedIn shown.
+    linkedInVisible: campaignGoal === CAMPAIGN_GOAL_FOR_PROFILE.saas_ai || campaignGoal === SALES_LED_SAAS_GOAL || campaignGoal === SALES_LED_HEALTHCARE_GOAL,
     prefersMilestones: input.industry === "media_newsletters" || input.goal === "subscribers" || input.goal === "waitlist",
     salesLed,
   };

@@ -564,6 +564,70 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         isOfferPopupOverlayDimmed: { type: "boolean", description: "Whether a centered popup dims the page behind it." },
       },
     },
+    widget: {
+      type: "object",
+      description:
+        "The website widget — the invite that sits in a corner of the customer's own site. It renders as a button or as a card, and its card folds back into the button when a visitor closes it. Both audience switches start off, so a program shows nothing until one is turned on.",
+      properties: {
+        isShownToNewVisitors: { type: "boolean", description: "Whether people who have not joined the program see the widget." },
+        isShownToParticipants: { type: "boolean", description: "Whether people who have already joined see the widget." },
+        appearance: {
+          type: "string",
+          enum: ["BUTTON", "CARD"],
+          description: "`BUTTON` is a single button in the corner. `CARD` is a small card with a heading, a line of text, and a button, which a visitor can close.",
+        },
+        isArtShown: { type: "boolean", description: "Whether the card shows a picture above its text. Ignored by the button." },
+        artImageUrl: { type: ["string", "null"], maxLength: 500, description: "The picture shown at the top of the card." },
+        newVisitorText: { type: ["string", "null"], maxLength: 100, description: "What people who have not joined read. It is the button's label, and the card's heading." },
+        participantText: { type: ["string", "null"], maxLength: 100, description: "What people who have already joined read. It is the button's label, and the card's heading." },
+        newVisitorDescription: { type: ["string", "null"], maxLength: 255, description: "The line under the heading for people who have not joined. Card only." },
+        participantDescription: { type: ["string", "null"], maxLength: 255, description: "The line under the heading for people who have already joined. Card only." },
+        buttonText: { type: ["string", "null"], maxLength: 100, description: "The label on the card's button, which opens the program." },
+        markKey: {
+          type: ["string", "null"],
+          enum: ["GIFT", "TICKET", "DISCOUNT", "CASH", "PERK", "SHARE", "LINK", "INVITE", "FRIENDS", "THANKS", null],
+          description: "The small drawing on the widget. It takes the colour chosen for the widget, so it matches on any background. `null` for no drawing.",
+        },
+        icon: {
+          type: "string",
+          enum: ["CUSTOM", "NONE", "DEFAULT"],
+          description: "An uploaded image instead of a `markKey` drawing. `CUSTOM` uses `iconImageUrl`; `NONE` shows no image. `DEFAULT` is the old GrowSurf image: a program already set to it keeps it and can read it back, but it cannot be set. Requires a paid plan.",
+        },
+        iconImageUrl: { type: ["string", "null"], maxLength: 500, description: "The uploaded image, used when `icon` is `CUSTOM`. Requires a paid plan." },
+        placement: {
+          type: "string",
+          enum: ["TOP_LEFT", "TOP_CENTER", "TOP_RIGHT", "BOTTOM_LEFT", "BOTTOM_CENTER", "BOTTOM_RIGHT"],
+          description: "Which corner or edge of the page the widget sits against.",
+        },
+        offsetSide: { type: "integer", minimum: 0, maximum: 400, description: "How far in from the left or right edge, in pixels, following `placement`. For a centered placement it becomes an even gap on both sides." },
+        offsetEdge: { type: "integer", minimum: 0, maximum: 400, description: "How far in from the top or bottom edge, in pixels, following `placement`. Raise it to clear a chat button that already sits in that corner." },
+        reveal: {
+          type: "string",
+          enum: ["IMMEDIATE", "DELAY", "SCROLL"],
+          description: "When the card appears: right away, after `revealDelaySeconds`, or once the visitor scrolls halfway down the page. The button always appears right away.",
+        },
+        revealDelaySeconds: { type: "integer", minimum: 0, maximum: 120, description: "Seconds to wait before showing the card, when `reveal` is `DELAY`." },
+        returnAfterDays: { type: "integer", minimum: 0, maximum: 365, description: "Days before the card is offered again to someone who closed it. Until then they keep the button, so they can still open the program. `0` never offers it again." },
+        isHiddenOnMobile: { type: "boolean", description: "Whether to leave phones alone. On small screens the card fills the bottom of the page." },
+        pageRules: {
+          type: "object",
+          description: "Which pages the widget appears on. This controls the widget only — referral tracking, embedded elements, and opening the window from the site's own code keep working on every page where GrowSurf is installed.",
+          properties: {
+            mode: {
+              type: "string",
+              enum: ["ALL", "ONLY", "EXCEPT"],
+              description: "`ALL` shows it everywhere. `ONLY` shows it just on the listed pages. `EXCEPT` shows it everywhere but the listed pages. With no pages listed, `ONLY` and `EXCEPT` behave as `ALL`.",
+            },
+            patterns: {
+              type: "array",
+              maxItems: 20,
+              items: { type: "string", maxLength: 500 },
+              description: "The pages to match. Use `*` to stand in for anything, as in `/portal/*`. A path on its own, such as `/pricing`, matches that path on every installed domain.",
+            },
+          },
+        },
+      },
+    },
     referralSummary: {
       type: "object",
       description: "Referral programs only. The participant's row of summary tiles (clicks, leads, referrals, rewards).",
@@ -594,6 +658,15 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
           properties: {
             color: { type: ["string", "null"], maxLength: 255, description: "Popup text color." },
             backgroundColor: { type: ["string", "null"], maxLength: 255, description: "Popup background color." },
+          },
+        },
+        widget: {
+          type: "object",
+          description: "Paid-plan color settings for the website widget.",
+          properties: {
+            color: { type: ["string", "null"], maxLength: 255, description: "Text and drawing color on the button, and on the card's own button." },
+            backgroundColor: { type: ["string", "null"], maxLength: 255, description: "Fill color of the button, and of the card's own button." },
+            borderRadius: { type: ["string", "null"], maxLength: 255, description: "Corner rounding, as a CSS length such as `12px`." },
           },
         },
       },

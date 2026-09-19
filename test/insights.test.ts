@@ -297,6 +297,51 @@ describe("program-design advisor", () => {
     }
   });
 
+  // The creation `goal` is a public contract: the advisor tells a customer which value to pass to
+  // `growsurf_create_campaign`, and that value seeds the program's share settings. A silent remap
+  // would hand every healthcare customer the wrong starting configuration.
+  it.each([
+    ["healthcare_wellness", "TELEHEALTH", "seeds LinkedIn hidden"],
+    ["financial_services_fintech", "FINANCIAL_SERVICES", "seeds LinkedIn hidden"],
+    ["education_workforce", "ONLINE_EDUCATION", "seeds LinkedIn hidden"],
+    ["consumer_subscriptions_commerce", "B2C_SUBSCRIPTIONS", "seeds LinkedIn hidden"],
+  ])("maps the %s profile to the %s creation goal", (industry, goal, shareNote) => {
+    const result = buildProgramDesignAdvice(
+      programDesignAdvisorInputSchema.parse({ industry, goal: "paid_conversions", detail: "full" }),
+      FIXTURE_BUNDLE,
+    );
+    expect(result.configurationPlan[0]?.arguments.goal).toBe(goal);
+    expect(result.markdown).toContain(shareNote);
+  });
+
+  // Healthcare splits by who refers whom. Consumer telehealth is patients referring friends;
+  // a clinician-facing product sold into practices is a different program with LinkedIn shown.
+  it("separates sales-led healthcare from consumer telehealth", () => {
+    const providerFacing = buildProgramDesignAdvice(
+      programDesignAdvisorInputSchema.parse({
+        industry: "healthcare_wellness",
+        goal: "paid_conversions",
+        salesMotion: "sales_led",
+        detail: "full",
+      }),
+      FIXTURE_BUNDLE,
+    );
+    expect(providerFacing.configurationPlan[0]?.arguments.goal).toBe("HEALTHCARE_PROVIDERS");
+    expect(providerFacing.markdown).toContain("seeds LinkedIn visible");
+
+    const consumerTelehealth = buildProgramDesignAdvice(
+      programDesignAdvisorInputSchema.parse({
+        industry: "healthcare_wellness",
+        goal: "paid_conversions",
+        salesMotion: "self_service",
+        detail: "full",
+      }),
+      FIXTURE_BUNDLE,
+    );
+    expect(consumerTelehealth.configurationPlan[0]?.arguments.goal).toBe("TELEHEALTH");
+    expect(consumerTelehealth.markdown).toContain("seeds LinkedIn hidden");
+  });
+
   it("keeps each metric's definition, sample, source, and currency basis beside its value", () => {
     const segment = FIXTURE_BUNDLE.programDesign.segments[0];
     const bundle = {
