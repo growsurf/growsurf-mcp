@@ -1939,7 +1939,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_capture_referral_flow_screenshots",
           description:
-            "Capture temporary GrowSurf preview screenshots after the user explicitly asks for screenshots or screenshot proof. Returns short-lived URLs for the controlled referrer Window and referred-friend experience for this program. This does not prove the user's installed site; use browser automation for that. This tool does not accept arbitrary URLs, HTML, JavaScript, or external screenshot targets. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Capture temporary GrowSurf preview screenshots so the user can see the draft instead of reading API fields. Call it after a draft program is saved and whenever a later change touches a browser-visible GrowSurf flow, or when the user asks for screenshots. Returns short-lived URLs for the controlled referrer Window and referred-friend experience for this program; show them inline. This does not prove the user's installed site; use browser automation for that. This tool does not accept arbitrary URLs, HTML, JavaScript, or external screenshot targets. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {

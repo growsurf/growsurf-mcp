@@ -63,12 +63,6 @@ const PROGRAM_RESOURCE_UPLOAD_RESPONSE_MAX_BYTES = 256 * 1024;
 
 const normalizeBaseUrl = (baseUrl: string) => baseUrl.replace(/\/+$/, "");
 
-const toMcpBaseUrl = (baseUrl: string): string => {
-  const normalized = normalizeBaseUrl(baseUrl);
-  if (normalized.endsWith("/api/v2")) return `${normalized}/mcp`;
-  if (normalized.endsWith("/v2")) return `${normalized.slice(0, -"/v2".length)}/api/v2/mcp`;
-  return `${normalized}/api/v2/mcp`;
-};
 
 // Builds a `?a=1&b=2` query suffix from a params object, skipping undefined values.
 // Returns "" when no params are present so callers can append it unconditionally.
@@ -128,14 +122,12 @@ export class GrowSurfClient {
   private readonly apiKey: string;
   private readonly campaignId: string;
   private readonly baseUrl: string;
-  private readonly mcpBaseUrl: string;
   private readonly uploadAllowedOrigins: string | undefined;
 
   constructor(options: GrowSurfClientOptions) {
     this.apiKey = options.apiKey ?? "";
     this.campaignId = options.campaignId ?? "";
     this.baseUrl = normalizeBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
-    this.mcpBaseUrl = toMcpBaseUrl(this.baseUrl);
     this.uploadAllowedOrigins = options.uploadAllowedOrigins;
   }
 
@@ -408,7 +400,7 @@ export class GrowSurfClient {
   }
 
   async captureReferralFlowScreenshots(): Promise<unknown> {
-    return this.requestMcpJson(
+    return this.requestJson(
       "POST",
       `/campaign/${encodeURIComponent(this.campaignId)}/referral-flow-screenshots`,
     );
@@ -649,16 +641,6 @@ export class GrowSurfClient {
     options?: GrowSurfRequestOptions,
   ): Promise<unknown> {
     const url = `${this.baseUrl}${path}`;
-    return this.requestUrlJson(method, url, body, options);
-  }
-
-  private async requestMcpJson(
-    method: "GET" | "POST" | "PATCH" | "DELETE",
-    path: string,
-    body?: unknown,
-    options?: GrowSurfRequestOptions,
-  ): Promise<unknown> {
-    const url = `${this.mcpBaseUrl}${path}`;
     return this.requestUrlJson(method, url, body, options);
   }
 

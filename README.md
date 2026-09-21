@@ -52,7 +52,7 @@ This MCP server is NOT for:
   - List, create, update, and delete campaign rewards
   - List, create, update, and delete Program Resources, including a safe one-time FILE preparation flow
   - Get/update Design, Emails, Options, and Installation config
-  - Capture temporary GrowSurf preview screenshots when the user explicitly asks for visual proof
+  - Capture temporary GrowSurf preview screenshots so the user can see a draft program
   - List, create, update, delete, and test program webhooks
   - List, get, and add participants
   - Update a participant, email a participant, and get a participant's analytics and activity logs
@@ -383,7 +383,7 @@ Program, reward-configuration, options, and participant reads also include a `re
   Read or patch the Program Editor Installation tab config.
 
 - `growsurf_capture_referral_flow_screenshots`
-  Capture temporary GrowSurf preview screenshots for the current program after the user explicitly asks for visual proof. This returns the controlled referrer Window and referred-friend experience; use browser automation instead to prove the user's installed site.
+  Capture temporary GrowSurf preview screenshots for the current program, after a draft is saved or when the user asks to see it. This returns the controlled referrer Window and referred-friend experience; use browser automation instead to prove the user's installed site.
 
 - `growsurf_list_campaign_webhooks`
   List the program's webhooks (secrets are never returned).

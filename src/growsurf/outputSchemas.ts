@@ -114,6 +114,7 @@ const PARTICIPANT: ToolOutputSchema = {
     referralCount: { type: "integer", description: "All-time referrals credited to the participant." },
     monthlyReferralCount: { type: "integer", description: "Referrals credited this month (resets monthly)." },
     prevMonthlyReferralCount: { type: "integer", description: "Referrals credited the previous month." },
+    leadCount: { type: "integer", description: "Pending referrals that have not converted yet." },
     rank: { type: "integer", description: "All-time leaderboard rank." },
     monthlyRank: { type: "integer", description: "Current-month leaderboard rank (resets monthly)." },
     prevMonthlyRank: { type: "integer", description: "Previous-month leaderboard rank." },

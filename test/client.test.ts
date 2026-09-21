@@ -377,14 +377,14 @@ describe("GrowSurfClient", () => {
       ],
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.growsurf.com/api/v2/mcp/campaign/abc123/referral-flow-screenshots",
+      "https://api.growsurf.com/v2/campaign/abc123/referral-flow-screenshots",
       expect.objectContaining({ method: "POST" }),
     );
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.body).toBeUndefined();
   });
 
-  it("derives the MCP API path from a custom REST base URL", async () => {
+  it("captures screenshots against a custom REST base URL", async () => {
     const fetchMock = mockJson({ screenshots: [] });
     globalThis.fetch = fetchMock as typeof fetch;
 
@@ -396,7 +396,7 @@ describe("GrowSurfClient", () => {
     await client.captureReferralFlowScreenshots();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8080/api/v2/mcp/campaign/abc123/referral-flow-screenshots",
+      "http://127.0.0.1:8080/v2/campaign/abc123/referral-flow-screenshots",
       expect.objectContaining({ method: "POST" }),
     );
   });

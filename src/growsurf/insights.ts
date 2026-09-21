@@ -310,17 +310,35 @@ type Source = "segment" | "platform";
 
 const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 
-/** Keeps the median, both quartiles, and the sample size distinct when a figure is quoted. */
+/**
+ * Describes how much evidence backs a figure without publishing the exact denominator.
+ *
+ * Every cut already clears a 10-program floor, so the bands start there. Exact program counts are
+ * GrowSurf's own platform data: a reader needs the strength of the evidence, not the size of the
+ * platform, and per-cut counts can be summed back into a platform total. This matches the public
+ * referral-program benchmarks page, which publishes medians and quartiles and no sample sizes.
+ */
+const sampleBand = (value: number | undefined): string => {
+  if (!isNumber(value)) return "an unstated number of programs";
+  // A cut clears a 10-program floor before it is published, so zero means the bundle is wrong.
+  // Say so rather than dressing an empty cut up as a small one.
+  if (value <= 0) return "no programs";
+  if (value < 25) return "a small sample of programs";
+  if (value < 75) return "a moderate sample of programs";
+  return "a large sample of programs";
+};
+
+/** Keeps the median, both quartiles, and the sample strength distinct when a figure is quoted. */
 const fmt = (summary: InsightSummary | undefined, unit = "", prefix = ""): string => {
   if (!summary) return "withheld";
-  return `median ${prefix}${summary.median}${unit}; Q1 ${prefix}${summary.q1}${unit}; Q3 ${prefix}${summary.q3}${unit}; sample: ${summary.programCount} programs`;
+  return `median ${prefix}${summary.median}${unit}; Q1 ${prefix}${summary.q1}${unit}; Q3 ${prefix}${summary.q3}${unit}; sample: ${sampleBand(summary.programCount)}`;
 };
 
 // Formats a proportion, treating the bundle's null as withheld.
 const pct = (value: Percent): string => (isNumber(value) ? `${value}%` : "withheld");
 
-// Formats a program count, treating a missing count as unknown rather than printing "undefined".
-const count = (value: number | undefined): string => (isNumber(value) ? `${value} programs` : "an unstated number of programs");
+// Describes a cut's denominator by strength band rather than by its exact program count.
+const count = (value: number | undefined): string => sampleBand(value);
 
 const findSegment = (insights: ProgramDesignInsights, industry: AdvisorIndustry): ProgramDesignSegment | null => {
   const label = INDUSTRY_SEGMENT_LABELS[industry];
@@ -572,11 +590,11 @@ const renderRewardTypeSection = (
     lines.push(
       `Reward types in use among high performers (${sourceNote(from, segment)}; ${count(cut.programCount)} with reward evidence; a program can run more than one):`,
       "",
-      table(["Type", "Observed share and denominator", "Source"], cut.typeUse.map((row) => [row.label, `${row.percent}% (${row.matchingPrograms} of ${count(cut.programCount)} with reward evidence)`, sourceNote(from, segment)]), 1),
+      table(["Type", "Observed share", "Source"], cut.typeUse.map((row) => [row.label, `${row.percent}% of programs with reward evidence`, sourceNote(from, segment)]), 1),
       "",
     );
-    if (topType) lines.push(`Most common observed reward type: ${topType.label} (${topType.percent}%, ${topType.matchingPrograms} of ${count(cut.programCount)} with reward evidence; source: ${sourceNote(from, segment)}).`, "");
-    if (cut.multiTypeShare) lines.push(`Programs combining types: ${pct(cut.multiTypeShare.percent)} (${cut.multiTypeShare.matchingPrograms} of ${count(cut.multiTypeShare.programCount)}); source: ${sourceNote(from, segment)}. Reward tiers per program: ${fmt(cut.rewardTiersPerProgram)}.`, "");
+    if (topType) lines.push(`Most common observed reward type: ${topType.label} (${topType.percent}% of programs with reward evidence; source: ${sourceNote(from, segment)}).`, "");
+    if (cut.multiTypeShare) lines.push(`Programs combining types: ${pct(cut.multiTypeShare.percent)} of ${count(cut.multiTypeShare.programCount)}; source: ${sourceNote(from, segment)}. Reward tiers per program: ${fmt(cut.rewardTiersPerProgram)}.`, "");
   }
   const recommendation: string[] = [];
   if (decisions.prefersMilestones) {
@@ -602,10 +620,10 @@ const renderRewardTypeSection = (
   if (ladders.cut && isNumber(ladders.cut.programCount) && ladders.cut.programCount > 0) {
     const cutLadders = ladders.cut;
     lines.push(
-      `Milestone reference (${sourceNote(ladders.from, segment)}; ${count(cutLadders.programCount)} run milestones): tiers per program ${fmt(cutLadders.tiersPerProgram)}; first tier at ${fmt(cutLadders.firstTierReferralsRequired)} referrals; top tier at ${fmt(cutLadders.topTierReferralsRequired)} referrals.`,
+      `Milestone reference (${sourceNote(ladders.from, segment)}; ${count(cutLadders.programCount)} run milestones): tiers per program ${fmt(cutLadders.tiersPerProgram)}; referrals required for the first tier ${fmt(cutLadders.firstTierReferralsRequired)}; referrals required for the top tier ${fmt(cutLadders.topTierReferralsRequired)}.`,
     );
     if (cutLadders.repeatedLadders?.length) {
-      lines.push(`Ladders that recur: ${cutLadders.repeatedLadders.map((row) => `${row.referralsRequired.join("/")} (${row.programCount} programs)`).join("; ")}.`);
+      lines.push(`Ladders that recur: ${cutLadders.repeatedLadders.map((row) => row.referralsRequired.join("/")).join("; ")}.`);
     }
     lines.push("");
   }
@@ -686,7 +704,7 @@ const renderArchetypeSection = (segment: ProgramDesignSegment | null, platform: 
     lines.push(
       `What high performers give away (${sourceNote(from, segment)}; ${count(cut.programCount)} with reward evidence):`,
       "",
-      table(["Archetype", "Observed share and denominator", "Source"], cut.archetypes.map((row) => [row.label, `${row.percent}% (${row.matchingPrograms} of ${count(cut.programCount)} with reward evidence)`, sourceNote(from, segment)]), 1),
+      table(["Archetype", "Observed share", "Source"], cut.archetypes.map((row) => [row.label, `${row.percent}% of programs with reward evidence`, sourceNote(from, segment)]), 1),
       "",
     );
   }
@@ -719,7 +737,7 @@ const renderShareChannelsSection = (decisions: Decisions, segment: ProgramDesign
       `Observed sharing among high performers (${sourceNote(from, segment)}; ${count(cut.programCount)}). ${cut.basis ?? ""}`.trim(),
       "A channel's percentage is its share of all recorded share actions in this cohort. It is not the percentage of programs, people, or credited referrals using that channel, and does not show which channels were enabled.",
       "",
-      table(["Channel", "Observed share of actions", "Programs with activity", "Source"], cut.channels.map((row) => [row.channel, `${row.shareOfAllShareActionsPercent}% of recorded share actions`, `${row.programsWithShareActivity} of ${count(cut.programCount)}`, sourceNote(from, segment)]), 1),
+      table(["Channel", "Observed share of actions", "Source"], cut.channels.map((row) => [row.channel, `${row.shareOfAllShareActionsPercent}% of recorded share actions`, sourceNote(from, segment)]), 1),
       "",
     );
   }
@@ -739,14 +757,14 @@ const renderIntegrationsSection = (
   const lines = ["## Integrations", ""];
   const { cut, from } = pickCut("integrations", segment, platform);
   if (cut) {
-    if (cut.anyIntegration) lines.push(`At least one integration connected: ${pct(cut.anyIntegration.percent)} (${cut.anyIntegration.matchingPrograms} of ${count(cut.anyIntegration.programCount)}); source: ${sourceNote(from, segment)}.`, "");
+    if (cut.anyIntegration) lines.push(`At least one integration connected: ${pct(cut.anyIntegration.percent)} of ${count(cut.anyIntegration.programCount)}; source: ${sourceNote(from, segment)}.`, "");
     if (cut.integrations?.length) {
-      lines.push(table(["Integration", "Observed share and denominator", "Source"], cut.integrations.map((row) => [row.integration, `${row.percent}% (${row.programsConnected} of ${count(cut.programCount)})`, sourceNote(from, segment)]), 1), "");
+      lines.push(table(["Integration", "Observed share", "Source"], cut.integrations.map((row) => [row.integration, `${row.percent}% of programs`, sourceNote(from, segment)]), 1), "");
     }
   }
   const correlation = insights?.correlations?.find((row) => row.key === "integration_use");
   if (correlation) {
-    lines.push(`${correlation.caveat} ${correlation.groups.map((group) => `${group.structure}: median ${group.successfulReferrals?.median ?? "withheld"} referrals (${group.programCount} programs)`).join("; ")}.`, "");
+    lines.push(`${correlation.caveat} ${correlation.groups.map((group) => `${group.structure}: median ${group.successfulReferrals?.median ?? "withheld"} referrals (${sampleBand(group.programCount)})`).join("; ")}.`, "");
   }
   lines.push("Sync referral status back to the CRM or email platform so the team sees pending, converted, and expired referrals next to the customer record. Use `growsurf_get_integration_connect_link` to hand the customer the connect panel.", "");
   return lines;
@@ -906,7 +924,7 @@ export const buildProgramDesignAdvice = (
       lines.push(
         `Scope: ${insights.scopes?.high_performing?.sentence ?? "Figures describe GrowSurf's highest-performing referral programs."}`,
         segment
-          ? `Segment: ${segment.industry} (${count(segmentProgramCount(segment))} from ${segment.companyCount} companies). A figure falls back to the platform-wide cut when the segment withholds it, and says so.`
+          ? `Segment: ${segment.industry} (${count(segmentProgramCount(segment))}, each from a distinct company). A figure falls back to the platform-wide cut when the segment withholds it, and says so.`
           : "Segment: none matched, so every figure is the platform-wide high-performer cut.",
         segment
           ? `Quote each figure with its own sample, source, and metric definition. A platform-wide fallback is not ${segment.industry} data. If the business is not clearly ${segment.industry}, call again with industry \`other\`.`
@@ -1062,13 +1080,13 @@ export const DEFAULT_TROUBLESHOOTING_PLAYBOOK: TroubleshootingPlaybook = {
     {
       key: "platform_specific_install",
       label: "Installing on a specific platform or form builder",
-      aliases: ["Typeform", "HubSpot form", "Webflow", "Squarespace", "Wix", "WordPress", "Shopify", "Calendly", "Google Tag Manager"],
+      aliases: ["Typeform", "HubSpot form", "Tally", "Jotform", "Paperform", "Formsort", "Embeddables", "Calendly", "Cal.com", "Webflow", "Squarespace", "Wix", "WordPress", "Shopify", "Google Tag Manager"],
       checks: [
         { step: 1, tool: "installation", question: "Which platform hosts the site, and which tool renders the signup form?" },
         { step: 2, question: "Is the form embedded as raw HTML on the customer's page, or as an iframe or stand-alone hosted page?" },
       ],
       causes: [
-        { cause: "Typeform, HubSpot, or another embedded form builder.", fix: "Embed the form on your own page as raw HTML, not an iframe, and follow the platform-specific instructions under the tracking method step.", docs: ["support 367", "support 345", "docs integrations/typeform"] },
+        { cause: "The signup form is rendered by a third-party form builder.", fix: "Paste the ready-made snippet for that builder from the Installation step. Typeform, HubSpot, Calendly, Cal.com, Tally, Jotform, Paperform, Formsort, and Embeddables each have one. For any other builder, embed the form on the customer's own page as raw HTML, not an iframe, and follow the platform-specific instructions under the tracking method step.", docs: ["support 367", "support 345", "docs integrations/typeform", "docs integrations/tally", "docs integrations/jotform", "docs integrations/paperform", "docs integrations/formsort", "docs integrations/embeddables"] },
         { cause: "Wix or Squarespace.", fix: "Wix forms are iframes: add participants with JavaScript or the REST API. Squarespace: use Code Injection in the header.", docs: ["support 212", "docs getting-started"] },
         { cause: "Shopify or another store checkout.", fix: "Trigger on the thank-you page, or connect orders through Zapier.", docs: ["support 272", "support 258"] },
         { cause: "Google Tag Manager.", fix: "Install directly in the head instead; ad blockers block tag-manager payloads and tracking fails silently.", docs: ["support 370"] },

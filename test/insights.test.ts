@@ -166,8 +166,8 @@ describe("program-design advisor", () => {
     expect(brief.decisions).toEqual(full.decisions);
     expect(brief.benchmarkFacts).toEqual(full.benchmarkFacts);
     expect(brief.benchmarkFacts).toEqual([
-      "Successful referrals per 100 participants, measured separately for each high-performing program: median 12; Q1 6; Q3 24; sample: 24 programs; source: Healthcare & wellness.",
-      "Successful referrals per 100 pending referrals, measured separately for each high-performing program: median 46; Q1 23; Q3 90; sample: 45 programs; source: platform-wide high performers (segment withheld). This sample includes programs with pending referrals whose successful-referral count does not exceed their pending count.",
+      "Successful referrals per 100 participants, measured separately for each high-performing program: median 12; Q1 6; Q3 24; sample: a small sample of programs; source: Healthcare & wellness.",
+      "Successful referrals per 100 pending referrals, measured separately for each high-performing program: median 46; Q1 23; Q3 90; sample: a moderate sample of programs; source: platform-wide high performers (segment withheld). This sample includes programs with pending referrals whose successful-referral count does not exceed their pending count.",
     ]);
     for (const fact of brief.benchmarkFacts) expect(brief.markdown).toContain(fact);
     expect(buildProgramDesignAdvice(input, undefined).benchmarkFacts).toEqual([]);
@@ -192,12 +192,12 @@ describe("program-design advisor", () => {
 
     expect(text).toContain("Acme Clinics");
     expect(text).toContain("Based on the highest-performing test programs.");
-    expect(text).toContain("Segment: Healthcare & wellness (24 programs from 20 companies)");
+    expect(text).toContain("Segment: Healthcare & wellness (a small sample of programs, each from a distinct company)");
     // Segment figure wins where it exists.
-    expect(text).toContain("median 320; Q1 160; Q3 480; sample: 24 programs; source: Healthcare & wellness");
+    expect(text).toContain("median 320; Q1 160; Q3 480; sample: a small sample of programs; source: Healthcare & wellness");
     // A null figure inside an existing segment cut falls back to the platform figure and says so.
     expect(text).toMatch(/Participants per program.*withheld/);
-    expect(text).toContain("median 80 (mixed dollar currencies); Q1 40 (mixed dollar currencies); Q3 120 (mixed dollar currencies); sample: 40 programs; source: platform-wide high performers (segment withheld)");
+    expect(text).toContain("median 80 (mixed dollar currencies); Q1 40 (mixed dollar currencies); Q3 120 (mixed dollar currencies); sample: a moderate sample of programs; source: platform-wide high performers (segment withheld)");
     expect(text).toMatch(/Equal reward amounts.*platform-wide.*segment withheld/);
     // Null proportions render as withheld, never as "null%".
     expect(text).toContain("Unlimited earning, double-sided rewards: withheld");
@@ -207,7 +207,7 @@ describe("program-design advisor", () => {
     // A null referralTrigger cut on the segment falls back to the platform cut with its caveat.
     expect(text).toContain("Definitional, not causal.");
     expect(text).toContain("Correlation only.");
-    expect(text).toMatch(/Copy link.*36%.*10/);
+    expect(text).toMatch(/Copy link.*36% of recorded share actions/);
     // Rules are opt-in.
     expect(text).not.toContain("## Rule set 1");
     expect(text).toContain("Call again with `includeRules: true`");
@@ -352,10 +352,10 @@ describe("program-design advisor", () => {
     } satisfies GrowSurfInsightsBundle;
     const text = renderProgramDesignAdvisor(programDesignAdvisorInputSchema.parse({ industry: "healthcare_wellness", currencyISO: "USD", rewardBudgetPerReferral: 25, detail: "full" }), bundle);
     const rows = text.split("\n");
-    expect(rows.find((row) => row.includes("Successful referrals ÷ participants × 100"))).toContain("median 12%; Q1 6%; Q3 24%; sample: 24 programs; source: Healthcare & wellness");
-    expect(rows.find((row) => row.includes("Signup counts as the referral"))).toMatch(/25% of 12 programs with installation evidence.*Healthcare & wellness/);
-    expect(rows.find((row) => row.includes("Copy link"))).toMatch(/36% of recorded share actions.*10 of 24 programs.*Healthcare & wellness/);
-    expect(rows.find((row) => row.includes("HubSpot"))).toMatch(/20% \(20 of 100 programs\).*platform-wide/);
+    expect(rows.find((row) => row.includes("Successful referrals ÷ participants × 100"))).toContain("median 12%; Q1 6%; Q3 24%; sample: a small sample of programs; source: Healthcare & wellness");
+    expect(rows.find((row) => row.includes("Signup counts as the referral"))).toMatch(/25% of a small sample of programs with installation evidence.*Healthcare & wellness/);
+    expect(rows.find((row) => row.includes("Copy link"))).toMatch(/36% of recorded share actions.*Healthcare & wellness/);
+    expect(rows.find((row) => row.includes("HubSpot"))).toMatch(/20% of programs.*platform-wide/);
     expect(text).toContain("not USD-only benchmarks");
     expect(text).toContain("Dollar reward bands are omitted for this budget comparison");
     expect(text).not.toContain("median 80 (mixed dollar currencies)");

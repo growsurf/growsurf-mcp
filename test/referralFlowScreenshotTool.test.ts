@@ -22,7 +22,7 @@ describe("referral-flow screenshot MCP tool", () => {
       const tool = tools.tools.find((candidate) => candidate.name === "growsurf_capture_referral_flow_screenshots");
 
       expect(tool).toBeDefined();
-      expect(tool?.description).toContain("explicitly asks for screenshots");
+      expect(tool?.description).toContain("after a draft program is saved");
       expect(tool?.description).toContain("does not accept arbitrary URLs, HTML, JavaScript, or external screenshot targets");
       expect(tool?.inputSchema).toMatchObject({
         type: "object",
@@ -37,7 +37,7 @@ describe("referral-flow screenshot MCP tool", () => {
     }
   });
 
-  it("calls the MCP screenshot endpoint for the selected campaign", async () => {
+  it("calls the screenshot endpoint for the selected campaign", async () => {
     const fetchMock = vi.fn(async () => {
       return new Response(JSON.stringify({
         generatedAt: "2026-07-09T00:00:00.000Z",
@@ -73,7 +73,7 @@ describe("referral-flow screenshot MCP tool", () => {
       expect(result.content[0]?.type).toBe("text");
       expect(result.content[0] && "text" in result.content[0] ? result.content[0].text : "").toContain("referrer.jpg");
       expect(fetchMock).toHaveBeenCalledWith(
-        "https://api.example.com/api/v2/mcp/campaign/selected_campaign/referral-flow-screenshots",
+        "https://api.example.com/v2/campaign/selected_campaign/referral-flow-screenshots",
         expect.objectContaining({
           method: "POST",
           headers: expect.objectContaining({ Authorization: "Bearer api_key" }),

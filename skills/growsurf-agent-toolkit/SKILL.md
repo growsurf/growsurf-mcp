@@ -18,7 +18,7 @@ Use this skill to turn a user goal into a real GrowSurf program, not just API ca
 - Keep rewards conservative until the user confirms money movement, payout funding, tax collection, and approval settings.
 - Fetch before patching large config surfaces. Use `growsurf_get_campaign_design`, `growsurf_get_campaign_emails`, `growsurf_get_campaign_options`, or `growsurf_get_campaign_installation`, then patch only the fields that must change.
 - Finish by proving what changed: fetch the campaign, key configs, and rewards again. Review the returned settings before reporting back.
-- Ask for screenshot proof only when the work changes or installs a browser-visible GrowSurf flow. Skip that ask for read-only lookups, config summaries, and server-only API tasks. If the user wants GrowSurf preview screenshots, call `growsurf_capture_referral_flow_screenshots` and inspect the returned referrer Window and referred-friend images. If they want proof of their own installed site, use the host agent's browser automation tool, such as Playwright or a built-in browser tool, against the real installed page. Do not substitute a mock page unless the real page is unavailable, and say so if that happens.
+- Show the draft, do not just describe it. After a draft program is saved, and again when later work changes or installs a browser-visible GrowSurf flow, call `growsurf_capture_referral_flow_screenshots` and show the returned referrer Window and referred-friend images inline as GrowSurf preview screenshots. Skip this for read-only lookups, config summaries, and server-only API tasks. If they want proof of their own installed site, use the host agent's browser automation tool, such as Playwright or a built-in browser tool, against the real installed page. Do not substitute a mock page unless the real page is unavailable, and say so if that happens.
 
 ## Referral Program Workflow
 
@@ -132,7 +132,8 @@ Include:
 - What was created or changed
 - Reward and money-movement posture
 - Installation or launch action still needed
-- Screenshot URLs from `growsurf_capture_referral_flow_screenshots` when the user asked for GrowSurf preview screenshots
+- GrowSurf preview screenshots from `growsurf_capture_referral_flow_screenshots`, shown inline
+- A What's next block: the Program Editor link `https://app.growsurf.com/editor/<campaignId>`, one question about who installs GrowSurf (the agent with approval, a developer invited at `https://app.growsurf.com/settings#team-members` with the Installation step link `https://app.growsurf.com/editor/<campaignId>/installation/instructions`, or the user), then integrations via `growsurf_get_integration_connect_link`
 - Campaign Editor URL when the user wants to inspect design defaults
 
 ## One-Shot Eval Examples
