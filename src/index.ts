@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.18.0";
+export const GROWSURF_MCP_VERSION = "0.18.1";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -116,7 +116,12 @@ const envSchema = z.object({
   GROWSURF_WEBHOOK_TOKEN: optionalNonEmptyString(),
 });
 
-export type Env = z.infer<typeof envSchema>;
+// `Partial<>` is load-bearing. Every field is `.optional().transform(...)`, and zod 4 infers a
+// transform pipe as a REQUIRED key whose value may be undefined, where zod 3 inferred an optional
+// key. Without this, `createGrowSurfMcpServer({ env })` forces a caller to name all six variables,
+// which broke growsurf-mcp-worker on the 0.18.0 zod bump. The runtime has always treated every
+// field as absent-or-set, so the type says that too.
+export type Env = Partial<z.infer<typeof envSchema>>;
 
 const getEnv = (): Env => {
   const parsed = envSchema.safeParse(process.env);
