@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.19.0";
+export const GROWSURF_MCP_VERSION = "0.19.1";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -1302,7 +1302,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_mobile_sdk_guide",
           description:
-            "Generate native iOS/Android SDK 0.4.0 guidance, including attribution, shareUrl sharing, trackShare, and the native GrowSurf Window.",
+            "Generate native iOS/Android SDK 0.5.0 guidance, including attribution, shareUrl sharing, trackShare, and the native GrowSurf Window.",
           inputSchema: {
             type: "object",
             properties: {

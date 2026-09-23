@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const MOBILE_SDK_GUIDANCE_VERSION = "0.4.0";
+const MOBILE_SDK_GUIDANCE_VERSION = "0.5.0";
 const IOS_DISTRIBUTION_URL = "https://github.com/growsurf/growsurf-ios-sdk-distribution.git";
 const FIXTURE_EMAIL = "gavin@hooli.com";
 const FIXTURE_FIRST_NAME = "Gavin";
