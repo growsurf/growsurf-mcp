@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.18.1";
+export const GROWSURF_MCP_VERSION = "0.19.0";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -1829,13 +1829,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_design",
           description:
-            "Fetch the configured design fields for your GrowSurf program, including GrowSurf Window content, colors, sharing sections, participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget`, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and country-name overrides under `countryLabels`. `participantAvatarStyle` is `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`; missing or unknown values mean `INITIALS`. The confirmation section is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the configured design fields for your GrowSurf program, including GrowSurf Window content, colors, sharing sections, participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget`, the participant Traffic report under `trafficInsights` (it starts on for new affiliate programs and hidden for referral programs, and every setting is returned with its default copy), participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and country-name overrides under `countryLabels`. `participantAvatarStyle` is `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`; missing or unknown values mean `INITIALS`. The confirmation section is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_design",
           description:
-            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget` (a button or a card in a corner of the site, its placement, when it appears, and which pages it appears on), participant sign-in copy under `login`, and payout-destination confirmation page copy under `payoutDestinationConfirmation`. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Fetch the configuration first, preserve starter content unless the user asked to change it, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget` (a button or a card in a corner of the site, its placement, when it appears, and which pages it appears on), the participant Traffic report under `trafficInsights` (turn it on with `isPublicDisplayed`; its labels cannot be blank), participant sign-in copy under `login`, and payout-destination confirmation page copy under `payoutDestinationConfirmation`. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Fetch the configuration first, preserve starter content unless the user asked to change it, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {

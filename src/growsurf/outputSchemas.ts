@@ -629,6 +629,46 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         },
       },
     },
+    trafficInsights: {
+      type: "object",
+      description:
+        "The Traffic report participants can open from the GrowSurf window: visits to their share link over time and where those visits came from. It starts on for new affiliate programs and hidden for referral programs. Every setting is returned, with the default copy for anything not changed. Labels cannot be blank.",
+      properties: {
+        isPublicDisplayed: { type: "boolean", description: "Whether participants can open the Traffic report." },
+        title: { type: "string", description: "The report heading." },
+        trafficForLabel: { type: "string", description: "The label in front of the share link picker." },
+        allLinksLabel: { type: "string", description: "The share link picker option that combines all of the participant's links." },
+        visitsOverTimeTitle: { type: "string", description: "The heading above the visits chart." },
+        breakdownsTitle: { type: "string", description: "The heading above the breakdown table." },
+        viewTrafficInsightsLinkText: { type: "string", description: "The text of the row or tab that opens the report." },
+        backLinkText: { type: "string", description: "The text of the link back from the report." },
+        emptyState: { type: "string", description: "The message shown before the participant's link has any visits. Can be empty." },
+        notSetLabel: { type: "string", description: "The row name for visits that have no value for the chosen breakdown." },
+        messages: {
+          type: "object",
+          description:
+            "Messages shown when the report cannot show everything: `error`, `unavailable`, `partial`, `partialFrom` (`{{date}}` is replaced with the first available date), `breakdownPartial`, and `breakdownEmpty`.",
+        },
+        dateRangeLabels: {
+          type: "object",
+          description: "The date range picker labels, keyed by `LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, and `ALL_TIME`.",
+        },
+        defaultDateRange: {
+          type: "string",
+          enum: ["LAST_7_DAYS", "LAST_30_DAYS", "LAST_90_DAYS", "ALL_TIME"],
+          description: "The date range the report opens with.",
+        },
+        metrics: {
+          type: "object",
+          description: "The two visit counts at the top of the report, `visits` and `uniqueVisitors`, each with `isVisible`, `label`, and `helperText`.",
+        },
+        breakdowns: {
+          type: "object",
+          description:
+            "The tables that show where visits came from: `utm`, `referrer`, `destination`, `geo`, `technology`, and `trigger`. Each has `isVisible` and `label`; some also name their levels under `levels` or their fixed rows under `values`.",
+        },
+      },
+    },
     referralSummary: {
       type: "object",
       description: "Referral programs only. The participant's row of summary tiles (clicks, leads, referrals, rewards).",
