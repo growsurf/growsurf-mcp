@@ -1434,7 +1434,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         },
         {
           name: "growsurf_list_campaign_rewards",
-          description: "List your GrowSurf program's configured rewards. These settings do not establish that a participant earned or received a reward; inspect their `rewards` with `growsurf_get_participant`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          description: "List your GrowSurf program's configured Campaign Rewards, including switched-off rewards and rewards whose group is not selected. Deleted rewards are excluded. These settings do not establish that a participant earned or received a reward; inspect their `rewards` with `growsurf_get_participant`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -1944,7 +1944,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_capture_referral_flow_screenshots",
           description:
-            "Capture temporary GrowSurf preview screenshots so the user can see the draft instead of reading API fields. Call it after a draft program is saved and whenever a later change touches a browser-visible GrowSurf flow, or when the user asks for screenshots. Returns short-lived URLs for the controlled referrer Window and referred-friend experience for this program; show them inline. This does not prove the user's installed site; use browser automation for that. This tool does not accept arbitrary URLs, HTML, JavaScript, or external screenshot targets. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Capture temporary GrowSurf preview screenshots so the user can see the draft instead of reading API fields. Call it after a draft program is saved and whenever a later change touches a browser-visible GrowSurf flow, or when the user asks for screenshots. Returns short-lived URLs for the controlled referrer Window and referred-friend experience for this program; show them inline when supported and include an Open preview link for each exact URL. Compare `expiresAt` with the current UTC time before reporting expiry. A broken inline image alone does not prove expiry; use the link or a browser tool if the client cannot display it. Capture again after expiry. This does not prove the user's installed site; use browser automation for that. This tool does not accept arbitrary URLs, HTML, JavaScript, or external screenshot targets. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {

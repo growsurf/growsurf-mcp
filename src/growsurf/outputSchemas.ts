@@ -365,7 +365,7 @@ const CAMPAIGN_LIST_RESPONSE: ToolOutputSchema = {
 const CAMPAIGN_REWARD_LIST_RESPONSE: ToolOutputSchema = {
   type: "object",
   properties: {
-    rewards: { type: "array", items: REWARD, description: "The program's active, visible, and enabled reward configs." },
+    rewards: { type: "array", items: REWARD, description: "The program's configured Campaign Rewards, including switched-off rewards. Deleted rewards are excluded." },
   },
 };
 
