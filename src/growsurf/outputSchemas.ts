@@ -984,6 +984,29 @@ const CAMPAIGN_INSTALLATION: ToolOutputSchema = {
         androidAppStoreUrl: { type: ["string", "null"], description: "Google Play Store URL for mobile referral links." },
       },
     },
+    instructionSelections: {
+      type: "object",
+      description: "Saved choices shown in the Program Editor installation guide.",
+      properties: {
+        platform: { type: "string", enum: ["web", "ios", "android"], description: "Platform shown in step 1." },
+        mobileAttributionProvider: {
+          type: "string",
+          enum: ["branch", "appsflyer", "adjust", "singular", "other"],
+          description: "Mobile attribution provider selected for the guide.",
+        },
+        stepProviders: {
+          type: "object",
+          description: "Selected method for each installation step; affiliate and referral choices depend on program type.",
+          properties: {
+            step2Signup: { type: "string", enum: ["restApi", "javascript"], description: "Signup method shown in step 2." },
+            step2Affiliate: { type: "string", enum: ["stripe", "chargebee", "recurly", "restApi"], description: "Affiliate step 2 method." },
+            step2Referral: { type: "string", enum: ["restApi", "zapier", "stripe", "chargebee", "recurly", "paypal", "hubspot", "salesforce"], description: "Referral step 2 method." },
+            step3Affiliate: { type: "string", enum: ["paypal", "wise"], description: "Affiliate payout method shown in step 3." },
+            step3Referral: { type: "string", enum: ["webhooks", "zapier", "paypal", "tangocard", "stripe", "chargebee", "recurly"], description: "Referral reward method shown in step 3." },
+          },
+        },
+      },
+    },
   },
 };
 
@@ -2125,12 +2148,12 @@ const PAYOUT_DESTINATION_STATUS_RESPONSE: ToolOutputSchema = {
     activeProvider: {
       type: ["string", "null"],
       description:
-        "The payout provider currently selected, or `null` until the participant confirms one. Provider identifiers are open-ended; current examples include `PAYPAL` and `WISECOM`.",
+        "The payout provider currently selected, or `null` until the participant confirms one. Provider identifiers are open-ended; current examples include `PAYPAL`, `VENMO`, and `WISECOM`.",
     },
     enabledProviders: {
       type: "array",
       description:
-        "Payout provider identifiers enabled for this program. Values are open-ended; current examples include `PAYPAL` and `WISECOM`.",
+        "Payout provider identifiers enabled for this program. Values are open-ended; current examples include `PAYPAL`, `VENMO`, and `WISECOM`.",
       items: { type: "string" },
     },
     destinations: {
@@ -2142,7 +2165,7 @@ const PAYOUT_DESTINATION_STATUS_RESPONSE: ToolOutputSchema = {
           provider: {
             type: "string",
             description:
-              "The payout provider identifier for this entry. Values are open-ended; current examples include `PAYPAL` and `WISECOM`.",
+              "The payout provider identifier for this entry. Values are open-ended; current examples include `PAYPAL`, `VENMO`, and `WISECOM`.",
           },
           providerDisplayName: { type: "string", description: 'The customer-facing provider name (e.g. "PayPal", "Wise").' },
           status: {
@@ -2177,7 +2200,7 @@ const PAYOUT_DESTINATION_CONFIRMATION_REQUEST_RESPONSE: ToolOutputSchema = {
     provider: {
       type: "string",
       description:
-        "The payout provider identifier the participant was asked to confirm. Values are open-ended; current examples include `PAYPAL` and `WISECOM`.",
+        "The payout provider identifier the participant was asked to confirm. Values are open-ended; current examples include `PAYPAL`, `VENMO`, and `WISECOM`.",
     },
     providerDisplayName: { type: "string", description: 'The customer-facing provider name (e.g. "PayPal", "Wise").' },
     expiresAt: {

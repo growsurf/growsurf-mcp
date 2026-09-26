@@ -1434,7 +1434,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         },
         {
           name: "growsurf_list_campaign_rewards",
-          description: "List your GrowSurf program's configured Campaign Rewards, including switched-off rewards and rewards whose group is not selected. Deleted rewards are excluded. These settings do not establish that a participant earned or received a reward; inspect their `rewards` with `growsurf_get_participant`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          description: "List your GrowSurf program's configured Campaign Rewards, including switched-off rewards and rewards whose group is not selected. Deleted rewards are excluded. A reward can be earned only when it also appears in the campaign response's embedded `rewards` array. These settings do not establish that a participant earned or received a reward; inspect their `rewards` with `growsurf_get_participant`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -1899,7 +1899,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               fields: {
                 type: "object",
                 description:
-                  "Installation fields to patch. Common keys include `shareUrl`, `allowedUrls`, `signupEvent`, `referralTrigger`, and `signup`. Arrays replace wholesale.",
+                  "Installation fields to patch. Common keys include `shareUrl`, `allowedUrls`, `signupEvent`, `referralTrigger`, `signup`, and `instructionSelections`. Arrays replace wholesale.",
                 properties: {
                   shareUrl: {
                     type: "string",
@@ -1925,6 +1925,27 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                       },
                       redirectUrl: { type: ["string", "null"] },
                       trackInputFields: { type: "boolean" },
+                    },
+                    additionalProperties: true,
+                  },
+                  instructionSelections: {
+                    type: "object",
+                    description: "Guide choices. Send only the choices to change.",
+                    properties: {
+                      platform: { type: "string", enum: ["web", "ios", "android"] },
+                      mobileAttributionProvider: { type: "string", enum: ["branch", "appsflyer", "adjust", "singular", "other"] },
+                      stepProviders: {
+                        type: "object",
+                        description: "Selected method for each guide step. Available keys depend on program type.",
+                        properties: {
+                          step2Signup: { type: "string", enum: ["restApi", "javascript"] },
+                          step2Affiliate: { type: "string", enum: ["stripe", "chargebee", "recurly", "restApi"] },
+                          step2Referral: { type: "string", enum: ["restApi", "zapier", "stripe", "chargebee", "recurly", "paypal", "hubspot", "salesforce"] },
+                          step3Affiliate: { type: "string", enum: ["paypal", "wise"] },
+                          step3Referral: { type: "string", enum: ["webhooks", "zapier", "paypal", "tangocard", "stripe", "chargebee", "recurly"] },
+                        },
+                        additionalProperties: true,
+                      },
                     },
                     additionalProperties: true,
                   },

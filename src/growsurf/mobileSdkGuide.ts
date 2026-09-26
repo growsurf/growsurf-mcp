@@ -393,7 +393,7 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
     "- Deep-link, deferred-link, and provider handlers queue a versioned visit automatically. Do not call `recordAttribution()` after a handler. Use it only for a visit the app constructs itself.",
     "- GrowSurf keeps server-signed first-visit and last-visit receipts and sends them during participant creation. The server applies the program's first-click or last-click setting.",
     "- Use `validateReferrer()` when you only need to check referral identity without creating a participant.",
-    "- Use `addReferredParticipant()` for referral-only signup tracking.",
+    "- Use `addReferredParticipant()` for referral-only signup tracking. GrowSurf checks the referral again at signup and does not create a direct participant if it is invalid.",
     "- Use `addParticipant()` only when the app intentionally creates every signup. Check `affiliateApplicationMode` first so reviewed affiliate applicants use the configured GrowSurf Program Page.",
     "- When `addReferredParticipant()` or `addParticipant()` returns a `participantToken`, the SDK stores it automatically.",
   ];
