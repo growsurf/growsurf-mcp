@@ -4,7 +4,7 @@ import { TOOL_OUTPUT_SCHEMAS } from "../src/growsurf/outputSchemas.js";
 
 describe("payout provider contracts", () => {
   it("keeps provider writes closed while status outputs remain forward-compatible", () => {
-    expect(PAYOUT_DESTINATION_PROVIDER_INPUTS).toEqual(["PAYPAL", "WISECOM"]);
+    expect(PAYOUT_DESTINATION_PROVIDER_INPUTS).toEqual(["PAYPAL", "VENMO", "WISECOM"]);
     const status = TOOL_OUTPUT_SCHEMAS.growsurf_get_participant_payout_destination as any;
     expect(status.properties.participantId).toBeUndefined();
     expect(status.properties.activeProvider.enum).toBeUndefined();

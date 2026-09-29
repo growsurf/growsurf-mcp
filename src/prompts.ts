@@ -299,7 +299,7 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
   {
     name: "advise_program_design",
     title: "Advise on program design",
-    description: "Recommend a referral program design for a business before creating or changing rewards.",
+    description: "Recommend a referral or affiliate program design for a business before creating or changing rewards.",
     arguments: [
       { name: "companyName", description: "Company or product name." },
       { name: "industry", description: "Closest segment: fintech, SaaS, newsletter, healthcare, education, consumer, or other." },
@@ -311,7 +311,7 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
       const industry = value(args, "industry", "the closest segment");
       const budget = value(args, "budget", "unknown");
       return [
-        `Advise ${companyName} on their referral program design.`,
+        `Advise ${companyName} on their referral or affiliate program design.`,
         "",
         `Industry: ${industry}.`,
         `Goal: ${goal}.`,
