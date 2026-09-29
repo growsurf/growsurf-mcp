@@ -28,7 +28,8 @@ export type ApiLibrarySnippetsContext = {
 type Language = Exclude<ApiLibrarySnippetsInput["language"], "all">;
 type Workflow = Exclude<ApiLibrarySnippetsInput["workflow"], "all">;
 
-const REST_API_LIBRARY_VERSION = "1.4.0";
+const REST_API_LIBRARY_VERSION = "1.10.0";
+const JAVA_API_LIBRARY_VERSION = "1.11.0";
 const FIXTURE_EMAIL = "gavin@hooli.com";
 const FIXTURE_FIRST_NAME = "Gavin";
 const FIXTURE_LAST_NAME = "Belson";
@@ -377,10 +378,10 @@ const renderJava = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = [`### Java (\`com.growsurf.api:growsurf-java\` ${REST_API_LIBRARY_VERSION}+)`];
+  const sections: string[] = [`### Java (\`com.growsurf.api:growsurf-java\` ${JAVA_API_LIBRARY_VERSION}+)`];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
-      codeBlock("kotlin", `implementation(\"com.growsurf.api:growsurf-java:${REST_API_LIBRARY_VERSION}\")`),
+      codeBlock("kotlin", `implementation(\"com.growsurf.api:growsurf-java:${JAVA_API_LIBRARY_VERSION}\")`),
       codeBlock(
         "java",
         [

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const MOBILE_SDK_GUIDANCE_VERSION = "0.5.0";
+const MOBILE_SDK_GUIDANCE_VERSION = "0.6.0";
 const IOS_DISTRIBUTION_URL = "https://github.com/growsurf/growsurf-ios-sdk-distribution.git";
 const FIXTURE_EMAIL = "gavin@hooli.com";
 const FIXTURE_FIRST_NAME = "Gavin";
@@ -387,13 +387,13 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
     "",
     `- Use SDK version \`${MOBILE_SDK_GUIDANCE_VERSION}\`.`,
     "- Native apps use a public Mobile SDK key, not the secret REST API key.",
-    "- The recommended mobile referral portal is the native GrowSurf Window opened from your own app UI.",
+    "- The recommended mobile referral or affiliate portal is the native GrowSurf Window opened from your own app UI.",
     "- For signed-in users, mint a participant-scoped mobile token on your backend and pass it to the SDK.",
     "- The built-in GrowSurf Window can email a returning participant a sign-in link. The link opens the hosted web portal; it does not authenticate the native app. Continue creating the participant token on your backend for native sessions.",
     "- Deep-link, deferred-link, and provider handlers queue a versioned visit automatically. Do not call `recordAttribution()` after a handler. Use it only for a visit the app constructs itself.",
     "- GrowSurf keeps server-signed first-visit and last-visit receipts and sends them during participant creation. The server applies the program's first-click or last-click setting.",
     "- Use `validateReferrer()` when you only need to check referral identity without creating a participant.",
-    "- Use `addReferredParticipant()` for referral-only signup tracking. GrowSurf checks the referral again at signup and does not create a direct participant if it is invalid.",
+    "- Use `addReferredParticipant()` for referral-only signup tracking. GrowSurf applies stored signed receipts using the program’s first-click or last-click setting, with a validated referral code as fallback. A missing or invalid later code does not discard a valid receipt. For a newly added participant, the result’s `referredBy` identifies the referrer the server credited. `validReferral` can be true even when `referredBy` is absent. Existing-participant responses do not disclose that participant’s stored referral credit. If no valid referral remains, GrowSurf does not create a direct participant.",
     "- Use `addParticipant()` only when the app intentionally creates every signup. Check `affiliateApplicationMode` first so reviewed affiliate applicants use the configured GrowSurf Program Page.",
     "- When `addReferredParticipant()` or `addParticipant()` returns a `participantToken`, the SDK stores it automatically.",
   ];

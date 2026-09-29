@@ -166,6 +166,11 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
   // explicit program-type qualifiers.
   const isAffiliateOnly = input.programType === "affiliate";
   const isReferralOnly = input.programType === "referral";
+  const portalLabel = isAffiliateOnly
+    ? "affiliate portal"
+    : isReferralOnly
+      ? "referral portal"
+      : "referral or affiliate portal";
 
   const stackMoneyBullets = isAffiliateOnly
     ? [
@@ -197,7 +202,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
     "",
     ...stackMoneyBullets,
     "- **CRM (B2B signals)**: if it's B2B or you see Salesforce or HubSpot, suggest connecting it to sync participants and referral events into their pipeline.",
-    "- **Email / ESP**: if you see Mailchimp, Klaviyo, ActiveCampaign, Kit (formerly ConvertKit), Customer.io, and the like, offer to pipe referral events into it. Good moment: right after the referral portal and signup flow work.",
+    `- **Email / ESP**: if you see Mailchimp, Klaviyo, ActiveCampaign, Kit (formerly ConvertKit), Customer.io, and the like, offer to pipe referral events into it. Good moment: right after the ${portalLabel} and signup flow work.`,
     "- **Analytics & ads**: if the app already loads Google Analytics, Segment, Mixpanel, Amplitude, or a Google/Meta/LinkedIn pixel, offer to send referral events there for attribution.",
     "- **No clear signal**: ask which of the above they want, or point them to Zapier, Make, or a raw webhook to connect anything else.",
     "",
@@ -259,7 +264,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
       "### 7) What this MCP server does / does not do",
       "",
       "- It **calls GrowSurf REST** for happy-path server-side actions (campaign, add participant, trigger referral, record sale).",
-      "- It **guides implementation** for web, backend, and native iOS/Android SDK 0.5.0 paths.",
+      "- It **guides implementation** for web, backend, and native iOS/Android SDK 0.6.0 paths.",
       "- It **advises on program design** with `growsurf_program_design_advisor` and **diagnoses tracking, reward, and email problems** symptom-first with `growsurf_troubleshoot_referral_tracking`.",
       "- For native mobile apps, use `growsurf_mobile_sdk_guide` for Mobile SDK, attribution, `trackShare`, and native GrowSurf Window examples.",
       "- It **helps compute participant-auth hashes** and create participant-scoped mobile SDK tokens.",
