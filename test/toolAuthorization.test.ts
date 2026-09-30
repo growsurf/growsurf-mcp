@@ -291,6 +291,20 @@ describe("MCP tool authorization", () => {
       idempotentHint: true,
       openWorldHint: true,
     });
+    // Provider-linked transactions and affiliate commissions involve independent entities.
+    // Their open-world hints must preserve the separate retry and amendment safeguards.
+    expect(byName.get("growsurf_record_sale")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
+    expect(byName.get("growsurf_refund_transaction")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
     expect(byName.get("growsurf_bulk_delete_participants")?.annotations).toMatchObject({
       readOnlyHint: false,
       destructiveHint: true,
