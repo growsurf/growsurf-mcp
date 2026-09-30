@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.19.3";
+export const GROWSURF_MCP_VERSION = "0.19.4";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -2498,7 +2498,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_refund_transaction",
           description:
-            "Record an amendment (refund, partial refund, or chargeback) against a previously recorded affiliate transaction; reverses or adjusts the referrer's commission. The inverse of growsurf_record_sale. Identify the original transaction with the same identifier you sent when recording it (omit amountRefunded for a full refund). Already-paid commissions are not clawed back (recorded for tax only). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Record a refund, partial refund, or chargeback for a previously recorded affiliate transaction in GrowSurf and reverse or adjust the referrer's commission. This records the amendment without sending a refund through the payment provider. Identify the original transaction with the same identifier you sent to `growsurf_record_sale` (omit `amountRefunded` for a full refund). Already-paid commissions are not clawed back (recorded for tax only). Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {

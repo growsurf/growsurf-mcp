@@ -252,6 +252,28 @@ describe("MCP tool authorization", () => {
       idempotentHint: true,
       openWorldHint: true,
     });
+    // Participant-facing publication and a verification request to GrowSurf extend beyond
+    // private account data. Preserve each action's independent retry and destructive hints.
+    for (const name of ["growsurf_update_campaign_reward", "growsurf_update_program_resource"]) {
+      expect(byName.get(name)?.annotations).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      });
+    }
+    expect(byName.get("growsurf_create_program_resource")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
+    expect(byName.get("growsurf_request_team_verification")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
     expect(byName.get("growsurf_bulk_delete_participants")?.annotations).toMatchObject({
       readOnlyHint: false,
       destructiveHint: true,

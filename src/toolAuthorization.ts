@@ -84,9 +84,9 @@ const TOOL_BEHAVIOR = {
     riskTier: TOOL_RISK_TIERS.CONTENT,
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
   },
-  CONTENT_IDEMPOTENT: {
+  CONTENT_REQUEST: {
     riskTier: TOOL_RISK_TIERS.CONTENT,
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   },
   CONTENT_EXTERNAL: {
     riskTier: TOOL_RISK_TIERS.CONTENT,
@@ -115,6 +115,10 @@ const TOOL_BEHAVIOR = {
   MONEY_SET: {
     riskTier: TOOL_RISK_TIERS.MONEY,
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  },
+  MONEY_PUBLISH: {
+    riskTier: TOOL_RISK_TIERS.MONEY,
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
   },
 } as const satisfies Record<string, ToolBehavior>;
 
@@ -160,15 +164,17 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_clone_campaign: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_list_campaign_rewards: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_create_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_CREATE, MACHINE_SCOPES.PROGRAM_WRITE),
-  growsurf_update_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_SET, MACHINE_SCOPES.PROGRAM_WRITE),
+  // Reward updates can change incentives shown to participants in a published program.
+  growsurf_update_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_delete_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_SET, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_list_program_resources: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_prepare_program_resource_file: requiresScopes(
     TOOL_BEHAVIOR.CONTENT_OPEN_WORLD,
     MACHINE_SCOPES.PROGRAM_WRITE,
   ),
-  growsurf_create_program_resource: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_WRITE),
-  growsurf_update_program_resource: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
+  // These tools can publish participant-facing content, including arbitrary HTTPS links.
+  growsurf_create_program_resource: requiresScopes(TOOL_BEHAVIOR.CONTENT_OPEN_WORLD, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_update_program_resource: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_delete_program_resource: requiresScopes(TOOL_BEHAVIOR.DESTRUCTIVE, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_get_campaign_design: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_update_campaign_design: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
@@ -183,7 +189,8 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_get_team: requiresSingleTeamScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.TEAM_READ),
   growsurf_update_team: requiresSingleTeamScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.TEAM_WRITE),
   growsurf_request_team_verification: requiresSingleTeamScopes(
-    TOOL_BEHAVIOR.CONTENT_IDEMPOTENT,
+    // Requests a review by GrowSurf rather than only changing the bound team's private data.
+    TOOL_BEHAVIOR.CONTENT_REQUEST,
     MACHINE_SCOPES.TEAM_WRITE,
   ),
   growsurf_resend_team_owner_verification_email: requiresSingleTeamScopes(
@@ -288,7 +295,7 @@ export const TOOL_TITLES = {
   growsurf_get_participant_payout_destination: "Get Payout Destination",
   growsurf_request_participant_payout_destination_confirmation: "Request Payout Destination Confirmation",
   growsurf_record_sale: "Record Sale",
-  growsurf_refund_transaction: "Refund Transaction",
+  growsurf_refund_transaction: "Record Affiliate Refund or Chargeback",
   growsurf_create_mobile_participant_token: "Create Mobile Participant Token",
   growsurf_participant_auth_hash: "Compute Participant Auth Hash",
   growsurf_webhook_normalize: "Normalize Webhook Payload",
