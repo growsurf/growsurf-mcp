@@ -80,6 +80,10 @@ const TOOL_BEHAVIOR = {
     riskTier: TOOL_RISK_TIERS.CONTENT,
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   },
+  CONTENT_PUBLISH: {
+    riskTier: TOOL_RISK_TIERS.CONTENT,
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+  },
   CONTENT_IDEMPOTENT: {
     riskTier: TOOL_RISK_TIERS.CONTENT,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -151,7 +155,8 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_get_campaign: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_list_campaigns: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_create_campaign: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_WRITE),
-  growsurf_update_campaign: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
+  // Lifecycle updates can publish or end a participant-facing program, beyond private account data.
+  growsurf_update_campaign: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_clone_campaign: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_list_campaign_rewards: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_create_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_CREATE, MACHINE_SCOPES.PROGRAM_WRITE),

@@ -250,6 +250,7 @@ describe("MCP tool authorization", () => {
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: true,
+      openWorldHint: true,
     });
     expect(byName.get("growsurf_bulk_delete_participants")?.annotations).toMatchObject({
       readOnlyHint: false,

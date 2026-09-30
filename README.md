@@ -40,6 +40,7 @@ This MCP server is NOT for:
   - Webhooks
 - **Agent Recipes**:
   - MCP prompts for creating referral programs, creating affiliate programs, advising on program design, troubleshooting referral tracking, embedding the widget, listing and fetching programs and participants, configuring rewards, wiring webhooks, and reading analytics
+  - Prompts use details from your conversation and ask only for missing information needed for the next step. No form inputs are needed. Existing prompt names and direct arguments remain supported.
   - Installable Agent Skill bundle at `skills/growsurf-agent-toolkit`
   - Steering to review starter Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching
   - One-shot program-creation eval prompts and acceptance checks for starter content and configuration review

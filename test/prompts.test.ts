@@ -29,7 +29,7 @@ describe("GrowSurf MCP prompts", () => {
     expect(JSON.stringify(listGrowSurfPrompts())).not.toContain("growsurf_list_participants");
   });
 
-  it("lists short prompt names through the MCP prompts/list response", async () => {
+  it("lists short prompt names and renders every prompt without form inputs over MCP", async () => {
     const server = createGrowSurfMcpServer({
       env: {
         GROWSURF_API_KEY: "api_key",
@@ -56,6 +56,31 @@ describe("GrowSurf MCP prompts", () => {
       expect(JSON.stringify(result.prompts)).not.toContain("growsurf_set_rewards");
       expect(JSON.stringify(result.prompts)).not.toContain("growsurf_get_campaign");
       expect(JSON.stringify(result.prompts)).not.toContain("growsurf_list_participants");
+
+      for (const prompt of result.prompts) {
+        expect(prompt.arguments ?? [], prompt.name).toEqual([]);
+        const rendered = await client.getPrompt({ name: prompt.name });
+        expect(rendered.messages[0]?.role, prompt.name).toBe("user");
+        expect(rendered.messages[0]?.content.type, prompt.name).toBe("text");
+      }
+
+      // Older clients may still send the previously listed arguments and prefixed names.
+      const legacy = await client.getPrompt({
+        name: "growsurf_create_affiliate_program",
+        arguments: {
+          companyName: "Acme",
+          websiteUrl: "https://example.com",
+          goal: "grow paid subscriptions",
+          campaignName: "Acme partners",
+          commissionModel: "20% recurring",
+        },
+      });
+      const legacyText = legacy.messages[0]?.content.type === "text" ? legacy.messages[0].content.text : "";
+      expect(legacyText).toContain("Acme");
+      expect(legacyText).toContain("https://example.com");
+      expect(legacyText).toContain("grow paid subscriptions");
+      expect(legacyText).toContain("Acme partners");
+      expect(legacyText).toContain("20% recurring");
     } finally {
       await client.close();
       await server.close();

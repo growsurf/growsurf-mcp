@@ -16,10 +16,16 @@ const value = (args: Record<string, string | undefined>, key: string, fallback: 
   return raw ? raw : fallback;
 };
 
+const PROMPT_CONTEXT_GUIDANCE = [
+  "Use details the user already supplied in this conversation. Treat unspecified details in this recipe as unknown, never as literal values to send to a tool. Do not ask the user to repeat information.",
+  "For an existing program, use `growsurf_list_campaigns` to find its `campaignId` if needed. Read the program to learn its type and settings. If several programs match, ask the user to choose. Never guess a program or participant id.",
+  "Ask only for missing details that affect the next step, at most two short questions at a time. Do not choose incentive amounts, commission terms, or funding for the user.",
+].join("\n");
+
 const programContext = (args: Record<string, string | undefined>) => {
-  const companyName = value(args, "companyName", "the company");
-  const websiteUrl = value(args, "websiteUrl", "the company's website");
-  const goal = value(args, "goal", "grow qualified customers through word of mouth");
+  const companyName = value(args, "companyName", "the company named in the conversation");
+  const websiteUrl = value(args, "websiteUrl", "the website named in the conversation");
+  const goal = value(args, "goal", "the user's stated business goal");
   return { companyName, websiteUrl, goal };
 };
 
@@ -29,17 +35,12 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
     legacyNames: ["growsurf_create_referral_program"],
     title: "Create a referral program",
     description: "Create and configure a GrowSurf referral program from the proven referral template.",
-    arguments: [
-      { name: "companyName", description: "Company or product name." },
-      { name: "websiteUrl", description: "Website where the program will be installed." },
-      { name: "goal", description: "Business goal for the referral program." },
-      { name: "businessType", description: "Business profile, such as B2B SaaS, B2C, FinTech, or newsletter." },
-      { name: "campaignName", description: "Optional program name to use in GrowSurf." },
-    ],
     render: (args) => {
       const { companyName, websiteUrl, goal } = programContext(args);
-      const businessType = value(args, "businessType", "ask only if it materially changes the setup");
-      const campaignName = value(args, "campaignName", `${companyName} referral program`);
+      const businessType = value(args, "businessType", "use the business profile already discussed; ask only if unknown and needed for setup");
+      const campaignName = value(args, "campaignName", args.companyName?.trim()
+        ? `${companyName} referral program`
+        : "use the user's preferred name, or suggest one once the company is known");
       return [
         `Create a GrowSurf referral program for ${companyName}.`,
         "",
@@ -71,17 +72,12 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
     legacyNames: ["growsurf_create_affiliate_program"],
     title: "Create an affiliate program",
     description: "Create and configure a GrowSurf affiliate program from the proven affiliate template.",
-    arguments: [
-      { name: "companyName", description: "Company or product name." },
-      { name: "websiteUrl", description: "Website where affiliate tracking will be installed." },
-      { name: "goal", description: "Affiliate program business goal." },
-      { name: "campaignName", description: "Optional program name to use in GrowSurf." },
-      { name: "commissionModel", description: "Preferred commission structure, such as 20% recurring or $100 per sale." },
-    ],
     render: (args) => {
       const { companyName, websiteUrl, goal } = programContext(args);
-      const campaignName = value(args, "campaignName", `${companyName} affiliate program`);
-      const commissionModel = value(args, "commissionModel", "ask the user before enabling payouts");
+      const campaignName = value(args, "campaignName", args.companyName?.trim()
+        ? `${companyName} affiliate program`
+        : "use the user's preferred name, or suggest one once the company is known");
+      const commissionModel = value(args, "commissionModel", "use the commission terms already confirmed by the user; leave payouts off if unknown");
       return [
         `Create a GrowSurf affiliate program for ${companyName}.`,
         "",
@@ -111,17 +107,11 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
     legacyNames: ["growsurf_embed_referral_widget"],
     title: "Embed the referral widget",
     description: "Produce the installation plan and snippets for adding GrowSurf to a web app.",
-    arguments: [
-      { name: "campaignId", description: "GrowSurf campaign id." },
-      { name: "websiteUrl", description: "Website or app URL." },
-      { name: "framework", description: "Frontend framework or stack." },
-      { name: "participantAuth", description: "Whether participant auto-auth is required." },
-    ],
     render: (args) => {
       const campaignId = value(args, "campaignId", "the target campaignId");
       const websiteUrl = value(args, "websiteUrl", "the target website");
       const framework = value(args, "framework", "the user's frontend stack");
-      const participantAuth = value(args, "participantAuth", "ask whether participant auto-auth is required");
+      const participantAuth = value(args, "participantAuth", "use the authentication requirements already discussed; ask only if unknown");
       return [
         `Embed GrowSurf for campaign ${campaignId} on ${websiteUrl}.`,
         "",
@@ -154,7 +144,6 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
     legacyNames: ["growsurf_get_campaign"],
     title: "Get program",
     description: "Fetch one GrowSurf program by campaign id.",
-    arguments: [{ name: "campaignId", description: "GrowSurf campaign id." }],
     render: (args) => {
       const campaignId = value(args, "campaignId", "the target campaignId");
       return [
@@ -170,11 +159,6 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
     legacyNames: ["growsurf_list_participants"],
     title: "List participants",
     description: "List participants in a GrowSurf program.",
-    arguments: [
-      { name: "campaignId", description: "GrowSurf campaign id." },
-      { name: "limit", description: "Page size, 1-100." },
-      { name: "nextId", description: "Pagination cursor from the previous page." },
-    ],
     render: (args) => {
       const campaignId = value(args, "campaignId", "the target campaignId");
       const limit = value(args, "limit", "a reasonable page size");
@@ -195,11 +179,6 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
     legacyNames: ["growsurf_get_participant"],
     title: "Get participant",
     description: "Fetch one GrowSurf participant by id or email.",
-    arguments: [
-      { name: "campaignId", description: "GrowSurf campaign id." },
-      { name: "participantId", description: "GrowSurf participant id." },
-      { name: "participantEmail", description: "Participant email address." },
-    ],
     render: (args) => {
       const campaignId = value(args, "campaignId", "the target campaignId");
       const participantId = value(args, "participantId", "use if provided");
@@ -221,11 +200,6 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
     legacyNames: ["growsurf_set_rewards"],
     title: "Set or adjust rewards",
     description: "Safely review and adjust GrowSurf reward configs.",
-    arguments: [
-      { name: "campaignId", description: "GrowSurf campaign id." },
-      { name: "programType", description: "REFERRAL or AFFILIATE." },
-      { name: "rewardGoal", description: "The incentive the user wants." },
-    ],
     render: (args) => {
       const campaignId = value(args, "campaignId", "the target campaignId");
       const programType = value(args, "programType", "the program type");
@@ -246,11 +220,6 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
     legacyNames: ["growsurf_wire_webhooks"],
     title: "Wire webhooks",
     description: "Plan and configure GrowSurf webhooks for product automation.",
-    arguments: [
-      { name: "campaignId", description: "GrowSurf campaign id." },
-      { name: "endpointUrl", description: "Webhook endpoint URL." },
-      { name: "events", description: "Comma-separated event names or use-case description." },
-    ],
     render: (args) => {
       const campaignId = value(args, "campaignId", "the target campaignId");
       const endpointUrl = value(args, "endpointUrl", "the user's webhook endpoint");
@@ -272,15 +241,10 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
     legacyNames: ["growsurf_read_analytics"],
     title: "Read analytics",
     description: "Analyze GrowSurf campaign or participant performance.",
-    arguments: [
-      { name: "campaignId", description: "GrowSurf campaign id." },
-      { name: "timeframe", description: "Window to analyze, such as last 30 days." },
-      { name: "question", description: "Question the user wants answered." },
-    ],
     render: (args) => {
       const campaignId = value(args, "campaignId", "the target campaignId");
       const timeframe = value(args, "timeframe", "the relevant timeframe");
-      const question = value(args, "question", "what changed and what should we do next?");
+      const question = value(args, "question", "the user's analytics question, or a general performance overview");
       return [
         `Analyze campaign ${campaignId}.`,
         "",
@@ -300,16 +264,10 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
     name: "advise_program_design",
     title: "Advise on program design",
     description: "Recommend a referral or affiliate program design for a business before creating or changing rewards.",
-    arguments: [
-      { name: "companyName", description: "Company or product name." },
-      { name: "industry", description: "Closest segment: fintech, SaaS, newsletter, healthcare, education, consumer, or other." },
-      { name: "goal", description: "What a successful referral means: paid conversion, signup, lead, subscriber, or waitlist." },
-      { name: "budget", description: "What the business can spend per successful referral." },
-    ],
     render: (args) => {
       const { companyName, goal } = programContext(args);
       const industry = value(args, "industry", "the closest segment");
-      const budget = value(args, "budget", "unknown");
+      const budget = value(args, "budget", "use the budget provided in the conversation, if any");
       return [
         `Advise ${companyName} on their referral or affiliate program design.`,
         "",
@@ -326,15 +284,10 @@ export const GROWSURF_PROMPTS: GrowSurfPrompt[] = [
     name: "troubleshoot_referral_tracking",
     title: "Troubleshoot referral tracking",
     description: "Diagnose why referrals, participants, rewards, or emails are not behaving as expected.",
-    arguments: [
-      { name: "campaignId", description: "GrowSurf program id." },
-      { name: "problem", description: "The problem in the user's words." },
-      { name: "participant", description: "Affected participant id or email, if any." },
-    ],
     render: (args) => {
       const campaignId = value(args, "campaignId", "the target campaignId");
       const problem = value(args, "problem", "the reported problem");
-      const participant = value(args, "participant", "none named");
+      const participant = value(args, "participant", "use the participant identified in the conversation, if any");
       return [
         `Troubleshoot program ${campaignId}.`,
         "",
@@ -352,7 +305,7 @@ export const listGrowSurfPrompts = () =>
     name,
     title,
     description,
-    arguments: args,
+    arguments: args ?? [],
   }));
 
 export const getGrowSurfPrompt = (name: string, args: Record<string, string | undefined> = {}) => {
@@ -367,7 +320,7 @@ export const getGrowSurfPrompt = (name: string, args: Record<string, string | un
         role: "user" as const,
         content: {
           type: "text" as const,
-          text: prompt.render(args),
+          text: [PROMPT_CONTEXT_GUIDANCE, prompt.render(args)].join("\n\n"),
         },
       },
     ],
