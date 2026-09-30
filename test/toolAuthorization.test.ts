@@ -254,7 +254,12 @@ describe("MCP tool authorization", () => {
     });
     // Participant-facing publication and a verification request to GrowSurf extend beyond
     // private account data. Preserve each action's independent retry and destructive hints.
-    for (const name of ["growsurf_update_campaign_reward", "growsurf_update_program_resource"]) {
+    for (const name of [
+      "growsurf_update_campaign_reward",
+      "growsurf_delete_campaign_reward",
+      "growsurf_update_program_resource",
+      "growsurf_delete_program_resource",
+    ]) {
       expect(byName.get(name)?.annotations).toMatchObject({
         readOnlyHint: false,
         destructiveHint: true,

@@ -100,6 +100,10 @@ const TOOL_BEHAVIOR = {
     riskTier: TOOL_RISK_TIERS.DESTRUCTIVE,
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   },
+  DESTRUCTIVE_PUBLISH: {
+    riskTier: TOOL_RISK_TIERS.DESTRUCTIVE,
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+  },
   MONEY_CREATE: {
     riskTier: TOOL_RISK_TIERS.MONEY,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
@@ -166,7 +170,8 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_create_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_CREATE, MACHINE_SCOPES.PROGRAM_WRITE),
   // Reward updates can change incentives shown to participants in a published program.
   growsurf_update_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
-  growsurf_delete_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_SET, MACHINE_SCOPES.PROGRAM_WRITE),
+  // Deletion can remove an incentive already shown to participants.
+  growsurf_delete_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_list_program_resources: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_prepare_program_resource_file: requiresScopes(
     TOOL_BEHAVIOR.CONTENT_OPEN_WORLD,
@@ -175,7 +180,8 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   // These tools can publish participant-facing content, including arbitrary HTTPS links.
   growsurf_create_program_resource: requiresScopes(TOOL_BEHAVIOR.CONTENT_OPEN_WORLD, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_update_program_resource: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
-  growsurf_delete_program_resource: requiresScopes(TOOL_BEHAVIOR.DESTRUCTIVE, MACHINE_SCOPES.PROGRAM_WRITE),
+  // Deletion can unpublish a resource that participants can already access.
+  growsurf_delete_program_resource: requiresScopes(TOOL_BEHAVIOR.DESTRUCTIVE_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_get_campaign_design: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_update_campaign_design: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_get_campaign_emails: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
