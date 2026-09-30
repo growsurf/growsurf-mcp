@@ -767,43 +767,43 @@
   },
   "test_cases": [
     {
-      "description": "Create a new referral program from a template.",
-      "user_prompt": "Create a referral program in GrowSurf for my SaaS product.",
+      "description": "Create a referral program with no active rewards. Requires a verified reviewer account that can create programs.",
+      "user_prompt": "Create a draft GrowSurf referral program named OpenAI Review Draft for my self-service B2B SaaS product, in USD. Leave all rewards disabled; I have not chosen an incentive.",
       "file_attachment_urls": null,
       "tools_triggered": "growsurf_create_campaign",
-      "expected_output": "Creates a draft program with starter content and returns the new program id, with rewards left switched off until the user names an incentive.",
+      "expected_output": "Calls growsurf_create_campaign with type REFERRAL, name OpenAI Review Draft, goal B2B_SAAS_SELF_SERVICE, and currencyISO USD, omitting rewards. Returns the new program id and DRAFT status. Explains that starter content is included and rewards remain disabled until an incentive is chosen. Does not activate the program or promise that it is installed.",
       "expected_output_url": null
     },
     {
-      "description": "Find the top referrer in a program.",
-      "user_prompt": "List the participants in my GrowSurf program and show me the one with the most referrals.",
+      "description": "Find the highest referral count across all participant pages. Requires a reviewer-owned referral program named OpenAI Review Fixture with sample participants on more than one page and a unique highest referralCount on a later page.",
+      "user_prompt": "In the GrowSurf program named OpenAI Review Fixture, find the participant with the most referrals. Check every participant page and compare referralCount, not referral-link views.",
       "file_attachment_urls": null,
-      "tools_triggered": "growsurf_list_participants",
-      "expected_output": "Returns the program's participants with their referral counts, so the highest referrer can be identified.",
+      "tools_triggered": "growsurf_list_campaigns, growsurf_list_participants",
+      "expected_output": "Finds OpenAI Review Fixture with growsurf_list_campaigns and passes its id as campaignId. Calls growsurf_list_participants with limit 10, follows nextId until null, and compares referralCount across all pages. Reports the winning sample participant and the exact referralCount. Does not treat newest-first order, impressionCount, or the capped referrals array as a ranking. Asks for clarification if the program name matches more than one program; reports no participants if empty.",
       "expected_output_url": null
     },
     {
-      "description": "Read program performance over a period.",
-      "user_prompt": "How is my GrowSurf referral program performing this month?",
+      "description": "Read analytics for a fixed UTC date range. Requires a reviewer-owned referral program named OpenAI Review Fixture; zero activity is a valid result.",
+      "user_prompt": "For my GrowSurf program named OpenAI Review Fixture, show participants, referrals, and shares from August 1, 2026 at 00:00 UTC to September 1, 2026 at 00:00 UTC. Use this exact date range.",
       "file_attachment_urls": null,
-      "tools_triggered": "growsurf_get_campaign_analytics",
-      "expected_output": "Returns aggregate program analytics such as participants, shares, and credited referrals for the requested period.",
+      "tools_triggered": "growsurf_list_campaigns, growsurf_get_campaign_analytics",
+      "expected_output": "Resolves the named program and passes its id as campaignId. Calls growsurf_get_campaign_analytics with startDate 1785542400000 and endDate 1788220800000, in Unix milliseconds, rather than using the default 365-day window or assuming interval month selects the dates. Summarizes the returned analytics.participants, analytics.referrals, and per-channel share fields (such as emailShares and copyRefLinkShares) and states the requested UTC range. Reports zeroes as zeroes and does not invent performance claims.",
       "expected_output_url": null
     },
     {
-      "description": "Get the install snippet for the site.",
-      "user_prompt": "Give me the code to install GrowSurf on my website.",
+      "description": "Generate JavaScript signup and qualifying-action snippets after Universal Code is installed. This guidance tool requires no GrowSurf API credentials.",
+      "user_prompt": "I already installed GrowSurf Universal Code. Give me JavaScript examples to add a participant at signup and credit their referrer after a qualifying action for a referral program. Do not install or change anything.",
       "file_attachment_urls": null,
       "tools_triggered": "growsurf_client_snippets",
-      "expected_output": "Returns copy-pasteable client-side snippets with placement guidance and requires no credentials.",
+      "expected_output": "Calls growsurf_client_snippets with programType referral and referralTrigger signup_plus_qualifying_action. Returns a markdown document with grsfReady event guidance and examples of growsurf.addParticipant and growsurf.triggerReferral. Marks the customer email and app variables as values to replace. States that Universal Code must load first. Does not claim that these examples install Universal Code or prove tracking works, and does not request an API key for this guidance.",
       "expected_output_url": null
     },
     {
-      "description": "Diagnose a referral that was not credited.",
-      "user_prompt": "A customer referred a friend in GrowSurf but the referral was never credited. What is wrong?",
+      "description": "Return initial checks for referral_not_credited without claiming a root cause. No affected records or participant identifiers are supplied.",
+      "user_prompt": "A friend signed up through a GrowSurf referral link, but the referrer has not received credit. Give me the referral_not_credited troubleshooting checks. I do not have the program or participant id yet.",
       "file_attachment_urls": null,
       "tools_triggered": "growsurf_troubleshoot_referral_tracking",
-      "expected_output": "Returns ordered checks with the read tool and field for each, the most common causes first, and the matching fixes.",
+      "expected_output": "Calls growsurf_troubleshoot_referral_tracking with symptom referral_not_credited. Returns a markdown guide with ordered read-tool and field checks, possible causes, fixes, and documentation links. Explains that the cause is unconfirmed until affected records are checked and asks for the program and participant identifiers before reading them. Does not award referral credit, change settings, or claim to have inspected records.",
       "expected_output_url": null
     }
   ],
@@ -817,11 +817,11 @@
       "expected_output_url": null
     },
     {
-      "description": "Do not trigger for general web research about referral marketing.",
-      "user_prompt": "What are the best referral marketing tactics for ecommerce in 2026?",
+      "description": "Do not trigger for an unrelated temperature conversion.",
+      "user_prompt": "Convert 25 degrees Celsius to Fahrenheit and show the formula.",
       "file_attachment_urls": null,
       "tools_triggered": null,
-      "expected_output": "The app should not be invoked because the request asks for general advice and does not touch the user's GrowSurf account.",
+      "expected_output": "Answers the temperature conversion without invoking GrowSurf. This does not concern referral programs, affiliate programs, or any GrowSurf workflow.",
       "expected_output_url": null
     },
     {
