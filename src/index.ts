@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.19.5";
+export const GROWSURF_MCP_VERSION = "0.19.6";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -2639,7 +2639,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_grsf_config_snippet",
           description:
-            "Generate the <head> snippet for participant auto-auth using window.grsfConfig (place before the GrowSurf Universal Code).",
+            "Generate the HTML code for GrowSurf Participant Auto Authentication using `window.grsfConfig`. Place this code in `<head>`, before the GrowSurf Universal Code.",
           inputSchema: {
             type: "object",
             properties: {

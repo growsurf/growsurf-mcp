@@ -106,7 +106,7 @@ const TOOL_BEHAVIOR = {
   },
   MONEY_CREATE: {
     riskTier: TOOL_RISK_TIERS.MONEY,
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   },
   MONEY_IDEMPOTENT: {
     riskTier: TOOL_RISK_TIERS.MONEY,
@@ -167,6 +167,7 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_update_campaign: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_clone_campaign: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_list_campaign_rewards: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
+  // A new reward can become a participant-facing incentive on an existing live program.
   growsurf_create_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_CREATE, MACHINE_SCOPES.PROGRAM_WRITE),
   // Reward updates can change incentives shown to participants in a published program.
   growsurf_update_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
@@ -183,13 +184,14 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   // Deletion can unpublish a resource that participants can already access.
   growsurf_delete_program_resource: requiresScopes(TOOL_BEHAVIOR.DESTRUCTIVE_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_get_campaign_design: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
-  growsurf_update_campaign_design: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
+  // These settings can change live participant content, notifications, and referral destinations.
+  growsurf_update_campaign_design: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_get_campaign_emails: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
-  growsurf_update_campaign_emails: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_update_campaign_emails: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_get_campaign_options: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
-  growsurf_update_campaign_options: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_update_campaign_options: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_get_campaign_installation: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
-  growsurf_update_campaign_installation: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_update_campaign_installation: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_capture_referral_flow_screenshots: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_create_account: unrestricted(TOOL_BEHAVIOR.CONTENT_EXTERNAL),
   growsurf_get_team: requiresSingleTeamScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.TEAM_READ),
@@ -207,9 +209,10 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_get_campaign_activation_analytics: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.ANALYTICS_READ),
   growsurf_list_integrations: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_list_campaign_webhooks: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
-  growsurf_create_campaign_webhook: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_WRITE),
-  growsurf_update_campaign_webhook: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PROGRAM_WRITE),
-  growsurf_delete_campaign_webhook: requiresScopes(TOOL_BEHAVIOR.DESTRUCTIVE, MACHINE_SCOPES.PROGRAM_WRITE),
+  // Webhook configuration controls future deliveries to an arbitrary external destination.
+  growsurf_create_campaign_webhook: requiresScopes(TOOL_BEHAVIOR.CONTENT_OPEN_WORLD, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_update_campaign_webhook: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_delete_campaign_webhook: requiresScopes(TOOL_BEHAVIOR.DESTRUCTIVE_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_test_campaign_webhook: requiresScopes(TOOL_BEHAVIOR.CONTENT_EXTERNAL, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_list_participants: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PARTICIPANT_READ),
   growsurf_get_participant: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PARTICIPANT_READ),
@@ -307,7 +310,7 @@ export const TOOL_TITLES = {
   growsurf_webhook_normalize: "Normalize Webhook Payload",
   growsurf_client_snippets: "Client Snippets",
   growsurf_embeddable_element_snippet: "Embeddable Element Snippet",
-  growsurf_grsf_config_snippet: "Participant Auto-Auth Snippet",
+  growsurf_grsf_config_snippet: "Generate Participant Auto Authentication Code",
   growsurf_get_integration_connect_link: "Get Integration Connect Link",
 } as const satisfies Record<keyof typeof TOOL_AUTHORIZATION_MANIFEST, string>;
 
