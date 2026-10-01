@@ -219,6 +219,122 @@ describe("rejected tool input", () => {
     }
   }, 20_000);
 
+  it("rejects a read-only sender address before writing and accepts a partial sender-name update", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ settings: { sender: { fromName: "Pied Piper" } } }));
+    globalThis.fetch = fetchMock as typeof fetch;
+    const server = createGrowSurfMcpServer({
+      env: { GROWSURF_API_KEY: "api_key", GROWSURF_CAMPAIGN_ID: "abc123" },
+    });
+    const client = new Client({ name: "email-config-test-client", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const invalid = await client.callTool({
+        name: "growsurf_update_campaign_emails",
+        arguments: { fields: { settings: { sender: { fromEmail: "sender@piedpiper.com", fromName: "Pied Piper" } } } },
+      });
+      expect(invalid.isError).toBe(true);
+      expect(JSON.parse((invalid.content[0] as { text: string }).text)).toMatchObject({
+        code: "INVALID_TOOL_INPUT",
+        errors: [expect.objectContaining({ field: "fields.settings.sender.fromEmail" })],
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+
+      const fields = { settings: { sender: { fromName: "Pied Piper" } } };
+      const valid = await client.callTool({ name: "growsurf_update_campaign_emails", arguments: { fields } });
+      expect(valid.isError).not.toBe(true);
+      expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+        "https://api.growsurf.com/v2/campaign/abc123/emails",
+        expect.objectContaining({ method: "PATCH", body: JSON.stringify(fields) }),
+      );
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it.each([
+    ["growsurf_get_campaign_analytics", {}, "https://api.growsurf.com/v2/campaign/abc123/analytics"],
+    [
+      "growsurf_get_participant_analytics",
+      { participantId: "part_123" },
+      "https://api.growsurf.com/v2/campaign/abc123/participant/part_123/analytics",
+    ],
+  ] as const)("requires paired dates for %s before sending a REST request", async (name, baseArguments, path) => {
+    const fetchMock = vi.fn(async () => Response.json({}));
+    globalThis.fetch = fetchMock as typeof fetch;
+    const server = createGrowSurfMcpServer({
+      env: { GROWSURF_API_KEY: "api_key", GROWSURF_CAMPAIGN_ID: "abc123" },
+    });
+    const client = new Client({ name: "analytics-range-test-client", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      await client.listTools();
+
+      const missingEnd = await client.callTool({
+        name,
+        arguments: { ...baseArguments, startDate: 1 },
+      });
+      expect(missingEnd.isError).toBe(true);
+      expect(JSON.parse((missingEnd.content[0] as { text: string }).text)).toMatchObject({
+        code: "INVALID_TOOL_INPUT",
+        errors: [expect.objectContaining({ field: "endDate" })],
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+
+      const missingStart = await client.callTool({
+        name,
+        arguments: { ...baseArguments, endDate: 2 },
+      });
+      expect(missingStart.isError).toBe(true);
+      expect(JSON.parse((missingStart.content[0] as { text: string }).text)).toMatchObject({
+        code: "INVALID_TOOL_INPUT",
+        errors: [expect.objectContaining({ field: "startDate" })],
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+
+      const valid = await client.callTool({
+        name,
+        arguments: { ...baseArguments, startDate: 1, endDate: 2 },
+      });
+      expect(valid.isError).not.toBe(true);
+      expect(fetchMock).toHaveBeenCalledExactlyOnceWith(`${path}?startDate=1&endDate=2`, expect.anything());
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it.each([
+    ["growsurf_create_campaign_reward", { type: "SINGLE_SIDED" }, "POST"],
+    ["growsurf_update_campaign_reward", { campaignRewardId: "crew_123" }, "PATCH"],
+  ])("accepts nullable reward content fields on %s", async (name, target, method) => {
+    const fields = {
+      referralDescription: null, imageUrl: null, nextMilestonePrefix: null,
+      nextMilestoneSuffix: null, couponCode: null, referralCouponCode: null,
+    };
+    const fetchMock = vi.fn(async () => Response.json({ id: "crew_123", ...fields }));
+    globalThis.fetch = fetchMock as typeof fetch;
+    const server = createGrowSurfMcpServer({
+      env: { GROWSURF_API_KEY: "api_key", GROWSURF_CAMPAIGN_ID: "abc123" },
+    });
+    const client = new Client({ name: "reward-config-test-client", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const result = await client.callTool({ name, arguments: { ...target, ...fields } });
+      expect(result.isError).not.toBe(true);
+      expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+        `https://api.growsurf.com/v2/campaign/abc123/reward-configs${method === "PATCH" ? "/crew_123" : ""}`,
+        expect.objectContaining({ method, body: JSON.stringify({ ...(method === "POST" ? target : {}), ...fields }) }),
+      );
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it("accepts an empty string on the optional participant fields, like the REST endpoint", async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ id: "part_1" }), {

@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.19.7";
+export const GROWSURF_MCP_VERSION = "0.19.8";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -1453,8 +1453,8 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 description:
                   "The referral event that earns this Campaign Reward. Use `LEAD` for a referred signup or `CONVERSION` for a qualifying action. A `LEAD` reward requires a later custom conversion trigger. Referral reward types only.",
               },
-              referralDescription: { type: "string" },
-              imageUrl: { type: "string" },
+              referralDescription: { type: ["string", "null"] },
+              imageUrl: { type: ["string", "null"] },
               isVisible: { type: "boolean" },
               isUnlimited: { type: "boolean" },
               referredRewardUpfront: { type: "boolean" },
@@ -1463,10 +1463,10 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               numberOfWinners: { type: "integer", minimum: 0 },
               order: { type: "integer" },
               limitDuration: { type: "string", enum: ["IN_TOTAL", "PER_MONTH", "PER_YEAR"] },
-              nextMilestonePrefix: { type: "string" },
-              nextMilestoneSuffix: { type: "string" },
-              couponCode: { type: "string" },
-              referralCouponCode: { type: "string" },
+              nextMilestonePrefix: { type: ["string", "null"] },
+              nextMilestoneSuffix: { type: ["string", "null"] },
+              couponCode: { type: ["string", "null"] },
+              referralCouponCode: { type: ["string", "null"] },
               metadata: { type: "object", additionalProperties: true },
               commissionStructure: commissionStructureJsonSchema,
               value: {
@@ -1530,8 +1530,8 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 description:
                   "The referral event that earns this Campaign Reward. Use `LEAD` for a referred signup or `CONVERSION` for a qualifying action. A `LEAD` reward requires a later custom conversion trigger. Referral reward types only.",
               },
-              referralDescription: { type: "string" },
-              imageUrl: { type: "string" },
+              referralDescription: { type: ["string", "null"] },
+              imageUrl: { type: ["string", "null"] },
               isVisible: { type: "boolean" },
               isUnlimited: { type: "boolean" },
               referredRewardUpfront: { type: "boolean" },
@@ -1540,10 +1540,10 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               numberOfWinners: { type: "integer", minimum: 0 },
               order: { type: "integer" },
               limitDuration: { type: "string", enum: ["IN_TOTAL", "PER_MONTH", "PER_YEAR"] },
-              nextMilestonePrefix: { type: "string" },
-              nextMilestoneSuffix: { type: "string" },
-              couponCode: { type: "string" },
-              referralCouponCode: { type: "string" },
+              nextMilestonePrefix: { type: ["string", "null"] },
+              nextMilestoneSuffix: { type: ["string", "null"] },
+              couponCode: { type: ["string", "null"] },
+              referralCouponCode: { type: ["string", "null"] },
               metadata: { type: "object", additionalProperties: true },
               commissionStructure: commissionStructureJsonSchema,
               value: {
@@ -1848,17 +1848,40 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_emails",
           description:
-            "Fetch the Emails tab configuration for your GrowSurf program (participant and admin email templates and settings). Returns the full object with every field and its current value — the same shape you send back on update. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Emails tab configuration for your GrowSurf program (participant and admin email templates and settings). Returns the current configuration, including read-only fields. When updating, send only the writable fields you want to change. `settings.sender.fromEmail` is read-only; change the sender email address in the dashboard after domain verification. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_emails",
           description:
-            "Update the Emails tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Pass just the fields you want to change under `fields`. To see the full object with every field and its current value, fetch the tab first, then send back only what you want to change. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update the Emails tab configuration for your GrowSurf program. Fetch the configuration first, then pass only the writable fields you want to change under `fields`, preserving their nested shape. Leave `settings.sender.fromEmail` out: it is read-only and changing the sender email address requires domain verification in the dashboard. You can change `settings.sender.fromName` and `settings.sender.replyToEmail`. The `invite` and transactional email `isEnabled` toggles are read-only; preserve required template links and footer tokens when editing bodies. Omitted fields stay unchanged; arrays replace wholesale. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
-              fields: { type: "object", additionalProperties: true },
+              fields: {
+                type: "object",
+                properties: {
+                  settings: {
+                    type: "object",
+                    properties: {
+                      sender: {
+                        type: "object",
+                        description: "Patch `fromName` or `replyToEmail`. Change the read-only `fromEmail` in the dashboard after domain verification.",
+                        properties: {
+                          fromName: { type: "string" },
+                          replyToEmail: { type: "string" },
+                        },
+                        // Reject the known read-only field instead of silently discarding it or
+                        // sending a doomed partial update. Other config validation stays with REST.
+                        not: { required: ["fromEmail"] },
+                        additionalProperties: true,
+                      },
+                    },
+                    additionalProperties: true,
+                  },
+                },
+                additionalProperties: true,
+              },
             },
             required: ["fields"],
             additionalProperties: false,
@@ -2023,7 +2046,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_analytics",
           description:
-            "Fetch analytics for your GrowSurf program: participants, referrals, impressions, per-channel shares, and affiliate revenue, commission, and payout metrics when applicable. For what impressions, unique impressions, leads, and referrals mean, or why counts differ from another analytics tool, call `growsurf_troubleshoot_referral_tracking` with symptom `numbers_do_not_match` rather than guessing. Pass `interval` (`day`, `week`, or `month`) for a per-period `series`. Pass comma-separated `include` values for `previousPeriod`, `statusCounts`, `rates`, `email`, or `engagement`. `engagement` groups unique active, sharing, repeat, and retained participants by when portal views and share actions occurred. Its `coverageStartAt`, `state`, and `reason` distinguish measured zeroes from partial or unavailable history. Scope the timeframe with `days` (default 365, max 1825) or an explicit `startDate`/`endDate` window (Unix ms). `timezone` and `platform` apply to engagement only. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Fetch analytics for your GrowSurf program: participants, referrals, impressions, per-channel shares, and affiliate revenue, commission, and payout metrics when applicable. For what impressions, unique impressions, leads, and referrals mean, or why counts differ from another analytics tool, call `growsurf_troubleshoot_referral_tracking` with symptom `numbers_do_not_match` rather than guessing. Pass `interval` (`day`, `week`, or `month`) for a per-period `series`. Pass comma-separated `include` values for `previousPeriod`, `statusCounts`, `rates`, `email`, or `engagement`. `engagement` groups unique active, sharing, repeat, and retained participants by when portal views and share actions occurred. Its `coverageStartAt`, `state`, and `reason` distinguish measured zeroes from partial or unavailable history. Scope the timeframe with `days` (default 365, max 1825) or an explicit `startDate`/`endDate` window. Explicit dates must both be positive Unix timestamps in milliseconds, with `endDate` >= `startDate` and a maximum span of 1825 days. `timezone` and `platform` apply to engagement only. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2038,8 +2061,8 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                   "Comma-separated optional data: `previousPeriod`, `statusCounts`, `rates`, `email`, and `engagement`. Combine values when the question needs more than one view.",
               },
               days: { type: "integer", minimum: 1, maximum: 1825 },
-              startDate: { type: "integer", description: "Start of the timeframe, Unix timestamp in ms. Use with endDate instead of days." },
-              endDate: { type: "integer", description: "End of the timeframe, Unix timestamp in ms." },
+              startDate: { type: "integer", minimum: 1, description: "Start of the timeframe, positive Unix timestamp in milliseconds. Supply `endDate` too; the window must span at most 1825 days." },
+              endDate: { type: "integer", minimum: 1, description: "End of the timeframe, positive Unix timestamp in milliseconds. Supply `startDate` too; `endDate` must be >= `startDate` and at most 1825 days later." },
               timezone: {
                 type: "string",
                 description: "IANA timezone for engagement interval and distinct-day calculations. Used with `include=engagement`.",
@@ -2050,6 +2073,10 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 description: "Client-platform filter for engagement. Defaults to `ALL`.",
               },
             },
+            allOf: [
+              { if: { required: ["startDate"] }, then: { required: ["endDate"] } },
+              { if: { required: ["endDate"] }, then: { required: ["startDate"] } },
+            ],
             additionalProperties: false,
           },
         },
@@ -2333,7 +2360,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_participant_analytics",
           description:
-            "Fetch analytics for one participant by GrowSurf participant ID or email. The base response includes all-time engagement, rank, share, and applicable affiliate revenue, commission, and payout metrics. Add `activation` to `include` for the program-specific eligibility anchor and covered first milestones, including `firstPortalViewedAt` and `firstShareChannel`. A null milestone with a partial or unavailable `state` is unknown, not proof that the action never happened. Request both `activation` and `series` for covered `portalViews` and `shareActions` buckets. Date-window parameters filter optional series and email data, not the base response or activation milestones. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Fetch analytics for one participant by GrowSurf participant ID or email. The base response includes all-time engagement, rank, share, and applicable affiliate revenue, commission, and payout metrics. Add `activation` to `include` for the program-specific eligibility anchor and covered first milestones, including `firstPortalViewedAt` and `firstShareChannel`. A null milestone with a partial or unavailable `state` is unknown, not proof that the action never happened. Request both `activation` and `series` for covered `portalViews` and `shareActions` buckets. Filter optional series and email data with `days` (up to 1825) or both `startDate` and `endDate` as positive Unix timestamps in milliseconds. `endDate` must be at or after `startDate`, and the range can span at most 1825 days. These date parameters do not filter the base response or activation milestones. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2354,10 +2381,22 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 maximum: 1825,
                 description: "Number of days for optional `series` and `email` analytics. Does not filter the all-time base response.",
               },
-              startDate: { type: "integer", description: "Start of the optional-data timeframe, Unix timestamp in ms. Use with `endDate` instead of `days`." },
-              endDate: { type: "integer", description: "End of the optional-data timeframe, Unix timestamp in ms. Use with `startDate`." },
+              startDate: {
+                type: "integer",
+                minimum: 1,
+                description: "Start of the optional-data timeframe, positive Unix timestamp in milliseconds. Supply `endDate` too; the window must span at most 1825 days.",
+              },
+              endDate: {
+                type: "integer",
+                minimum: 1,
+                description: "End of the optional-data timeframe, positive Unix timestamp in milliseconds. Supply `startDate` too; `endDate` must be >= `startDate` and at most 1825 days later.",
+              },
             },
             anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
+            allOf: [
+              { if: { required: ["startDate"] }, then: { required: ["endDate"] } },
+              { if: { required: ["endDate"] }, then: { required: ["startDate"] } },
+            ],
             additionalProperties: false,
           },
         },

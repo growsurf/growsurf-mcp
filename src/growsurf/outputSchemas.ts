@@ -718,7 +718,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
 const CAMPAIGN_EMAILS: ToolOutputSchema = {
   type: "object",
   description:
-    "A program's email configuration. Each template property is an object with `subject`, `preheader`, `body` (HTML), and `isEnabled` (plus `useCompanyReplyTo` on the invite email). The templates available depend on the program type. `GET` returns the full object; `PATCH` back only the fields you want to change.",
+    "A program's email configuration. Each template property is an object with `subject`, `preheader`, `body` (HTML), and `isEnabled` (plus `useCompanyReplyTo` on the invite email). The templates available depend on the program type. `GET` includes read-only fields; `PATCH` only the writable fields you want to change. The `invite` and transactional email `isEnabled` toggles cannot be changed here.",
   properties: {
     welcomeNonReferred: {
       type: "object",
@@ -841,6 +841,20 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
       type: "object",
       description:
         "Sender (`sender`), physical contact address (`contact`), and shared design (`design`) settings. The design object includes `unsubscribeAffiliateInvite` for direct affiliate invitation emails.",
+      properties: {
+        sender: {
+          type: "object",
+          properties: {
+            fromName: { type: ["string", "null"], description: "Sender name, or null before one is configured. A new value must not be an email address." },
+            replyToEmail: { type: ["string", "null"], description: "Email address that receives replies, or null before one is configured." },
+            fromEmail: {
+              type: ["string", "null"],
+              readOnly: true,
+              description: "Read-only sender email address. Change it in the dashboard after domain verification; omit it from an email configuration update.",
+            },
+          },
+        },
+      },
     },
   },
 };
