@@ -959,7 +959,7 @@ const CAMPAIGN_INSTALLATION: ToolOutputSchema = {
       type: "array",
       items: { type: "string" },
       description:
-        "Every additional browser origin where the GrowSurf Window or SDK may run, including development origins such as `http://localhost:3000`. Preserve the full array when patching it. An origin absent from both `shareUrl` and this list can return `403`.",
+        "Every additional browser origin where the GrowSurf Window or SDK may run, including development origins such as `http://localhost:3000`. Preserve the full array when patching it. An origin absent from both `shareUrl` and this list can return `403`. Known shared-platform root domains, such as `github.io`, do not grant access. Add your site's hostname, such as `https://piedpiper.github.io`, or a domain you own. Path-based shared hosts, such as `unbouncepages.com`, require a domain you own.",
     },
     signup: {
       type: "object",

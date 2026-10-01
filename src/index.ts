@@ -1910,7 +1910,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                     type: "array",
                     items: { type: "string" },
                     description:
-                      "Every browser origin allowed to use the program, including local and staging origins. Send the full array because arrays replace wholesale.",
+                      "Every browser origin allowed to use the program, including local and staging origins. Send the full array because arrays replace wholesale. Known shared-platform root domains, such as `github.io`, do not grant access. Add your site's hostname, such as `https://piedpiper.github.io`, or a domain you own. Path-based shared hosts, such as `unbouncepages.com`, require a domain you own.",
                   },
                   signup: {
                     type: "object",
