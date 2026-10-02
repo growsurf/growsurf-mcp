@@ -510,7 +510,7 @@ const renderResultsSection = (segment: ProgramDesignSegment | null, platform: De
         ["Successful referrals ÷ unique link views × 100, per program", figure((cuts) => cuts?.results?.uniqueViewToReferralPercent, "%")],
       ],
     ),
-    "The participant ratio does not measure how many participants actively refer. It does not measure subscriber participation or the percentage of advocates who share.",
+    "The participant ratio does not measure how many participants actively refer. It does not measure subscriber participation or the percentage of participants who share.",
     ...(cut.uniqueViewInclusionRule ? [`Unique-view sample: ${cut.uniqueViewInclusionRule}`] : []),
     "",
   ];
