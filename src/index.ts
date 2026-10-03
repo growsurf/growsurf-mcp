@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GROWSURF_MCP_VERSION = "0.19.8";
+export const GROWSURF_MCP_VERSION = "0.19.9";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -276,7 +276,7 @@ const GROWSURF_SERVER_INSTRUCTIONS = [
 const CAMPAIGN_ID_JSON_PROP = {
   type: "string",
   description:
-    "Target program (campaign) id for this call. Defaults to GROWSURF_CAMPAIGN_ID when omitted. Pass the `id` returned by growsurf_create_campaign to configure or operate a program you just created, without restarting the server.",
+    "Target program (campaign) id for this call. Defaults to GROWSURF_CAMPAIGN_ID when omitted. Program IDs also identify newly created programs without restarting the server.",
 } as const;
 
 // Keep JSON text compact to reduce serialized MCP payload size while preserving valid JSON.
@@ -1252,7 +1252,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_program_design_advisor",
           description:
-            "Use for program designs, benchmarks, typical rewards, and metric definitions, including participant-to-referral and lead-to-referral ratios. Read-only; call with known context before asking questions. Returns a short draft, complete `benchmarkFacts` to quote, exact `configurationPlan` tool calls, and unresolved `decisions`. Preserve the calls and leave unresolved incentives open. Use the default summary for first designs and configuration drafts; use `detail: full` when the user requests detailed benchmark tables or a specific figure absent from the summary. Hosted figures describe GrowSurf's high-performing programs; without a bundle, guidance is documentation-based. Use `programType: AFFILIATE` for affiliates and `industry: other` for local services, pets, hospitality, or agencies. All inputs are optional.",
+            "Generate program designs, benchmarks, typical rewards, and metric definitions, including participant-to-referral and lead-to-referral ratios. Read-only. Returns a short draft, complete `benchmarkFacts`, a proposed `configurationPlan`, and unresolved `decisions`. Incentive amounts and qualifying actions remain unresolved unless supplied by the customer. `detail: summary` returns a configuration draft and reward structure; `detail: full` adds detailed benchmark tables. Hosted figures describe GrowSurf's high-performing programs; without a bundle, guidance is documentation-based. `programType: AFFILIATE` selects affiliate advice. `industry: other` covers local services, pets, hospitality, and agencies. All inputs are optional.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1267,7 +1267,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 type: "string",
                 enum: [...ADVISOR_GOALS],
                 default: "other",
-                description: "What a successful referral means for the business. `paid_conversions` and `leads` imply a qualifying action; `signups`, `subscribers`, and `waitlist` count the signup unless a separate `qualifyingAction` needs clarification. This is the advisor's goal enum; use the separate creation goal returned in `configurationPlan` for `growsurf_create_campaign`.",
+                description: "What a successful referral means for the business. `paid_conversions` and `leads` imply a qualifying action; `signups`, `subscribers`, and `waitlist` count the signup unless a separate `qualifyingAction` needs clarification. This advisor goal differs from the program creation goal included in `configurationPlan`.",
               },
               businessModel: { type: "string", maxLength: 500, description: "One line on what the business sells and how. Also set `salesMotion` when the buying process is known." },
               salesMotion: { type: "string", enum: [...ADVISOR_SALES_MOTIONS], description: "Use `sales_led` for demos, sales calls, negotiated pricing, or signed contracts; use `self_service` when customers buy directly. This selects the reward structure. Omit when unknown." },
@@ -1285,7 +1285,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_troubleshoot_referral_tracking",
           description:
-            "Call first for a program problem, even without a program or participant ID. It returns initial checks; ask for IDs before reading records. Covers referrals not credited, participant emails not sending, rewards not issued, participants not added, Universal Code not detected, an integration or CRM (HubSpot, Mailchimp, and others) not syncing, Zapier errors, fraud flags, analytics numbers that look wrong, and more. Returns the checks to run in order (with the read tool and field for each), the likely causes most common first, fixes, and doc links. Pass a `symptom` key; unknown keys return the available symptoms; a `description` is matched only when it contains a symptom's label or alias verbatim, otherwise the symptom list is returned.",
+            "Diagnose referral tracking and program problems. Accepts a symptom or description without requiring a program or participant ID. Covers referrals not credited, participant emails not sending, rewards not issued, participants not added, Universal Code not detected, integrations or CRMs not syncing, Zapier errors, fraud flags, and analytics discrepancies. Returns ordered diagnostic checks, likely causes, fixes, and documentation links. It does not read program or participant records. Unknown `symptom` keys return the available symptoms. A `description` matches only when it contains a symptom label or alias verbatim; otherwise the symptom list is returned.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1361,19 +1361,19 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign",
           description:
-            "Fetch your GrowSurf campaign (program) details via REST. Embedded reward settings do not establish that an individual reward was earned, approved, or delivered; read the affected participant for earned reward records. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch your GrowSurf campaign (program) details via REST. Embedded reward settings do not establish that an individual reward was earned, approved, or delivered. Earned reward records belong to the individual participant. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_list_campaigns",
           description:
-            "List the GrowSurf programs available to the bound team. Use this first when you need to choose a `campaignId` before calling campaign-scoped tools. Deleted programs are not returned. Does NOT require GROWSURF_CAMPAIGN_ID.",
+            "List the GrowSurf programs available to the bound team, including their IDs for program selection. Deleted programs are not returned. Does not require `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_create_campaign",
           description:
-            "Create a new GrowSurf program (campaign) pre-populated with type-appropriate starter content, optionally with inline rewards. Starter content includes Design, Emails, Options, Installation, and GrowSurf Window defaults. Only `type` is required; the program is created in `DRAFT` status owned by the credential's bound team. `currencyISO` sets the program's currency (defaults to `USD`) and is immutable after creation. Pass `goal` so the share settings suit the audience; it is set here or not at all. Ask the person for the incentive rather than choosing one: leave `rewards` out unless they named an amount, and tell them the program starts with GrowSurf's starter rewards switched off so it awards nothing yet. Editor-tab config (design, emails, options, installation) is not accepted here. Fetch and review those config sub-resources after creation, then patch only what needs to change. Does NOT require GROWSURF_CAMPAIGN_ID. The response includes the new program `id`; pass it as `campaignId` to the other tools (or set GROWSURF_CAMPAIGN_ID) to configure and operate the program.",
+            "Create a new GrowSurf program (campaign) with type-appropriate starter content and optional inline rewards. Starter content includes Design, Emails, Options, Installation, and GrowSurf Window defaults. Only `type` is required. The program starts in `DRAFT` status and belongs to the credential's bound team. `currencyISO` defaults to `USD` and is immutable after creation. `goal` sets the sharing settings at creation and cannot be set later. Incentives require the customer's chosen amount or commission rate. Without `rewards`, GrowSurf's starter rewards are switched off and award nothing. Editor-tab configuration is not accepted here. Does not require `GROWSURF_CAMPAIGN_ID`. The response includes the new program `id`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1386,7 +1386,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 type: "string",
                 enum: [...CAMPAIGN_GOALS],
                 description:
-                  "What the program is for, which seeds the share buttons and the starter rewards that suit that audience. Programs whose participants refer other businesses (`CUSTOMERS`, `USERS`, `B2B_SAAS_SELF_SERVICE`, `B2B_SAAS_ENTERPRISE`, `HEALTHCARE_PROVIDERS`) start with the LinkedIn share button visible. Consumer, financial, education, insurance, telehealth, newsletter, and waitlist programs (`B2C_SUBSCRIPTIONS`, `FINANCIAL_SERVICES`, `ONLINE_EDUCATION`, `INSURANCE`, `ONLINE_INSURANCE`, `TELEHEALTH`, `SUBSCRIBERS`, `WAITLIST`) start with it hidden. On a referral program, each goal also sets the rest of its share buttons to suit that audience — a telehealth program keeps the public feeds off, a consumer subscription turns Pinterest and Reddit on; an affiliate program has its own share defaults, so only the LinkedIn default applies to one. When you create a referral program without `rewards`, the goal also decides the starter rewards: most goals get one double-sided reward, `HEALTHCARE_PROVIDERS` gets a single-sided reward, `SUBSCRIBERS` gets a four-step milestone ladder, and `WAITLIST` gets a leaderboard. Every starter reward arrives switched off with a placeholder name, so the program awards nothing until the customer sets the amount and turns one on. `TELEHEALTH` is for consumer telehealth and wellness subscriptions, where patients refer friends; `HEALTHCARE_PROVIDERS` is for provider networks and clinician-facing products, where practices refer peer practices. `INSURANCE` replaces `ONLINE_INSURANCE`, which is still accepted and behaves identically. Omit `goal` and every share button keeps its standard default. Change any of it afterward with `growsurf_update_campaign_design`. Set only at creation; `growsurf_update_campaign` does not accept it.",
+                  "What the program is for, which seeds the share buttons and the starter rewards that suit that audience. Programs whose participants refer other businesses (`CUSTOMERS`, `USERS`, `B2B_SAAS_SELF_SERVICE`, `B2B_SAAS_ENTERPRISE`, `HEALTHCARE_PROVIDERS`) start with the LinkedIn share button visible. Consumer, financial, education, insurance, telehealth, newsletter, and waitlist programs (`B2C_SUBSCRIPTIONS`, `FINANCIAL_SERVICES`, `ONLINE_EDUCATION`, `INSURANCE`, `ONLINE_INSURANCE`, `TELEHEALTH`, `SUBSCRIBERS`, `WAITLIST`) start with it hidden. On a referral program, each goal also sets the rest of its share buttons to suit that audience — a telehealth program keeps the public feeds off, a consumer subscription turns Pinterest and Reddit on; an affiliate program has its own share defaults, so only the LinkedIn default applies to one. When you create a referral program without `rewards`, the goal also decides the starter rewards: most goals get one double-sided reward, `HEALTHCARE_PROVIDERS` gets a single-sided reward, `SUBSCRIBERS` gets a four-step milestone ladder, and `WAITLIST` gets a leaderboard. Every starter reward arrives switched off with a placeholder name, so the program awards nothing until the customer sets the amount and turns one on. `TELEHEALTH` is for consumer telehealth and wellness subscriptions, where patients refer friends; `HEALTHCARE_PROVIDERS` is for provider networks and clinician-facing products, where practices refer peer practices. `INSURANCE` replaces `ONLINE_INSURANCE`, which is still accepted and behaves identically. Omit `goal` and every share button keeps its standard default. Sharing settings remain editable after creation. The goal itself is set only at creation.",
               },
               rewards: {
                 type: "array",
@@ -1434,7 +1434,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         },
         {
           name: "growsurf_list_campaign_rewards",
-          description: "List your GrowSurf program's configured Campaign Rewards, including switched-off rewards and rewards whose group is not selected. Deleted rewards are excluded. A reward can be earned only when it also appears in the campaign response's embedded `rewards` array. These settings do not establish that a participant earned or received a reward; inspect their `rewards` with `growsurf_get_participant`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          description: "List your GrowSurf program's configured Campaign Rewards, including switched-off rewards and rewards whose group is not selected. Deleted rewards are excluded. A reward can be earned only when it also appears in the campaign response's embedded `rewards` array. These settings do not establish that a participant earned or received a reward; earned reward records belong to the individual participant. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -1613,7 +1613,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_prepare_program_resource_file",
           description:
-            "Prepare a local file for a `FILE` Program Resource. Pass the safe file name, matching supported MIME type, and padded base64 bytes (10 MB maximum). GrowSurf requests a one-time ticket and uploads only to the secure HTTPS destination selected by GrowSurf. The result contains only `uploadTicket` and `uploadResult`; pass both unchanged to `growsurf_create_program_resource` or `growsurf_update_program_resource`. The tool does not accept upload URLs or credentials and never retries an ambiguous upload. This tool is the only source of `uploadTicket` and `uploadResult`, and it needs `GROWSURF_UPLOAD_ALLOWED_ORIGINS` set on the server; without it, `FILE` resources are unavailable and only `LINK` and `TEXT` resources can be created. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Prepare a local file for a `FILE` Program Resource. Accepts a safe file name, matching supported MIME type, and padded base64 bytes, up to 10 MB. GrowSurf requests a one-time ticket and uploads only to the secure HTTPS destination selected by GrowSurf. Returns the original `uploadTicket` and `uploadResult` required for file resource creation or replacement. Altered upload results are not valid. The tool does not accept upload URLs or credentials and never retries an ambiguous upload. Requires `GROWSURF_UPLOAD_ALLOWED_ORIGINS` on the server; without it, only `LINK` and `TEXT` resources are available. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1642,7 +1642,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_program_resource",
           description:
-            "Create a `FILE`, `LINK`, or `TEXT` resource for participants. `LINK` requires an HTTPS `url`. `TEXT` requires plain `text`. For a `FILE` up to 10 MB, call `growsurf_prepare_program_resource_file` first and pass its `uploadTicket` and `uploadResult` unchanged. New resources default to draft unless you set `isPublished`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Create a `FILE`, `LINK`, or `TEXT` resource for participants. `LINK` requires an HTTPS `url`. `TEXT` requires plain `text`. A `FILE` up to 10 MB requires a one-time `uploadTicket` and the unmodified `uploadResult` from GrowSurf's secure upload flow. New resources default to draft unless `isPublished` is set. API reference: https://docs.growsurf.com/developer-tools/rest-api/api-reference. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1718,7 +1718,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_program_resource",
           description:
-            "Update at least one participant resource field, or move it to a zero-based `position`. Only sent fields change. To replace a `FILE`, call `growsurf_prepare_program_resource_file` first and pass its `uploadTicket` and `uploadResult` unchanged. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update at least one participant resource field, or move it to a zero-based `position`. Only supplied fields change. A replacement `FILE` requires a one-time `uploadTicket` and the unmodified `uploadResult` from GrowSurf's secure upload flow. API reference: https://docs.growsurf.com/developer-tools/rest-api/api-reference. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             minProperties: 2,
@@ -1835,7 +1835,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_design",
           description:
-            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget` (a button or a card in a corner of the site, its placement, when it appears, and which pages it appears on), the participant Traffic report under `trafficInsights` (turn it on with `isPublicDisplayed`; its labels cannot be blank), participant sign-in copy under `login`, and payout-destination confirmation page copy under `payoutDestinationConfirmation`. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Fetch the configuration first, preserve starter content unless the user asked to change it, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget` (button or card, placement, timing, and visible pages), the participant Traffic report under `trafficInsights`, participant sign-in copy under `login`, and payout-destination confirmation page copy under `payoutDestinationConfirmation`. `trafficInsights.isPublicDisplayed` controls visibility; its labels cannot be blank. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. Only supplied `fields` change; omitted fields retain their existing content and arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1848,13 +1848,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_emails",
           description:
-            "Fetch the Emails tab configuration for your GrowSurf program (participant and admin email templates and settings). Returns the current configuration, including read-only fields. When updating, send only the writable fields you want to change. `settings.sender.fromEmail` is read-only; change the sender email address in the dashboard after domain verification. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Emails tab configuration for your GrowSurf program, including participant and admin email templates, settings, and read-only fields. `settings.sender.fromEmail` is read-only and can be changed in the dashboard after domain verification. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_emails",
           description:
-            "Update the Emails tab configuration for your GrowSurf program. Fetch the configuration first, then pass only the writable fields you want to change under `fields`, preserving their nested shape. Leave `settings.sender.fromEmail` out: it is read-only and changing the sender email address requires domain verification in the dashboard. You can change `settings.sender.fromName` and `settings.sender.replyToEmail`. The `invite` and transactional email `isEnabled` toggles are read-only; preserve required template links and footer tokens when editing bodies. Omitted fields stay unchanged; arrays replace wholesale. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update writable Emails tab fields for your GrowSurf program under `fields`, in their existing nested shape. `settings.sender.fromEmail` is read-only; sender address changes require domain verification in the dashboard. `settings.sender.fromName` and `settings.sender.replyToEmail` are writable. The `invite` and transactional email `isEnabled` toggles are read-only. Email bodies require their template links and footer tokens. Omitted fields retain their existing content; arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1896,7 +1896,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_options",
           description:
-            "Update the Options tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). Pass just the fields you want to change under `fields`. To see the full object with every field and its current value, fetch the tab first, then send back only what you want to change. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1915,7 +1915,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_installation",
           description:
-            "Update the Installation tab configuration for your GrowSurf program. Only the fields you send are changed; anything you leave out is untouched (arrays replace wholesale). To let GrowSurf run on another origin, such as `http://localhost:3000`, add that origin to `allowedUrls` and preserve the rest of the array; a browser origin missing from both `shareUrl` and `allowedUrls` can return `403`. Leave `shareUrl` out of the patch unless the customer asked for a different landing page: every referral link already shared points at the current one. A patch that would replace a Share URL that is already set is refused until you confirm it with the customer and resend with `replaceExistingShareUrl: true`. Fetch the tab first, then pass just the fields you want to change under `fields`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update the Installation tab configuration for your GrowSurf program under `fields`. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `allowedUrls` includes permitted browser origins such as `http://localhost:3000`. An origin missing from both `shareUrl` and `allowedUrls` can return `403`. Referral links already shared point at the current `shareUrl`. Replacing an existing Share URL requires the customer's explicit approval and `replaceExistingShareUrl: true`; otherwise the patch is refused. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1988,13 +1988,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_capture_referral_flow_screenshots",
           description:
-            "Capture temporary GrowSurf preview screenshots so the user can see the draft instead of reading API fields. Call it after a draft program is saved and whenever a later change touches a browser-visible GrowSurf flow, or when the user asks for screenshots. Returns short-lived URLs for the controlled referrer Window and referred-friend experience for this program; show them inline when supported and include an Open preview link for each exact URL. Compare `expiresAt` with the current UTC time before reporting expiry. A broken inline image alone does not prove expiry; use the link or a browser tool if the client cannot display it. Capture again after expiry. This does not prove the user's installed site; use browser automation for that. This tool does not accept arbitrary URLs, HTML, JavaScript, or external screenshot targets. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Capture temporary GrowSurf preview screenshots after a draft program is saved. Returns short-lived URLs for the controlled referrer Window and referred-friend experience, with an `expiresAt` timestamp in UTC. The screenshots reflect the saved program at capture time and do not verify installation on the customer's site. A failed inline image alone does not establish that the URL expired. This tool does not accept arbitrary URLs, HTML, JavaScript, or external screenshot targets. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_create_account",
           description:
-            "Create a brand-new GrowSurf account and return an API key. Call this tool only after the authorized owner explicitly approves account creation and accepts GrowSurf's Terms of Service (https://growsurf.com/terms) and Privacy Policy (https://growsurf.com/privacy). This is the only tool that does not require `GROWSURF_API_KEY`. The account starts a 14-day Business trial without a credit card. The endpoint returns the new key once in `apiKey`. A lost key cannot be recovered through this API, so do not create an account here unless you can store the key somewhere that outlives the current conversation. If you cannot, ask the account owner to connect GrowSurf's hosted MCP server at `https://mcp.growsurf.com` instead, which keeps the credential with your tool rather than in chat. The key is locked until the account owner's email address is verified. Until then, program and resource endpoints return a `403` with error code `EMAIL_NOT_VERIFIED_ERROR`. Create the account, tell the owner to click the link in the verification email, then retry until that error clears. Use `growsurf_resend_team_owner_verification_email` if the email was lost. The welcome email also contains a set-password link for dashboard access. Accounts whose email is never verified are deleted automatically after 7 days. Verification unlocks the same key you were given, so keep it and retry rather than asking for a replacement. Separately, the API key is replaced the first time the account owner signs in to the GrowSurf dashboard; after that the previous key returns a `403` with error code `NOT_AUTHORIZED_ERROR`. Some actions, such as emailing participants, also require GrowSurf to verify the team. Personal and disposable email addresses are not accepted.",
+            "Create a brand-new GrowSurf account and return an API key. Requires the authorized owner's explicit approval of account creation and acceptance of GrowSurf's Terms of Service (https://growsurf.com/terms) and Privacy Policy (https://growsurf.com/privacy). This is the only tool that does not require `GROWSURF_API_KEY`. The account starts a 14-day Business trial without a credit card. The new key is returned once in `apiKey`, cannot be recovered through this API, and requires durable secret storage. The hosted OAuth connector is an alternative that retains credentials with the connection. The key stays locked until the owner verifies their email; program and resource endpoints return `403` with `EMAIL_NOT_VERIFIED_ERROR` before verification. Verification unlocks the same key. The welcome email includes verification and set-password links. Unverified accounts are deleted after 7 days. The owner's first dashboard sign-in replaces the API key; the old key then returns `403` with `NOT_AUTHORIZED_ERROR`. Participant emails also require team verification. Personal and disposable email addresses are not accepted.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2046,7 +2046,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_analytics",
           description:
-            "Fetch analytics for your GrowSurf program: participants, referrals, impressions, per-channel shares, and affiliate revenue, commission, and payout metrics when applicable. For what impressions, unique impressions, leads, and referrals mean, or why counts differ from another analytics tool, call `growsurf_troubleshoot_referral_tracking` with symptom `numbers_do_not_match` rather than guessing. Pass `interval` (`day`, `week`, or `month`) for a per-period `series`. Pass comma-separated `include` values for `previousPeriod`, `statusCounts`, `rates`, `email`, or `engagement`. `engagement` groups unique active, sharing, repeat, and retained participants by when portal views and share actions occurred. Its `coverageStartAt`, `state`, and `reason` distinguish measured zeroes from partial or unavailable history. Scope the timeframe with `days` (default 365, max 1825) or an explicit `startDate`/`endDate` window. Explicit dates must both be positive Unix timestamps in milliseconds, with `endDate` >= `startDate` and a maximum span of 1825 days. `timezone` and `platform` apply to engagement only. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Fetch analytics for your GrowSurf program: participants, referrals, impressions, per-channel shares, and affiliate revenue, commission, and payout metrics when applicable. Pass `interval` (`day`, `week`, or `month`) for a per-period `series`. Pass comma-separated `include` values for `previousPeriod`, `statusCounts`, `rates`, `email`, or `engagement`. `engagement` groups unique active, sharing, repeat, and retained participants by when portal views and share actions occurred. Its `coverageStartAt`, `state`, and `reason` distinguish measured zeroes from partial or unavailable history. Scope the timeframe with `days` (default 365, max 1825) or an explicit `startDate`/`endDate` window. Explicit dates must both be positive Unix timestamps in milliseconds, with `endDate` >= `startDate` and a maximum span of 1825 days. `timezone` and `platform` apply to engagement only. Targets `campaignId` if passed, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2120,7 +2120,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_list_integrations",
           description:
-            "List every integration your GrowSurf program can connect (Stripe, PayPal, Wise, Mailchimp, Slack, Zapier, Webhooks, and more) with its current state, so you can check whether an integration is connected before you act on it. Each entry has `connected` (credentials are stored), `enabled` (switched on and working), `autoDisabled` (GrowSurf switched it off after repeated delivery failures — the credentials are still stored, but nothing is delivered until the user reconnects it), and `connectUrl` (the dashboard link to hand the user). Integrations that do not apply to the program type are omitted (for example, Wise on a referral program). Read-only: connecting an integration happens in the GrowSurf dashboard, not through the API — call `growsurf_get_integration_connect_link` for the link to hand the user. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "List the integrations available to your GrowSurf program, including Stripe, PayPal, Wise, Mailchimp, Slack, Zapier, and Webhooks. Each entry includes `connected` (credentials stored), `enabled` (working), `autoDisabled` (delivery stopped after repeated failures until the user reconnects), and `connectUrl` (dashboard connection link). Integrations that do not apply to the program type are omitted, such as Wise on a referral program. Read-only. Account connection takes place in the GrowSurf dashboard and is not available through the API. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -2198,7 +2198,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_list_participants",
           description:
-            "List participants in your GrowSurf program, newest page first. `limit` is 1-100 (default 10). Pass response `nextId` into the next call to continue paging. Pass `metadata` to return only participants whose stored metadata matches every given key and value exactly, for example `{ \"customerId\": \"12345\" }` to look someone up by your own customer ID; filtered results are ordered by participant ID. Use this when you need a participant ID before calling participant-scoped tools. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "List participants in your GrowSurf program, newest page first. `limit` is 1-100 (default 10). Pass response `nextId` into the next call to continue paging. Pass `metadata` to return only participants whose stored metadata matches every given key and value exactly, for example `{ \"customerId\": \"12345\" }` to look someone up by your own customer ID; filtered results are ordered by participant ID. Results include participant IDs. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2222,7 +2222,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_participant",
           description:
-            "Fetch a single participant by GrowSurf participant ID or email address. `referralStatus` describes credit to their referrer; `referralCount` counts referrals this participant generated, so zero is consistent with `CREDIT_AWARDED`. In `rewards`, `approved` records approval; `status`, `isFulfilled`, and `fulfilledAt` record fulfillment marking, not confirmation of delivery. Use `growsurf_list_participants` first if you need to find a participant ID. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch a single participant by GrowSurf participant ID or email address. `referralStatus` describes credit to their referrer; `referralCount` counts referrals this participant generated, so zero is consistent with `CREDIT_AWARDED`. In `rewards`, `approved` records approval; `status`, `isFulfilled`, and `fulfilledAt` record fulfillment marking, not confirmation of delivery. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2236,7 +2236,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_add_participant",
           description:
-            "Add or fetch a participant by email. Existing participants are returned unchanged. This is trusted direct enrollment; do not use it for a public application when the program requires affiliate review. For affiliate programs, set `isAffiliate` to `true` to enroll a new participant as approved or `false` to create a non-affiliate. If you omit it, a valid `referredBy` creates a referred non-affiliate; without a valid referrer, the new participant is enrolled as approved. A valid `referredBy` can be combined with `isAffiliate: true`. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Add or fetch a participant by email. Existing participants are returned unchanged. This is trusted direct enrollment and bypasses the public affiliate application review flow. For affiliate programs, set `isAffiliate` to `true` to enroll a new participant as approved or `false` to create a non-affiliate. If you omit it, a valid `referredBy` creates a referred non-affiliate; without a valid referrer, the new participant is enrolled as approved. A valid `referredBy` can be combined with `isAffiliate: true`. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2299,7 +2299,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_bulk_delete_participants",
           description:
-            "Bulk delete participants from your GrowSurf program in one request. DESTRUCTIVE: deletion is permanent, cannot be undone, and removes the participants' referrals, rewards, commissions, and payout records. Each entry in `participants` is a GrowSurf participant ID or an email address (mixed lists are allowed), up to 200 entries per request — chunk larger lists across multiple calls. Returns a `summary` (total, deletedCount, notFoundCount, duplicateCount, errorCount) plus per-row `results` in request order, each with `status` DELETED, NOT_FOUND, DUPLICATE (resolves to the same participant as an earlier entry), or ERROR — both `200` and `202` responses can include NOT_FOUND or ERROR rows, so check the summary. A `202` response includes `analyticsErasure` when analytics erasure is pending. `DELETED` means participant cleanup completed; reports can retain the participant until analytics erasure completes. Do not repeat successful rows to finish analytics erasure. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Bulk delete participants from your GrowSurf program in one request. DESTRUCTIVE: deletion is permanent, cannot be undone, and removes the participants' referrals, rewards, commissions, and payout records. Each entry in `participants` is a GrowSurf participant ID or an email address (mixed lists are allowed), up to 200 entries per request — chunk larger lists across multiple calls. Returns a `summary` (total, deletedCount, notFoundCount, duplicateCount, errorCount) plus per-row `results` in request order, each with `status` DELETED, NOT_FOUND, DUPLICATE (resolves to the same participant as an earlier entry), or ERROR — both `200` and `202` responses can include NOT_FOUND or ERROR rows, and the summary reports these outcomes. A `202` response includes `analyticsErasure` when analytics erasure is pending. `DELETED` means participant cleanup completed; reports can retain the participant until analytics erasure completes. Repeating successful rows does not finish analytics erasure. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2537,7 +2537,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_refund_transaction",
           description:
-            "Record a refund, partial refund, or chargeback for a previously recorded affiliate transaction in GrowSurf and reverse or adjust the referrer's commission. This records the amendment without sending a refund through the payment provider. Identify the original transaction with the same identifier you sent to `growsurf_record_sale` (omit `amountRefunded` for a full refund). Already-paid commissions are not clawed back (recorded for tax only). Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Record a refund, partial refund, or chargeback for a previously recorded affiliate transaction in GrowSurf and reverse or adjust the referrer's commission. This records the amendment without sending a refund through the payment provider. Requires the same transaction identifier as the original sale. Omitted `amountRefunded` means a full refund. Already-paid commissions are not clawed back and are recorded for tax only. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2579,7 +2579,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_mobile_participant_token",
           description:
-            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST. Participant creation is trusted direct enrollment; do not use it for a public application when the program requires affiliate review. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST. Participant creation is trusted direct enrollment and bypasses the public affiliate application review flow. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2605,7 +2605,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_participant_auth_hash",
           description:
-            "Compute the server-side SHA-256 HMAC for GrowSurf Participant Auto Authentication. Set affiliateJoin only when this signed-in user may join the affiliate program directly.",
+            "Compute the server-side SHA-256 HMAC for GrowSurf Participant Auto Authentication. `affiliateJoin` requires permission for this signed-in user to join the affiliate program directly.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2624,7 +2624,10 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           inputSchema: {
             type: "object",
             properties: {
-              payload: {},
+              payload: {
+                type: ["object", "array", "string", "number", "boolean", "null"],
+                description: "JSON value to validate. A valid webhook envelope is an object with `event`, `createdAt`, and `data`. Other JSON values return `ok: false`.",
+              },
             },
             required: ["payload"],
             additionalProperties: false,
@@ -2678,7 +2681,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_grsf_config_snippet",
           description:
-            "Generate the HTML code for GrowSurf Participant Auto Authentication using `window.grsfConfig`. Place this code in `<head>`, before the GrowSurf Universal Code.",
+            "Generate the HTML code for GrowSurf Participant Auto Authentication using `window.grsfConfig`. The generated code belongs in `<head>`, before the GrowSurf Universal Code.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2697,7 +2700,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_integration_connect_link",
           description:
-            "Return a dashboard link that opens a specific integration's connect panel in the GrowSurf Program Editor (Options > Integrations). Use this whenever a user says they want to connect an integration, for example \"connect Stripe\", \"set up PayPal or Wise payouts\", \"send Tango Card gift cards\", or \"sync signups to Mailchimp\": call it with the `integration` key and give the user the returned `url` to open. Connecting an integration happens in the dashboard, not through the API. GrowSurf cannot link a Stripe, PayPal, Wise, or other account on the user's behalf, so hand them the link. `integration` must be one of the supported keys (some are camelCase, e.g. `constantContact`, `helpScout`). The link points at GROWSURF_CAMPAIGN_ID; pass `campaignId` to target a different program. The program is checked before the link is returned, and the result also reports whether the integration is already `connected`, `enabled`, or `autoDisabled`, so you can skip handing over a link the user does not need. If that check cannot run, `programVerified` comes back `false` and you still get a working production link. Tango Card, Tremendous, and Bask Health apply to referral programs only. Wise applies to affiliate programs only.",
+            "Return a dashboard link to an integration's connect panel in the GrowSurf Program Editor (Options > Integrations). Connecting Stripe, PayPal, Wise, or another account requires the user to complete the dashboard flow; the API cannot connect an account on their behalf. `integration` accepts supported keys, including camelCase keys such as `constantContact` and `helpScout`. The result reports whether the integration is `connected`, `enabled`, or `autoDisabled`. If the program check cannot run, `programVerified` is `false` and the result still includes a production dashboard link. Tango Card, Tremendous, and Bask Health apply only to referral programs. Wise applies only to affiliate programs. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
