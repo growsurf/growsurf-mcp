@@ -1373,7 +1373,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_campaign",
           description:
-            "Create a new GrowSurf program (campaign) with type-appropriate starter content and optional inline rewards. Starter content includes Design, Emails, Options, Installation, and GrowSurf Window defaults. Only `type` is required. The program starts in `DRAFT` status and belongs to the credential's bound team. `currencyISO` defaults to `USD` and is immutable after creation. `goal` sets the sharing settings at creation and cannot be set later. Incentives require the customer's chosen amount or commission rate. Without `rewards`, GrowSurf's starter rewards are switched off and award nothing. Editor-tab configuration is not accepted here. Does not require `GROWSURF_CAMPAIGN_ID`. The response includes the new program `id`.",
+            "Create a new GrowSurf program (campaign) with type-appropriate starter content and optional inline rewards. Starter content includes Design, Emails, Options, Installation, and GrowSurf Window defaults. Only `type` is required. The program starts in `DRAFT` status and is owned by the credential's bound team. `currencyISO` defaults to `USD` and is immutable after creation. `goal` sets the sharing settings at creation and cannot be set later. Incentives require the customer's chosen amount or commission rate. Without `rewards`, GrowSurf's starter rewards are switched off and award nothing. Editor-tab configuration is not accepted here. Does not require `GROWSURF_CAMPAIGN_ID`. The response includes the new program `id`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2236,7 +2236,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_add_participant",
           description:
-            "Add or fetch a participant by email. Existing participants are returned unchanged. This is trusted direct enrollment and bypasses the public affiliate application review flow. For affiliate programs, set `isAffiliate` to `true` to enroll a new participant as approved or `false` to create a non-affiliate. If you omit it, a valid `referredBy` creates a referred non-affiliate; without a valid referrer, the new participant is enrolled as approved. A valid `referredBy` can be combined with `isAffiliate: true`. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Add or fetch a participant by email. Existing participants are returned unchanged. This is trusted direct enrollment and bypasses the public application review flow for affiliates. For affiliate programs, set `isAffiliate` to `true` to enroll a new participant as approved or `false` to create a non-affiliate. If you omit it, a valid `referredBy` creates a referred non-affiliate; without a valid referrer, the new participant is enrolled as approved. A valid `referredBy` can be combined with `isAffiliate: true`. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2579,7 +2579,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_mobile_participant_token",
           description:
-            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST. Participant creation is trusted direct enrollment and bypasses the public affiliate application review flow. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST. Participant creation is trusted direct enrollment and bypasses the public application review flow for affiliates. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
