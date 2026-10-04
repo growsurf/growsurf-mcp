@@ -244,8 +244,10 @@ Set the following environment variables when running the MCP server:
 - `GROWSURF_CAMPAIGN_ID` (optional; the default program for campaign-scoped tools. A tool's `campaignId` argument overrides it, so a single server can operate on any of your programs)
 - `GROWSURF_API_BASE_URL` (optional; defaults to `https://api.growsurf.com/v2`. Useful for local or hosted MCP gateways that should call a different GrowSurf API origin)
 - `GROWSURF_UPLOAD_ALLOWED_ORIGINS` (required only for FILE Resource uploads; a comma-separated private allowlist of exact HTTPS origins accepted from GrowSurf upload tickets. Wildcards and URL paths are rejected)
-- `GROWSURF_PARTICIPANT_AUTH_SECRET` (optional; used by the hash helper)
-- `GROWSURF_WEBHOOK_TOKEN` (optional; used for your own webhook URL token scheme)
+
+The hash helper requires an explicit `participantAuthSecret` argument and never uses `GROWSURF_PARTICIPANT_AUTH_SECRET`. Use a test secret for MCP examples; authenticate users and sign with production secrets on your backend.
+
+For webhooks, configure a signing `secret` and verify `GrowSurf-Signature` on your backend. `GROWSURF_WEBHOOK_TOKEN` is no longer used; keep secrets out of webhook URLs.
 
 
 ## Run with npx

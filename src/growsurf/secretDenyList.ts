@@ -64,16 +64,21 @@ export const SECRET_DENY_LIST: string[] = [
 ];
 
 /**
- * Normalize a path for matching: convert Windows separators, strip a leading
- * `./` and any leading `/`, then lowercase it. (Matching is case-insensitive,
- * but normalizing here keeps the basename/segment logic simple.)
+ * Resolve lexical dot segments and repeated separators before matching.
+ * This does not resolve filesystem symlinks; callers must check resolved targets too.
  */
-const normalizePath = (path: string): string =>
-  path
-    .replace(/\\/g, "/")
-    .replace(/^\.\//, "")
-    .replace(/^\/+/, "")
-    .toLowerCase();
+const normalizePath = (path: string): string => {
+  const segments: string[] = [];
+  for (const segment of path.replace(/\\/g, "/").toLowerCase().split("/")) {
+    if (!segment || segment === ".") continue;
+    if (segment === ".." && segments.length > 0 && segments.at(-1) !== "..") {
+      segments.pop();
+    } else {
+      segments.push(segment);
+    }
+  }
+  return segments.join("/");
+};
 
 /**
  * Return the last path segment (basename) of a normalized path.

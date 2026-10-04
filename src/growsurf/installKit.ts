@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { htmlScriptString } from "./snippetLiterals.js";
 
 /**
  * Minimal env shape the install-kit renderers need, decoupled from the MCP
@@ -10,7 +11,9 @@ import { z } from "zod";
  */
 export type InstallKitEnv = {
   campaignId?: string | undefined;
+  /** @deprecated Ignored; webhook verification belongs on your backend. */
   webhookToken?: string | undefined;
+  /** @deprecated Ignored; production signing belongs on your backend. */
   participantAuthSecret?: string | undefined;
 };
 
@@ -29,9 +32,9 @@ export type RenderInstallKitOptions = {
   referralTrigger?: "signup" | "signup_plus_qualifying_action";
   /** Whether to add single-page-app reinit notes. Defaults to false. */
   singlePageApp?: boolean;
-  /** Optional webhook token to reference in the webhook-security section. */
+  /** @deprecated Ignored. Configure a webhook signing secret on your backend. */
   webhookToken?: string;
-  /** Optional participant-auth secret (only used to surface a helper tip). */
+  /** @deprecated Ignored. Keep production signing secrets on your backend. */
   participantAuthSecret?: string;
 };
 
@@ -43,12 +46,12 @@ export const integrationGuideInputSchema = z.object({
   participantAuthEnabled: z.boolean().default(false),
   referralTrigger: z.enum(["signup", "signup_plus_qualifying_action"]).default("signup_plus_qualifying_action"),
   singlePageApp: z.boolean().default(false),
-  webhookSecurity: z.enum(["token_in_url", "none"]).default("token_in_url"),
+  // Legacy choices stay parseable but never weaken the generated verification guidance.
+  webhookSecurity: z.enum(["signature", "token_in_url", "none"]).default("signature"),
 });
 
 export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInputSchema>, env: InstallKitEnv = {}) => {
   const campaignId = env.campaignId ?? "YOUR_CAMPAIGN_ID";
-  const hasWebhookToken = Boolean(env.webhookToken?.trim());
 
   const sections: string[] = [];
 
@@ -84,7 +87,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
         "  - `hash = HMAC_SHA256(participantAuthSecret, email).hex`",
         "- Then initialize GrowSurf on the client with `{ email, hash }`.",
         "",
-        "You can use the MCP tool `growsurf_participant_auth_hash` to compute the hash during implementation/testing (keep secrets server-side in production).",
+        "For testing, call `growsurf_participant_auth_hash` with an explicit test `participantAuthSecret`. For production, authenticate the user and sign on your backend; never send production secrets through MCP.",
         "",
       ].join("\n"),
     );
@@ -235,15 +238,16 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
       "",
       "#### Webhook security",
       "",
-      "GrowSurf’s docs don’t specify signed webhook headers. The simplest practical approach is to:",
-      "- Add a **random token** in your webhook URL (path or querystring) and verify it server-side.",
-      "- Validate the payload shape and use an **idempotency key** before changing anything in your system.",
+      "- Configure a write-only `secret` on the webhook in GrowSurf and store the same secret on your backend.",
+      "- Verify `GrowSurf-Signature` before processing an event. Parse `ts` (Unix milliseconds) and `v` from the header.",
+      "- Compute HMAC-SHA256 with your webhook secret over `ts + \".\" + raw request body`. Compare the result with `v` using a constant-time comparison.",
+      "- Reject missing or invalid signatures and timestamps outside your allowed tolerance, including future timestamps. Do not parse and reserialize the body before verification.",
+      "- Keep secrets out of webhook URLs. URLs can appear in logs and support captures.",
+      "- After verification, validate the payload and deduplicate events before changing your data.",
       "",
-      hasWebhookToken
-        ? `- **Detected**: \`GROWSURF_WEBHOOK_TOKEN\` is set; you can enforce it in your handler.`
-        : "- **Tip**: set `GROWSURF_WEBHOOK_TOKEN` and include it in your webhook URL.",
+      "Follow [GrowSurf webhook verification](https://docs.growsurf.com/developer-tools/webhooks/securing-your-webhooks) for the signature format.",
       "",
-      "Use the MCP tool `growsurf_webhook_normalize` to normalize events and generate a best-effort idempotency key.",
+      "`growsurf_webhook_normalize` validates the payload shape and suggests an idempotency key. It does not verify signatures or authenticate requests.",
       "",
     ].join("\n"),
   );
@@ -447,10 +451,6 @@ export const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>
     lines.push("</script>");
     lines.push("```");
     lines.push("");
-    if (env.participantAuthSecret) {
-      lines.push("- Tip: you can compute the hash with MCP tool `growsurf_participant_auth_hash` while implementing.");
-      lines.push("");
-    }
   }
 
   if (input.includeGrowSurfWindow) {
@@ -544,9 +544,10 @@ export const renderGrsfConfigSnippet = (input: z.infer<typeof grsfConfigSnippetS
     );
   }
   if (input.enableParticipantAutoAuth) {
+    // grsfConfigSnippetSchema requires both values when auto-auth is enabled.
     lines.push("  window.grsfConfig = {");
-    lines.push(`    email: ${JSON.stringify(input.email)},// Replace this with the participant's email address`);
-    lines.push(`    hash: ${JSON.stringify(input.hash)}${input.affiliateJoin ? "," : ""} // Replace this with the SHA-256 HMAC value`);
+    lines.push(`    email: ${htmlScriptString(input.email!)},// Replace this with the participant's email address`);
+    lines.push(`    hash: ${htmlScriptString(input.hash!)}${input.affiliateJoin ? "," : ""} // Replace this with the SHA-256 HMAC value`);
     if (input.affiliateJoin) {
       lines.push("    affiliateJoin: true");
     }
@@ -560,7 +561,7 @@ export const renderGrsfConfigSnippet = (input: z.infer<typeof grsfConfigSnippetS
     lines.push("  */");
   }
   lines.push(
-    `  (function(g,r,s,f){g.grsfSettings={campaignId:${JSON.stringify(campaignId)},version:"2.0.0"};s=r.getElementsByTagName("head")[0];f=r.createElement("script");f.async=1;f.src="https://app.growsurf.com/growsurf.js"+"?v="+g.grsfSettings.version;f.setAttribute("grsf-campaign", g.grsfSettings.campaignId);!g.grsfInit?s.appendChild(f):"";})(window,document);`,
+    `  (function(g,r,s,f){g.grsfSettings={campaignId:${htmlScriptString(campaignId)},version:"2.0.0"};s=r.getElementsByTagName("head")[0];f=r.createElement("script");f.async=1;f.src="https://app.growsurf.com/growsurf.js"+"?v="+g.grsfSettings.version;f.setAttribute("grsf-campaign", g.grsfSettings.campaignId);!g.grsfInit?s.appendChild(f):"";})(window,document);`,
   );
   lines.push("</script>");
   lines.push("```");
@@ -636,7 +637,7 @@ export const renderInstallKit = (options: RenderInstallKitOptions): string => {
       participantAuthEnabled,
       referralTrigger,
       singlePageApp,
-      webhookSecurity: "token_in_url",
+      webhookSecurity: "signature",
     }),
     installKitEnv,
   );

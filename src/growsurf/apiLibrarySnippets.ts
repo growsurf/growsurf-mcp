@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { phpString, rubyString } from "./snippetLiterals.js";
 
 export const apiLibrarySnippetsInputSchema = z.object({
   language: z.enum(["typescript", "python", "php", "ruby", "java", "all"]).default("all"),
@@ -244,19 +245,19 @@ const renderPhp = (
     );
   }
   if (shouldRenderWorkflow(input, "campaign_lookup")) {
-    sections.push(codeBlock("php", `$campaign = $client->campaign->retrieve(${JSON.stringify(campaignId)});`));
+    sections.push(codeBlock("php", `$campaign = $client->campaign->retrieve(${phpString(campaignId)});`));
   }
   if (shouldRenderWorkflow(input, "add_participant")) {
     sections.push(
       codeBlock(
         "php",
-        `$participant = $client->campaign->participant->add(${JSON.stringify(campaignId)}, email: '${FIXTURE_EMAIL}', firstName: '${FIXTURE_FIRST_NAME}', lastName: '${FIXTURE_LAST_NAME}');`,
+        `$participant = $client->campaign->participant->add(${phpString(campaignId)}, email: '${FIXTURE_EMAIL}', firstName: '${FIXTURE_FIRST_NAME}', lastName: '${FIXTURE_LAST_NAME}');`,
       ),
     );
   }
   if (shouldRenderWorkflow(input, "trigger_referral")) {
     sections.push(
-      codeBlock("php", `$client->campaign->participant->triggerReferral(${JSON.stringify(participant)}, ${JSON.stringify(campaignId)});`),
+      codeBlock("php", `$client->campaign->participant->triggerReferral(${phpString(participant)}, ${phpString(campaignId)});`),
     );
   }
   if (shouldRenderWorkflow(input, "record_transaction")) {
@@ -264,7 +265,7 @@ const renderPhp = (
       codeBlock(
         "php",
         [
-          `$client->campaign->participant->recordTransaction(${JSON.stringify(participant)}, ${JSON.stringify(campaignId)},`,
+          `$client->campaign->participant->recordTransaction(${phpString(participant)}, ${phpString(campaignId)},`,
           "    currency: 'USD',",
           "    grossAmount: 9900,",
           "    invoiceID: 'invoice_123',",
@@ -279,12 +280,12 @@ const renderPhp = (
         "php",
         [
           "$token = $client->campaign->createMobileParticipantToken(",
-          `    ${JSON.stringify(campaignId)},`,
-          `    ${JSON.stringify(mobileEmail)},`,
+          `    ${phpString(campaignId)},`,
+          `    ${phpString(mobileEmail)},`,
           "    firstName: 'Gavin',",
           "    lastName: 'Belson',",
           "    mobileInstanceID: '5f7d0f4c-3e7c-4aa9-8c41-d81d998f0bb1',",
-          `    referredBy: ${JSON.stringify(referredBy)},`,
+          `    referredBy: ${phpString(referredBy)},`,
           ");",
           "echo $token->participantToken;",
         ].join("\n"),
@@ -316,32 +317,32 @@ const renderRuby = (
     );
   }
   if (shouldRenderWorkflow(input, "campaign_lookup")) {
-    sections.push(codeBlock("ruby", `campaign = growsurf.campaign.retrieve(${JSON.stringify(campaignId)})`));
+    sections.push(codeBlock("ruby", `campaign = growsurf.campaign.retrieve(${rubyString(campaignId)})`));
   }
   if (shouldRenderWorkflow(input, "add_participant")) {
     sections.push(
       codeBlock(
         "ruby",
         [
-          `participant = growsurf.campaign.participant.add(${JSON.stringify(campaignId)},`,
-          `  email: ${JSON.stringify(FIXTURE_EMAIL)},`,
-          `  first_name: ${JSON.stringify(FIXTURE_FIRST_NAME)},`,
-          `  last_name: ${JSON.stringify(FIXTURE_LAST_NAME)}`,
+          `participant = growsurf.campaign.participant.add(${rubyString(campaignId)},`,
+          `  email: ${rubyString(FIXTURE_EMAIL)},`,
+          `  first_name: ${rubyString(FIXTURE_FIRST_NAME)},`,
+          `  last_name: ${rubyString(FIXTURE_LAST_NAME)}`,
           ")",
         ].join("\n"),
       ),
     );
   }
   if (shouldRenderWorkflow(input, "trigger_referral")) {
-    sections.push(codeBlock("ruby", `growsurf.campaign.participant.trigger_referral(${JSON.stringify(participant)}, id: ${JSON.stringify(campaignId)})`));
+    sections.push(codeBlock("ruby", `growsurf.campaign.participant.trigger_referral(${rubyString(participant)}, id: ${rubyString(campaignId)})`));
   }
   if (shouldRenderWorkflow(input, "record_transaction")) {
     sections.push(
       codeBlock(
         "ruby",
         [
-          `growsurf.campaign.participant.record_transaction(${JSON.stringify(participant)},`,
-          `  id: ${JSON.stringify(campaignId)},`,
+          `growsurf.campaign.participant.record_transaction(${rubyString(participant)},`,
+          `  id: ${rubyString(campaignId)},`,
           "  currency: \"USD\",",
           "  gross_amount: 9900,",
           "  invoice_id: \"invoice_123\"",
@@ -355,11 +356,11 @@ const renderRuby = (
       codeBlock(
         "ruby",
         [
-          `token = growsurf.campaign.create_mobile_participant_token(${JSON.stringify(campaignId)},`,
-          `  email: ${JSON.stringify(mobileEmail)},`,
+          `token = growsurf.campaign.create_mobile_participant_token(${rubyString(campaignId)},`,
+          `  email: ${rubyString(mobileEmail)},`,
           "  first_name: \"Gavin\",",
           "  last_name: \"Belson\",",
-          `  referred_by: ${JSON.stringify(referredBy)},`,
+          `  referred_by: ${rubyString(referredBy)},`,
           "  mobile_instance_id: \"5f7d0f4c-3e7c-4aa9-8c41-d81d998f0bb1\"",
           ")",
           "puts token.participant_token",

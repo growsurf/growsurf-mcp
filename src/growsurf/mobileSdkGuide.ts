@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { kotlinString } from "./snippetLiterals.js";
 
 const MOBILE_SDK_GUIDANCE_VERSION = "0.6.0";
 const IOS_DISTRIBUTION_URL = "https://github.com/growsurf/growsurf-ios-sdk-distribution.git";
@@ -312,8 +313,8 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
         "",
         "val growsurf = GrowSurfSdk.configure(",
         "    context = context,",
-        `    campaignId = ${JSON.stringify(campaignId)},`,
-        `    publicKey = ${JSON.stringify(mobilePublicKey)},`,
+        `    campaignId = ${kotlinString(campaignId)},`,
+        `    publicKey = ${kotlinString(mobilePublicKey)},`,
         ")",
       ].join("\n"),
     ),
@@ -329,7 +330,7 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
         "kotlin",
         [
           "val result = growsurf.addReferredParticipant(",
-          `    GrowSurfParticipantInput(email = ${JSON.stringify(FIXTURE_EMAIL)}, firstName = ${JSON.stringify(FIXTURE_FIRST_NAME)}, lastName = ${JSON.stringify(FIXTURE_LAST_NAME)})`,
+          `    GrowSurfParticipantInput(email = ${kotlinString(FIXTURE_EMAIL)}, firstName = ${kotlinString(FIXTURE_FIRST_NAME)}, lastName = ${kotlinString(FIXTURE_LAST_NAME)})`,
           ")",
           "",
           "if (result.added) {",
@@ -345,9 +346,9 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
         [
           "val directSignup = growsurf.addParticipant(",
           "    GrowSurfParticipantInput(",
-          `        email = ${JSON.stringify(FIXTURE_EMAIL)},`,
-          `        firstName = ${JSON.stringify(FIXTURE_FIRST_NAME)},`,
-          `        lastName = ${JSON.stringify(FIXTURE_LAST_NAME)},`,
+          `        email = ${kotlinString(FIXTURE_EMAIL)},`,
+          `        firstName = ${kotlinString(FIXTURE_FIRST_NAME)},`,
+          `        lastName = ${kotlinString(FIXTURE_LAST_NAME)},`,
           "        termsAccepted = true,",
           "    )",
           ")",

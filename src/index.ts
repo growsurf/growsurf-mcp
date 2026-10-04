@@ -112,6 +112,7 @@ const envSchema = z.object({
   GROWSURF_CAMPAIGN_ID: optionalNonEmptyString(),
   GROWSURF_API_BASE_URL: optionalNonEmptyString(),
   GROWSURF_UPLOAD_ALLOWED_ORIGINS: optionalNonEmptyString(),
+  // Deprecated compatibility fields. Never use ambient secrets to service MCP calls.
   GROWSURF_PARTICIPANT_AUTH_SECRET: optionalNonEmptyString(),
   GROWSURF_WEBHOOK_TOKEN: optionalNonEmptyString(),
 });
@@ -886,7 +887,7 @@ const createMobileParticipantTokenSchema = addParticipantSchema;
 
 const participantAuthHashSchema = z.object({
   email: z.string().min(3),
-  participantAuthSecret: z.string().min(1).optional(),
+  participantAuthSecret: z.string().min(1),
   affiliateJoin: z.boolean().default(false),
 });
 
@@ -1152,8 +1153,6 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
   // Shared env shape for the install-kit renderers (decoupled from the MCP Env).
   const installKitEnv = {
     campaignId: env.GROWSURF_CAMPAIGN_ID,
-    webhookToken: env.GROWSURF_WEBHOOK_TOKEN,
-    participantAuthSecret: env.GROWSURF_PARTICIPANT_AUTH_SECRET,
   };
 
   const server = new Server(
@@ -1231,7 +1230,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               participantAuthEnabled: { type: "boolean", default: false },
               referralTrigger: { type: "string", enum: ["signup", "signup_plus_qualifying_action"], default: "signup_plus_qualifying_action" },
               singlePageApp: { type: "boolean", default: false },
-              webhookSecurity: { type: "string", enum: ["token_in_url", "none"], default: "token_in_url" },
+              webhookSecurity: { type: "string", enum: ["signature", "token_in_url", "none"], default: "signature", description: "Always recommends signature verification. Legacy values are accepted for compatibility and cannot disable verification." },
             },
             additionalProperties: false,
           },
@@ -2605,15 +2604,15 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_participant_auth_hash",
           description:
-            "Compute the server-side SHA-256 HMAC for GrowSurf Participant Auto Authentication. `affiliateJoin` requires permission for this signed-in user to join the affiliate program directly.",
+            "Compute a SHA-256 HMAC using the caller-supplied `participantAuthSecret`. Server environment secrets are never used. Use a test secret during implementation; keep production signing in your backend. `affiliateJoin` requires permission for this signed-in user to join the affiliate program directly.",
           inputSchema: {
             type: "object",
             properties: {
               email: { type: "string" },
-              participantAuthSecret: { type: "string" },
+              participantAuthSecret: { type: "string", minLength: 1 },
               affiliateJoin: { type: "boolean", default: false },
             },
-            required: ["email"],
+            required: ["email", "participantAuthSecret"],
             additionalProperties: false,
           },
         },
@@ -3365,22 +3364,10 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         }
         case "growsurf_participant_auth_hash": {
           const input = participantAuthHashSchema.parse(request.params.arguments ?? {});
-          const secret = input.participantAuthSecret ?? env.GROWSURF_PARTICIPANT_AUTH_SECRET;
-          if (!secret) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text:
-                    "Missing participantAuthSecret. Provide it in the tool args or set GROWSURF_PARTICIPANT_AUTH_SECRET.",
-                },
-              ],
-              isError: true,
-            };
-          }
+          // Only the caller can supply the signing key; shared runtimes must not sign with ambient authority.
           const hash = computeParticipantAuthHash({
             email: input.email,
-            participantAuthSecret: secret,
+            participantAuthSecret: input.participantAuthSecret,
             affiliateJoin: input.affiliateJoin,
           });
           return { content: [{ type: "text", text: hash }], structuredContent: { hash } };

@@ -230,3 +230,13 @@ describe("renderMobileSdkGuide", () => {
     expect(text).not.toContain("trackShare(participantId");
   });
 });
+
+describe("mobile snippet literal boundaries", () => {
+  it("escapes Kotlin templates in the program ID and public key", () => {
+    const payload = '${error("injected")} $identifier\\\n\fend';
+    const text = renderMobileSdkGuide(mobileSdkGuideInputSchema.parse({ platform: "android", campaignId: payload, mobilePublicKey: payload }));
+    const literal = '"\\${error(\\"injected\\")} \\$identifier\\\\\\n\\u000cend"';
+    expect(text).toContain(`campaignId = ${literal}`);
+    expect(text).toContain(`publicKey = ${literal}`);
+  });
+});

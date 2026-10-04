@@ -1,5 +1,6 @@
+import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
-import { renderClientSnippets, renderInstallKit, renderIntegrationGuide } from "../src/growsurf/installKit.js";
+import { grsfConfigSnippetSchema, integrationGuideInputSchema, renderGrsfConfigSnippet, renderClientSnippets, renderInstallKit, renderIntegrationGuide } from "../src/growsurf/installKit.js";
 
 describe("renderInstallKit", () => {
   const kit = renderInstallKit({ campaignId: "abc123" });
@@ -187,5 +188,28 @@ describe("renderInstallKit", () => {
     expect(guide).toContain("idempotency key");
     expect(guide).not.toContain("exponential backoff");
     expect(guide).not.toContain("retries with");
+  });
+});
+
+describe("generated integration security", () => {
+  it("keeps untrusted values inside the HTML script and preserves their values", () => {
+    const value = '</ScRiPt><script>throw new Error("injected")</script><!--&>\u2028\u2029';
+    const text = renderGrsfConfigSnippet(grsfConfigSnippetSchema.parse({ campaignId: value, useCampaignIdPlaceholder: false, enableParticipantAutoAuth: true, email: value, hash: value }));
+    const script = text.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/i)![1]!;
+    expect(script).not.toMatch(/<\/script|<!--/i);
+    const window: Record<string, unknown> = { grsfInit: true };
+    runInNewContext(script, { window, document: { getElementsByTagName: () => [{}], createElement: () => ({ setAttribute() {} }) } });
+    expect(window.grsfConfig).toEqual({ email: value, hash: value });
+    expect(window.grsfSettings).toMatchObject({ campaignId: value });
+  });
+
+  it.each([undefined, "token_in_url", "none"])("requires signature verification even for legacy option %s", (webhookSecurity) => {
+    const guide = renderIntegrationGuide(integrationGuideInputSchema.parse({ webhookSecurity }), { webhookToken: "legacy-secret" });
+    expect(guide).toContain("GrowSurf-Signature");
+    expect(guide).toContain("raw request body");
+    expect(guide).toContain("Reject");
+    expect(guide).not.toContain("random token");
+    expect(guide).not.toContain("GROWSURF_WEBHOOK_TOKEN");
+    expect(guide).not.toContain("legacy-secret");
   });
 });

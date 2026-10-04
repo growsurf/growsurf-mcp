@@ -18,6 +18,14 @@ describe("isSecretPath", () => {
     "certs/server.pem",
     ".aws/credentials",
     "terraform.tfstate",
+    ".docker/./config.json",
+    ".docker/sub/../config.json",
+    "project/../.docker//config.json",
+    "/home/user/.docker/sub/../config.json",
+    "C:\\Users\\user\\.docker\\sub\\..\\config.json",
+    "././.aws/config",
+    ".aws/cache/../config",
+    "nested/../.env",
   ])("flags %s as a secret", (path) => {
     expect(isSecretPath(path)).toBe(true);
   });

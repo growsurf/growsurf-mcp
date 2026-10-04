@@ -62,3 +62,16 @@ describe("renderApiLibrarySnippets", () => {
     expect(text).not.toContain("Ada Lovelace");
   });
 });
+
+// These source bytes are a security boundary: the target language must not
+// treat a caller's string as interpolation when a generated snippet is run.
+describe("API snippet literal boundaries", () => {
+  it.each([
+    ["ruby", '#{raise "injected"}', '"\\#{raise \\"injected\\"}"'],
+    ["php", '${exit(99)}', '"\\${exit(99)}"'],
+  ] as const)("disables %s interpolation for each caller-controlled value", (language, payload, literal) => {
+    const text = renderApiLibrarySnippets({ language, workflow: "all", campaignId: payload, participantIdOrEmail: payload, email: payload, referredBy: payload });
+    expect(text).not.toContain(JSON.stringify(payload));
+    expect(text).toContain(literal);
+  });
+});
