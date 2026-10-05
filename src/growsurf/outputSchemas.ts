@@ -537,7 +537,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     referralStatus: {
       type: "object",
       description:
-        "The section listing who a participant invited and each invite's progress. `revealInviteEmails` lets a signed-in participant see the full email address of each person they invited.",
+        "The section listing who a participant invited and each invite's progress. `revealInviteEmails` lets a signed-in participant see original invitation addresses when disclosure permission was recorded. Private invites and full email masking keep addresses hidden. Other referral addresses stay masked. `revealInviteEmailText` supplies the sign-in prompt; `followUp` supplies the invitation follow-up labels and messages.",
     },
     leaderboard: { type: "object", description: "The leaderboard section: labels, selectors, and name masking." },
     referredExperience: {
