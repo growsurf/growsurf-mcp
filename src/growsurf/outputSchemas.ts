@@ -536,7 +536,8 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     },
     referralStatus: {
       type: "object",
-      description: "The section listing who a participant invited and each invite's progress.",
+      description:
+        "The section listing who a participant invited and each invite's progress. `revealInviteEmails` lets a signed-in participant see the full email address of each person they invited.",
     },
     leaderboard: { type: "object", description: "The leaderboard section: labels, selectors, and name masking." },
     referredExperience: {
@@ -732,6 +733,11 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
       type: "object",
       description:
         "Sent when a referred visitor saves an offer through the Claim Offer Popup. Referral and affiliate programs. Promotional; its toggle can be changed.",
+    },
+    followUpReminder: {
+      type: "object",
+      description:
+        "Optional reminder to the referrer about directly invited contacts who have not signed up after `delayDays` (integer 2–30, default 3). Existing reminder dates stay unchanged. Disabled by default. Only new invitations created while this email is enabled qualify automatically. A later offer claim preserves invitation eligibility; popup-only claims never qualify. Each contact is included once. Referral and affiliate programs.",
     },
     referralLinkViewedFirstTime: {
       type: "object",

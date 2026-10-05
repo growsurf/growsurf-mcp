@@ -255,6 +255,7 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
   }
 
   sections.push(
+    "The native Window offers Follow up only for outstanding direct invitations with Company as the Invite Email sender and when sending is available. Confirmation sends the configured invitation email; a three-day cooldown applies. Popup-only claims never qualify. The optional `displayStatus` value `OFFER_CLAIMED` uses the editable Claimed Offer label, with completed signup taking precedence. When Follow-Up Reminder is enabled, new invitations automatically qualify for a reminder to the referrer after the configured delay (2–30 days, default 3). No participant opt-in or `sendInvites` parameter is needed. This never schedules email to invited contacts.",
     "Recommended sharing path: present the native GrowSurf Window from your own app button or menu. Use a backend-minted token for signed-in users, or `result.participantToken` from a just-created SDK participant if opening the window immediately. The SDK already stores returned participant tokens; keep one yourself only when you need this explicit window handoff.",
     codeBlock(
       "swift",
@@ -358,6 +359,7 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
   }
 
   sections.push(
+    "The native Window offers Follow up only for outstanding direct invitations with Company as the Invite Email sender and when sending is available. Confirmation sends the configured invitation email; a three-day cooldown applies. Popup-only claims never qualify. The optional `displayStatus` value `OFFER_CLAIMED` uses the editable Claimed Offer label, with completed signup taking precedence. When Follow-Up Reminder is enabled, new invitations automatically qualify for a reminder to the referrer after the configured delay (2–30 days, default 3). No participant opt-in or `sendInvites` parameter is needed. This never schedules email to invited contacts.",
     "Recommended sharing path: present the native GrowSurf Window from your own app button or menu. Use a backend-minted token for signed-in users, or `result.participantToken` from a just-created SDK participant if opening the window immediately. The SDK already stores returned participant tokens; keep one yourself only when you need this explicit window handoff.",
     codeBlock(
       "kotlin",
