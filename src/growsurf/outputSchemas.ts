@@ -606,9 +606,9 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         reveal: {
           type: "string",
           enum: ["IMMEDIATE", "DELAY", "SCROLL"],
-          description: "When the card appears: right away, after `revealDelaySeconds`, or once the visitor scrolls halfway down the page. The button always appears right away.",
+          description: "What the element waits for before it appears: the page loading (`IMMEDIATE`) or the visitor scrolling halfway down the page (`SCROLL`). `revealDelaySeconds` then counts from that moment. `DELAY` is accepted for older programs and behaves as `IMMEDIATE`.",
         },
-        revealDelaySeconds: { type: "integer", minimum: 0, maximum: 120, description: "Seconds to wait before showing the card, when `reveal` is `DELAY`." },
+        revealDelaySeconds: { type: "integer", minimum: 0, maximum: 120, description: "Seconds to wait after the `reveal` trigger before showing the element. `0` shows it the moment the trigger fires." },
         returnAfterDays: { type: "integer", minimum: 0, maximum: 365, description: "Days before the card is offered again to someone who closed it. Until then they keep the button, so they can still open the program. `0` never offers it again." },
         isHiddenOnMobile: { type: "boolean", description: "Whether to leave phones alone. On small screens the card fills the bottom of the page." },
         pageRules: {
