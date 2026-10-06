@@ -1853,7 +1853,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_emails",
           description:
-            "Update writable Emails tab fields for your GrowSurf program under `fields`, in their existing nested shape. `settings.sender.fromEmail` is read-only; sender address changes require domain verification in the dashboard. `settings.sender.fromName` and `settings.sender.replyToEmail` are writable. The `invite` and transactional email `isEnabled` toggles are read-only. Email bodies require their template links and footer tokens. Omitted fields retain their existing content; arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update writable Emails tab fields for your GrowSurf program under `fields`, in their existing nested shape. `settings.sender.fromEmail` is read-only; sender address changes require domain verification in the dashboard. `settings.sender.fromName` and `settings.sender.replyToEmail` are writable. The `invite` and transactional email `isEnabled` toggles are read-only. Email bodies require their template links and footer tokens. When `settings.design.layoutMode` is `INLINE`, each body must include `{{emailFooter}}`; `{{emailHeader}}` is optional. `layoutMode` is read-only. Omitted fields retain their existing content; arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2322,7 +2322,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_email_participant",
           description:
-            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). Free-form emails are sent with the same compliance handling (company name, postal address, and an unsubscribe link are added automatically, and unsubscribed participants are suppressed). Sending requires the team to be verified by GrowSurf and a verified custom email domain on the program (set up in *Campaign Editor > 3. Emails > Email Settings*). Returns 400 until one is verified. The email is accepted for delivery. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). For programs with `settings.design.layoutMode` set to `INLINE`, `body` must include `{{emailFooter}}`; `{{emailHeader}}` is optional. Free-form emails are sent with the same compliance handling (company name, postal address, and an unsubscribe link are added automatically, and unsubscribed participants are suppressed). Sending requires the team to be verified by GrowSurf and a verified custom email domain on the program (set up in *Campaign Editor > 3. Emails > Email Settings*). Returns 400 until one is verified. The email is accepted for delivery. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {

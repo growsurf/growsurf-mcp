@@ -846,8 +846,13 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
     settings: {
       type: "object",
       description:
-        "Sender (`sender`), physical contact address (`contact`), and shared design (`design`) settings. The design object includes `unsubscribeAffiliateInvite` for direct affiliate invitation emails.",
+        "Sender (`sender`), physical contact address (`contact`), and shared design (`design`) settings. The design object includes `unsubscribeAffiliateInvite` for direct affiliate invitation emails. Its read-only `layoutMode` is `INLINE` for new programs: bodies require `{{emailFooter}}` and may include `{{emailHeader}}`. Older programs omit `layoutMode` and keep their existing layout.",
       properties: {
+        design: {
+          type: "object",
+          properties: { layoutMode: { type: "string", enum: ["INLINE"], readOnly: true,
+            description: "Read-only email layout. `INLINE` requires `{{emailFooter}}` in each body; `{{emailHeader}}` is optional." } },
+        },
         sender: {
           type: "object",
           properties: {
