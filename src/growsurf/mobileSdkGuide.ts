@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { kotlinString } from "./snippetLiterals.js";
 
-const MOBILE_SDK_GUIDANCE_VERSION = "0.6.0";
+const MOBILE_SDK_GUIDANCE_VERSION = "0.7.0";
 const IOS_DISTRIBUTION_URL = "https://github.com/growsurf/growsurf-ios-sdk-distribution.git";
 const FIXTURE_EMAIL = "gavin@hooli.com";
 const FIXTURE_FIRST_NAME = "Gavin";
