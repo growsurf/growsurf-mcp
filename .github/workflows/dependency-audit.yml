@@ -20,9 +20,11 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - name: Verify audit policy behavior
-        run: node --test test/dependency-audit-checks.mjs
-      - run: npm run audit:dependencies
+      # Policy fixtures use OS scratch; only the registry audit writes audit-reports/.
+      - parallel:
+          - name: Verify audit policy behavior
+            run: node --test test/dependency-audit-checks.mjs
+          - run: npm run audit:dependencies
       - uses: actions/upload-artifact@v7
         if: always()
         with:

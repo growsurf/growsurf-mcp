@@ -1,6 +1,6 @@
 {
   "name": "@growsurfteam/growsurf-mcp",
-  "version": "0.19.9",
+  "version": "0.19.10",
   "mcpName": "com.growsurf/growsurf",
   "description": "Official GrowSurf CLI and Model Context Protocol (MCP) server for referral and affiliate programs.",
   "publishConfig": {
@@ -83,5 +83,8 @@
     "tsx": "^4.19.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
+  },
+  "overrides": {
+    "proxy-addr": "^2.0.8"
   }
 }

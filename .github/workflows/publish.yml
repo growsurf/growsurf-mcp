@@ -27,9 +27,11 @@ jobs:
       - run: npm install -g "npm@^11.5.1"
       - run: npm run audit:dependencies
       - run: npm ci
-      - run: npm test
-      - run: npm run typecheck
-      - run: npm run lint
+      # These checks read source; build and packaging wait for all three.
+      - parallel:
+          - run: npm test
+          - run: npm run typecheck
+          - run: npm run lint
       - run: npm run build
       - run: npm pack --dry-run
 
