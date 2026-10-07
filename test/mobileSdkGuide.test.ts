@@ -57,8 +57,7 @@ describe("renderMobileSdkGuide", () => {
     );
 
     expect(text).toContain("growsurf-ios-sdk-distribution");
-    expect(text).toContain("pod 'GrowSurfSDK', '~> 0.7.0'");
-    expect(text).not.toContain("GrowSurfSDK.podspec");
+    expect(text).toContain("pod 'GrowSurfSDK', :podspec => 'https://raw.githubusercontent.com/growsurf/growsurf-ios-sdk-distribution/v0.7.0/GrowSurfSDK.podspec'");
     expect(text).toContain("com.growsurf:growsurf-android-sdk:0.7.0");
   });
 

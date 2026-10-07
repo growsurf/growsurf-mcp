@@ -2,7 +2,9 @@ import { z } from "zod";
 import { kotlinString } from "./snippetLiterals.js";
 
 const MOBILE_SDK_GUIDANCE_VERSION = "0.7.0";
-const IOS_DISTRIBUTION_URL = "https://github.com/growsurf/growsurf-ios-sdk-distribution.git";
+const IOS_DISTRIBUTION_REPO = "growsurf/growsurf-ios-sdk-distribution";
+const IOS_DISTRIBUTION_URL = `https://github.com/${IOS_DISTRIBUTION_REPO}.git`;
+const IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_REPO}/v${MOBILE_SDK_GUIDANCE_VERSION}/GrowSurfSDK.podspec`;
 const FIXTURE_EMAIL = "gavin@hooli.com";
 const FIXTURE_FIRST_NAME = "Gavin";
 const FIXTURE_LAST_NAME = "Belson";
@@ -198,7 +200,7 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
       ),
       codeBlock(
         "ruby",
-        `pod 'GrowSurfSDK', '~> ${MOBILE_SDK_GUIDANCE_VERSION}'`,
+        `pod 'GrowSurfSDK', :podspec => '${IOS_PODSPEC_URL}'`,
       ),
     );
   }
