@@ -171,7 +171,7 @@ const getKeylessGrowSurfClient = (env: Env): GrowSurfClient =>
   });
 
 // The campaign-scoped tools: every tool that operates on a single program (campaign). Each accepts
-// an optional `campaignId` argument that overrides GROWSURF_CAMPAIGN_ID (resolved per call via
+// a `campaignId` argument that overrides GROWSURF_CAMPAIGN_ID (resolved per call via
 // resolveCampaignClient), so an agent can create a program and immediately operate on the returned
 // id. The tool-catalog builder below injects the shared campaignId input-schema property into exactly
 // these tools, and each handler resolves its client with resolveCampaignClient(env, toolArgs).
@@ -276,6 +276,7 @@ const GROWSURF_SERVER_INSTRUCTIONS = [
 // tool-catalog builder). Keeping it in one place means the campaign-scoped tool schemas cannot drift.
 const CAMPAIGN_ID_JSON_PROP = {
   type: "string",
+  minLength: 1,
   description:
     "Target program (campaign) id for this call. Defaults to GROWSURF_CAMPAIGN_ID when omitted. Program IDs also identify newly created programs without restarting the server.",
 } as const;
@@ -2721,13 +2722,18 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           },
         }
     ];
-    // Inject the optional campaignId argument into every campaign-scoped tool so an agent can target
+    // Inject the campaignId argument into every campaign-scoped tool so an agent can target
     // a program by id (for example one just returned by growsurf_create_campaign) without a server
     // restart. Keyless, Team-level, and static tools are left untouched.
     for (const tool of tools) {
       if (!CAMPAIGN_SCOPED_TOOL_NAMES.has(tool.name)) continue;
-      const inputSchema = tool.inputSchema as { properties?: Record<string, unknown> };
+      const inputSchema = tool.inputSchema as { properties?: Record<string, unknown>; required?: string[] };
       inputSchema.properties = { ...(inputSchema.properties ?? {}), campaignId: CAMPAIGN_ID_JSON_PROP };
+      // Without a default, the handler cannot resolve a program. Advertise that requirement and
+      // let the shared input guard report a structured field error before resolving the client.
+      if (!env.GROWSURF_CAMPAIGN_ID) {
+        inputSchema.required = [...new Set([...(inputSchema.required ?? []), "campaignId"])];
+      }
     }
     // Advertise an output schema for every tool that returns structured JSON, so clients know the
     // result shape. Tools that return markdown or plain text are not in the map and stay as-is.

@@ -11,6 +11,36 @@ describe("participant read MCP tools", () => {
     vi.restoreAllMocks();
   });
 
+  it.each([undefined, ""])("requires a program when the configured default is %s", async (campaignId) => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const server = createGrowSurfMcpServer({
+      env: { GROWSURF_API_KEY: "api_key", GROWSURF_CAMPAIGN_ID: campaignId },
+    });
+    const client = new Client({ name: "program-scope-test-client", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const { tools } = await client.listTools();
+      const getTool = tools.find((tool) => tool.name === "growsurf_get_participant");
+      expect(getTool?.inputSchema.required).toContain("campaignId");
+
+      const result = await client.callTool({
+        name: "growsurf_get_participant", arguments: { participantId: "part_1" },
+      });
+      expect(result.isError).toBe(true);
+      const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+      expect(JSON.parse(text)).toMatchObject({
+        code: "INVALID_TOOL_INPUT", status: 400,
+        errors: expect.arrayContaining([expect.objectContaining({ field: "campaignId" })]),
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it("exposes and calls participant list/get tools on the documented REST paths", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.includes("/participants?")) {
