@@ -37,7 +37,7 @@ const serverJson = JSON.parse(
 
 describe("package distribution", () => {
   it("ships the hosted-server exports and advertised Agent Skill bundle", () => {
-    expect(packageJson.version).toBe("0.19.11");
+    expect(packageJson.version).toBe("0.19.12");
     expect(packageJson.mcpName).toBe("com.growsurf/growsurf");
     expect(packageJson.description).toMatch(/^Official GrowSurf CLI/);
     expect(packageJson.bin).toEqual({ "growsurf-mcp": "./dist/cli.js" });
@@ -104,9 +104,11 @@ describe("package distribution", () => {
     60_000,
   );
 
-  it.skipIf(process.platform === "win32")(
-    "starts the stdio server when npm invokes the bin through a Unix symlink",
-    async () => {
+  it.skipIf(process.platform === "win32").each([
+    { args: [], compact: false }, { args: ["--compact"], compact: true },
+  ])(
+    "starts stdio through the npm bin symlink (compact: $compact)",
+    async ({ args, compact }) => {
       const binPath = packageJson.bin?.["growsurf-mcp"];
       expect(binPath).toBeDefined();
 
@@ -130,13 +132,15 @@ describe("package distribution", () => {
 
       const transport = new StdioClientTransport({
         command: process.execPath,
-        args: ["--import", "tsx", linkedEntrypoint],
+        args: ["--import", "tsx", linkedEntrypoint, ...args],
         stderr: "pipe",
       });
       const client = new Client({ name: "package-bin-test", version: "1.0.0" });
 
       try {
         await client.connect(transport);
+        const tools = (await client.listTools()).tools;
+        expect(tools.some(tool => tool.name === "growsurf_get_guidance")).toBe(compact);
         const listed = await client.listResources();
         expect(listed.resources).toEqual(expect.arrayContaining([
           expect.objectContaining({ uri: "growsurf://agent-index" }),

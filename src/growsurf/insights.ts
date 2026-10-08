@@ -902,11 +902,16 @@ const renderAdviceSummary = (
 export const buildProgramDesignAdvice = (
   input: ProgramDesignAdvisorInput,
   bundle: GrowSurfInsightsBundle | undefined,
+  rendering: {
+    mapConfigurationCall?: (call: ProgramDesignAdvice["configurationPlan"][number]) => ProgramDesignAdvice["configurationPlan"][number];
+    formatToolReferences?: (text: string) => string;
+  } = {},
 ): ProgramDesignAdvice => {
   const insights = bundle?.programDesign;
   const decisions = decide(input);
   const resolvedDecisions = adviceDecisions(input, decisions);
-  const configurationPlan = buildConfigurationPlan(input, decisions);
+  // Translate typed calls before either structured output or Markdown serializes caller values.
+  const configurationPlan = buildConfigurationPlan(input, decisions).map(call => rendering.mapConfigurationCall?.(call) ?? call);
   const benchmarkFacts = buildBenchmarkFacts(input, insights);
   const links = bundle?.troubleshootingPlaybook?.docLinks;
   const lines: string[] = [renderTitle(input), ""];
@@ -951,7 +956,7 @@ export const buildProgramDesignAdvice = (
   if (bundle?.programDesignGuidance) {
     if (input.includeRules) {
       const rules = applicableRuleSections(bundle.programDesignGuidance, input.programType, links);
-      if (rules) lines.push("## How to apply these figures", "", rules, "");
+      if (rules) lines.push("## How to apply these figures", "", rendering.formatToolReferences?.(rules) ?? rules, "");
     } else {
       lines.push("Call again with `includeRules: true` for more guidance on applying these recommendations.", "");
     }
@@ -1132,7 +1137,10 @@ export const troubleshootReferralTrackingInputSchema = z
 
 export type TroubleshootReferralTrackingInput = z.infer<typeof troubleshootReferralTrackingInputSchema>;
 
-export type TroubleshootContext = { campaignId?: string | undefined };
+export type TroubleshootContext = {
+  campaignId?: string | undefined;
+  formatToolReferences?: (text: string) => string;
+};
 
 // Matches a symptom by key, or by a label or alias phrase that appears verbatim in the
 // description. Anything looser mis-routes, so an unmatched description returns the list instead.
@@ -1202,7 +1210,10 @@ export const renderTroubleshootingGuide = (
   const { symptom } = match;
   const toolMap = matchedIn.toolMap ?? TOOL_MAP;
   const links = matchedIn.docLinks;
-  const toolName = (key: string | undefined) => (key ? toolMap[key] : undefined);
+  const toolName = (key: string | undefined) => {
+    const name = key ? toolMap[key] : undefined;
+    return name ? (context.formatToolReferences?.(name) ?? name) : undefined;
+  };
   const participantHint = input.participantId
     ? ` for participant \`${input.participantId}\``
     : input.participantEmail

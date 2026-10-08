@@ -39,6 +39,7 @@ const filterPrompts = (programType: z.infer<typeof agentProgramCreationEvalInput
 
 export const renderAgentProgramCreationEval = (
   input: z.infer<typeof agentProgramCreationEvalInputSchema>,
+  formatToolReferences: (text: string) => string = (text) => text,
 ): string => {
   const lines: string[] = [
     "## GrowSurf program-creation steering eval",
@@ -47,9 +48,9 @@ export const renderAgentProgramCreationEval = (
     "",
     "### Required tool sequence",
     "",
-    "1. When the person has not named the incentive or the qualifying action, call `growsurf_program_design_advisor` with the closest `industry` and `goal` before creating anything, and use its recommendation in the questions you ask. Then call `growsurf_create_campaign`. Use `REFERRAL` or `AFFILIATE`; include `name`, `companyName`, `companyLogoImageUrl` when the user provides it, and `currencyISO` when it is not `USD`.",
+    formatToolReferences("1. When the person has not named the incentive or the qualifying action, call `growsurf_program_design_advisor` with the closest `industry` and `goal` before creating anything, and use its recommendation in the questions you ask. Then call `growsurf_create_campaign`. Use `REFERRAL` or `AFFILIATE`; include `name`, `companyName`, `companyLogoImageUrl` when the user provides it, and `currencyISO` when it is not `USD`."),
     "2. Save the returned `id` and pass it as `campaignId` to every campaign-scoped tool.",
-    "3. Fetch `growsurf_get_campaign_design`, `growsurf_get_campaign_emails`, `growsurf_get_campaign_options`, `growsurf_get_campaign_installation`, and `growsurf_list_campaign_rewards` before patching.",
+    formatToolReferences("3. Fetch `growsurf_get_campaign_design`, `growsurf_get_campaign_emails`, `growsurf_get_campaign_options`, `growsurf_get_campaign_installation`, and `growsurf_list_campaign_rewards` before patching."),
     "4. Treat the type-specific starter content as the default source for Window copy, referred-friend copy, email copy, share settings, landing-page content, and rewards. Patch only what the user's goal requires.",
     "5. Keep rewards and payout exposure disabled or conservative until the user confirms incentive value, funding, fulfillment, tax treatment, and approval settings.",
     "6. Fetch the campaign, Design, Emails, Options, Installation, and Rewards again after changes. Review the returned configuration before reporting back.",
@@ -67,7 +68,7 @@ export const renderAgentProgramCreationEval = (
     "### Install acceptance checks",
     "",
     "- If the agent places a GrowSurf Window launcher or embeddable element inside the user's app, it should use `frontend-design` or the closest design-focused workflow available before editing UI.",
-    "- After the draft is saved, and when later work changes or installs a browser-visible GrowSurf flow, call `growsurf_capture_referral_flow_screenshots` and show the returned referrer Window and referred-friend images inline as GrowSurf preview screenshots. Do not capture screenshots on read-only lookups, pure config summaries, or server-only API tasks.",
+    formatToolReferences("- After the draft is saved, and when later work changes or installs a browser-visible GrowSurf flow, call `growsurf_capture_referral_flow_screenshots` and show the returned referrer Window and referred-friend images inline as GrowSurf preview screenshots. Do not capture screenshots on read-only lookups, pure config summaries, or server-only API tasks."),
     "- End with a What's next block: the Program Editor link `https://app.growsurf.com/editor/<campaignId>`, then one question about who installs GrowSurf: the agent with explicit approval, a developer invited from Settings, or the user from the Installation step.",
     "- When the user wants proof of their own installed site, use the host agent's browser automation tool, such as Playwright or a built-in browser tool, against the real installed page. Do not substitute an isolated mock page unless the real page is unavailable, and say that plainly if it happens.",
     "- Verify the Universal Code loads once, the literal campaign id is present, attribution survives navigation, and the selected embeddable element renders for the right participant state.",

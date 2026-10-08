@@ -50,7 +50,9 @@ describe("MCP tool authorization", () => {
   it("keeps every listed tool represented in the canonical manifest", async () => {
     const listedToolNames = await listToolNames();
 
-    expect([...listedToolNames].sort()).toEqual(Object.keys(TOOL_AUTHORIZATION_MANIFEST).sort());
+    const compactNames = await listToolNames({ env, toolSurface: "compact" });
+    expect([...new Set([...listedToolNames, ...compactNames])].sort()).toEqual(Object.keys(TOOL_AUTHORIZATION_MANIFEST).sort());
+    expect(listedToolNames).not.toContain("growsurf_get_guidance");
   });
 
   it("keeps credential rotation in the REST client instead of exposing it as an MCP tool", async () => {

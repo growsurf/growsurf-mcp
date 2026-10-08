@@ -6,10 +6,16 @@ import {
   ListResourcesRequestSchema,
   ListToolsRequestSchema,
   ReadResourceRequestSchema,
+  type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import {
+  buildCompactTools, compactAuthoredText, compactPlannedCall, resolveCompactCall,
+  COMPACT_CONNECTION_INSTRUCTIONS, SUPPORTED_TOOL_SURFACES, type ToolSurface,
+} from "./compactTools.js";
+export { COMPACT_TOOL_NAMES, SUPPORTED_TOOL_SURFACES, type ToolSurface } from "./compactTools.js";
 
-export const GROWSURF_MCP_VERSION = "0.19.11";
+export const GROWSURF_MCP_VERSION = "0.19.12";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -1140,6 +1146,8 @@ const bulkDeleteParticipantsSchema = z.object({
 
 export type CreateGrowSurfMcpServerOptions = {
   env?: Env;
+  /** Explicit opt-in. The default preserves the complete published discovery surface. */
+  toolSurface?: ToolSurface;
   resolveCredentialContext?: ResolveVerifiedCredentialContext;
   // Optional aggregate insights (program-design figures, advisor rules, troubleshooting playbook)
   // that a hosted deployment loads for `growsurf_program_design_advisor` and
@@ -1150,6 +1158,10 @@ export type CreateGrowSurfMcpServerOptions = {
 
 export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions = {}) => {
   const env = options.env ?? getEnv();
+  const toolSurface = options.toolSurface ?? "full";
+  if (!SUPPORTED_TOOL_SURFACES.includes(toolSurface)) throw new Error("Unknown tool surface.");
+  const isCompact = toolSurface === "compact";
+  const formatToolReferences = (text: string) => isCompact ? compactAuthoredText(text) : text;
 
   // Shared env shape for the install-kit renderers (decoupled from the MCP Env).
   const installKitEnv = {
@@ -1167,7 +1179,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         resources: {},
         prompts: {},
       },
-      instructions: GROWSURF_SERVER_INSTRUCTIONS,
+      instructions: isCompact ? `${GROWSURF_SERVER_INSTRUCTIONS}\n\n${COMPACT_CONNECTION_INSTRUCTIONS}` : GROWSURF_SERVER_INSTRUCTIONS,
     },
   );
 
@@ -1189,7 +1201,10 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
 
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     const publicResource = readPublicGrowSurfResource(request.params.uri);
-    if (publicResource) return publicResource;
+    if (publicResource) return {
+      ...publicResource,
+      contents: publicResource.contents.map(content => ({ ...content, text: formatToolReferences(content.text) })),
+    };
 
     if (request.params.uri === "growsurf://campaign") {
       // The campaign resource has no per-read arguments, so it stays scoped to GROWSURF_CAMPAIGN_ID.
@@ -1210,20 +1225,29 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
 
   server.setRequestHandler(ListPromptsRequestSchema, async () => {
     return {
-      prompts: listGrowSurfPrompts(),
+      prompts: listGrowSurfPrompts().filter(prompt => !isCompact || prompt.name !== "wire_webhooks"),
     };
   });
 
   server.setRequestHandler(GetPromptRequestSchema, async (request) => {
-    return getGrowSurfPrompt(request.params.name, request.params.arguments ?? {});
+    if (isCompact && ["wire_webhooks", "growsurf_wire_webhooks"].includes(request.params.name)) {
+      return {
+        description: "Configure and test webhooks on the full connection.",
+        messages: [{ role: "user" as const, content: { type: "text" as const, text: COMPACT_CONNECTION_INSTRUCTIONS } }],
+      };
+    }
+    const prompt = getGrowSurfPrompt(request.params.name, request.params.arguments ?? {}, formatToolReferences);
+    return { ...prompt, messages: prompt.messages.map(message => ({
+      ...message, content: { ...message.content, text: isCompact ? `${COMPACT_CONNECTION_INSTRUCTIONS}\n\n${message.content.text}` : message.content.text },
+    })) };
   });
 
   // Builds the static tool catalog once per server while leaving credential filtering request-scoped.
   const buildToolsWithMetadata = () => {
-    const tools = [
+    const tools: Tool[] = [
         {
           name: "growsurf_integration_guide",
-          description: "Generate a guided, happy-path GrowSurf integration plan (referral + affiliate).",
+          description: "Plan a web integration for a referral or affiliate program. Returns Markdown steps for installing the Universal Code, identifying participants, tracking referrals or sales, and verifying webhooks. Does not inspect or change a program. Use `growsurf_client_snippets` for browser JavaScript examples, `growsurf_api_library_snippets` for backend code, or `growsurf_mobile_sdk_guide` for native apps.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1239,7 +1263,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_agent_program_creation_eval",
           description:
-            "Generate one-shot GrowSurf program-creation eval prompts and acceptance checks for agent steering: starter content review, conservative rewards, configuration review, and frontend install proof.",
+            "Generate Markdown prompts and acceptance checks for evaluating an agent's program-creation workflow: starter content, rewards, configuration, and frontend installation. Does not create a program or run the checks. Use `growsurf_program_design_advisor` to choose a program design, or `growsurf_integration_guide` to plan its web integration.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1302,7 +1326,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_mobile_sdk_guide",
           description:
-            "Generate native iOS/Android SDK 0.7.0 guidance, including attribution, shareUrl sharing, trackShare, and the native GrowSurf Window.",
+            "Get Markdown implementation guidance for native iOS/Android SDK 0.7.0, including attribution, `shareUrl` sharing, `trackShare`, and the native GrowSurf Window. Choose `platform` and `participantState` to tailor the guide; `includeInstallSnippets` controls installation examples. Does not install an SDK or create a participant token. Use `growsurf_client_snippets` for browser JavaScript or `growsurf_api_library_snippets` for backend token-creation code.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1328,7 +1352,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_api_library_snippets",
           description:
-            "Generate official REST API library snippets for TypeScript, Python, PHP, Ruby, and Java, including Create Mobile Participant Token.",
+            "Generate Markdown code examples for the official backend REST API libraries in TypeScript, Python, PHP, Ruby, and Java. Select `language` and `workflow`; both default to `all`. Covers setup, program lookup, participant creation, referral credit, sales, and mobile participant tokens. Returns code without executing API calls. Use `growsurf_client_snippets` for browser JavaScript or `growsurf_mobile_sdk_guide` for native app setup.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1848,13 +1872,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_emails",
           description:
-            "Fetch the Emails tab configuration for your GrowSurf program, including participant and admin email templates, settings, and read-only fields. `settings.sender.fromEmail` is read-only and can be changed in the dashboard after domain verification. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Fetch the Emails tab configuration for your GrowSurf program, including participant and admin email templates, settings, and read-only fields. `settings.sender.fromEmail` is read-only and can be changed in the dashboard after domain verification. Sender fields can be `null` before configuration. When updating, omit unchanged sender fields; `fromName` and `replyToEmail` cannot be cleared with `null`. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_emails",
           description:
-            "Update writable Emails tab fields for your GrowSurf program under `fields`, in their existing nested shape. `settings.sender.fromEmail` is read-only; sender address changes require domain verification in the dashboard. `settings.sender.fromName` and `settings.sender.replyToEmail` are writable. The `invite` and transactional email `isEnabled` toggles are read-only. Email bodies require their template links and footer tokens. When `settings.design.layoutMode` is `INLINE`, each body must include `{{emailFooter}}`; `{{emailHeader}}` is optional. `layoutMode` is read-only. Omitted fields retain their existing content; arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update writable Emails tab fields for your GrowSurf program under `fields`, in their existing nested shape. `settings.sender.fromEmail` is read-only; sender address changes require domain verification in the dashboard. `settings.sender.fromName` and `settings.sender.replyToEmail` accept non-empty strings, not `null`. Omit either field to keep its current value, including an unset value returned by a read. The `invite` and transactional email `isEnabled` toggles are read-only. Email bodies require their template links and footer tokens. When `settings.design.layoutMode` is `INLINE`, each body must include `{{emailFooter}}`; `{{emailHeader}}` is optional. `layoutMode` is read-only. Omitted fields retain their existing content; arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1868,8 +1892,8 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                         type: "object",
                         description: "Patch `fromName` or `replyToEmail`. Change the read-only `fromEmail` in the dashboard after domain verification.",
                         properties: {
-                          fromName: { type: "string" },
-                          replyToEmail: { type: "string" },
+                          fromName: { type: "string", description: "Sender name, up to 100 characters. Must not be blank or an email address. Omit to keep the current value; `null` cannot clear it." },
+                          replyToEmail: { type: "string", description: "Valid reply-to email address, up to 100 characters. Omit to keep the current value; `null` cannot clear it." },
                         },
                         // Reject the known read-only field instead of silently discarding it or
                         // sending a doomed partial update. Other config validation stays with REST.
@@ -2636,7 +2660,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_client_snippets",
           description:
-            "Generate copy-pasteable client-side snippets for GrowSurf referral tracking, embeddable elements, and the GrowSurf Window (JS + CSS), with placement guidance for app UI work.",
+            "Generate Markdown browser JavaScript and CSS examples for referral tracking, embeddable elements, and the GrowSurf Window, with placement guidance. Does not install code or change a program. Use `growsurf_embeddable_element_snippet` for one HTML element, `growsurf_grsf_config_snippet` for `window.grsfConfig`, or `growsurf_api_library_snippets` for backend REST code.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2654,7 +2678,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         },
         {
           name: "growsurf_embeddable_element_snippet",
-          description: "Generate the HTML snippet for a GrowSurf embeddable element (with optional auth attributes).",
+          description: "Generate one embeddable element's HTML as Markdown. Choose `element`; optionally include participant authentication attributes. Does not install the element or change a program. Use `growsurf_client_snippets` for a broader browser integration or `growsurf_grsf_config_snippet` for page-level participant auto authentication.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2745,9 +2769,14 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
   };
 
   let toolsWithMetadataCache: ReturnType<typeof buildToolsWithMetadata> | undefined;
+  let compactToolsCache: ReturnType<typeof buildCompactTools> | undefined;
+  const getAvailableTools = () => {
+    const fullTools = (toolsWithMetadataCache ??= buildToolsWithMetadata());
+    return isCompact ? (compactToolsCache ??= buildCompactTools(fullTools)) : fullTools;
+  };
   const toolInputGuards = new Map<string, ToolInputGuard>();
   server.setRequestHandler(ListToolsRequestSchema, async () => {
-    const toolsWithMetadata = (toolsWithMetadataCache ??= buildToolsWithMetadata());
+    const toolsWithMetadata = getAvailableTools();
     // Hosted transports can hide tools that a verified credential cannot use. Omitting the
     // resolver preserves the local/stdio server's existing all-tools discovery behavior.
     if (!options.resolveCredentialContext) return { tools: toolsWithMetadata };
@@ -2757,8 +2786,17 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
-      const listedTool = (toolsWithMetadataCache ??= buildToolsWithMetadata())
-        .find((tool) => tool.name === request.params.name);
+      const listedTool = getAvailableTools().find((tool) => tool.name === request.params.name);
+      if (isCompact && !listedTool) {
+        return { content: [{ type: "text", text: `Tool unavailable on the compact connection. ${COMPACT_CONNECTION_INSTRUCTIONS}` }], isError: true };
+      }
+      // A compact wrapper must not bypass the hosted credential contract of its targets.
+      if (isCompact && listedTool && options.resolveCredentialContext) {
+        const context = await options.resolveCredentialContext();
+        if (!filterToolsForCredential([listedTool], context).length) {
+          return { content: [{ type: "text", text: "This credential cannot call the requested tool." }], isError: true };
+        }
+      }
       if (listedTool) {
         let inputGuard = toolInputGuards.get(listedTool.name);
         if (!inputGuard) {
@@ -2767,6 +2805,10 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         }
         inputGuard(request.params.arguments ?? {});
       }
+      if (isCompact) {
+        const resolved = resolveCompactCall(request.params.name, request.params.arguments ?? {});
+        request = { ...request, params: { ...request.params, ...resolved } };
+      }
       // Optional per-call program override — an explicit `campaignId` tool argument wins over
       // GROWSURF_CAMPAIGN_ID (see resolveCampaignClient), so an agent can operate on a program it
       // just created without restarting the server. Tools that are not campaign-scoped ignore it.
@@ -2774,21 +2816,24 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
       switch (request.params.name) {
         case "growsurf_integration_guide": {
           const input = integrationGuideInputSchema.parse(request.params.arguments ?? {});
-          const text = renderIntegrationGuide(input, installKitEnv);
+          const text = renderIntegrationGuide(input, installKitEnv, formatToolReferences);
           return markdownToolResult(text);
         }
         case "growsurf_agent_program_creation_eval": {
           const input = agentProgramCreationEvalInputSchema.parse(request.params.arguments ?? {});
-          const text = renderAgentProgramCreationEval(input);
+          const text = renderAgentProgramCreationEval(input, formatToolReferences);
           return markdownToolResult(text);
         }
         case "growsurf_program_design_advisor": {
           const input = programDesignAdvisorInputSchema.parse(request.params.arguments ?? {});
-          const advice = buildProgramDesignAdvice(input, options.insights);
+          const advice = buildProgramDesignAdvice(input, options.insights, isCompact ? {
+            mapConfigurationCall: compactPlannedCall,
+            formatToolReferences,
+          } : {});
           // A proposed call must satisfy the same public input contract as an executed call.
           // This checks the plan without performing any of its writes.
           for (const step of advice.configurationPlan) {
-            const target = (toolsWithMetadataCache ??= buildToolsWithMetadata()).find((tool) => tool.name === step.tool);
+            const target = getAvailableTools().find((tool) => tool.name === step.tool);
             if (!target) throw new Error(`Unknown tool in configuration plan: ${step.tool}`);
             let inputGuard = toolInputGuards.get(target.name);
             if (!inputGuard) {
@@ -2801,7 +2846,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         }
         case "growsurf_troubleshoot_referral_tracking": {
           const input = troubleshootReferralTrackingInputSchema.parse(request.params.arguments ?? {});
-          return markdownToolResult(renderTroubleshootingGuide(input, options.insights, { campaignId: env.GROWSURF_CAMPAIGN_ID }));
+          return markdownToolResult(renderTroubleshootingGuide(input, options.insights, { campaignId: env.GROWSURF_CAMPAIGN_ID, formatToolReferences }));
         }
         case "growsurf_mobile_sdk_guide": {
           const input = mobileSdkGuideInputSchema.parse(request.params.arguments ?? {});
@@ -3385,7 +3430,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         }
         case "growsurf_client_snippets": {
           const input = clientSnippetsSchema.parse(request.params.arguments ?? {});
-          const text = renderClientSnippets(input, installKitEnv);
+          const text = renderClientSnippets(input, installKitEnv, formatToolReferences);
           return markdownToolResult(text);
         }
         case "growsurf_embeddable_element_snippet": {

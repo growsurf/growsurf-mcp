@@ -6,6 +6,7 @@ const HELP_TEXT = `GrowSurf CLI and MCP server ${GROWSURF_MCP_VERSION}
 
 Usage:
   growsurf-mcp              Start the MCP server over stdio
+  growsurf-mcp --compact    Start stdio with the compact tool selection
   growsurf-mcp --help       Show this help
   growsurf-mcp --version    Show the installed version
 
@@ -28,14 +29,15 @@ const main = async () => {
     return;
   }
 
-  if (args.length > 0) {
+  const compact = args.length === 1 && args[0] === "--compact";
+  if (args.length > 0 && !compact) {
     console.error(`Unknown argument: ${args.join(" ")}`);
     console.error("Run growsurf-mcp --help for supported commands.");
     process.exitCode = 1;
     return;
   }
 
-  const server = createGrowSurfMcpServer();
+  const server = createGrowSurfMcpServer({ toolSurface: compact ? "compact" : "full" });
   const transport = new StdioServerTransport();
   await server.connect(transport);
 };

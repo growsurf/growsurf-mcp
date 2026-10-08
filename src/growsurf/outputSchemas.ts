@@ -856,8 +856,8 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
         sender: {
           type: "object",
           properties: {
-            fromName: { type: ["string", "null"], description: "Sender name, or null before one is configured. A new value must not be an email address." },
-            replyToEmail: { type: ["string", "null"], description: "Email address that receives replies, or null before one is configured." },
+            fromName: { type: ["string", "null"], description: "Sender name, or `null` before one is configured. When updating, omit to keep the current value or supply a non-empty name that is not an email address. `null` is not accepted on update." },
+            replyToEmail: { type: ["string", "null"], description: "Email address that receives replies, or `null` before one is configured. When updating, omit to keep the current value or supply a valid email address. `null` is not accepted on update." },
             fromEmail: {
               type: ["string", "null"],
               readOnly: true,
@@ -2240,6 +2240,15 @@ const PAYOUT_DESTINATION_CONFIRMATION_REQUEST_RESPONSE: ToolOutputSchema = {
 // A tool that declares an output schema must return matching `structuredContent` on every
 // success, so any new tool must be added here and to its handler at the same time.
 export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
+  growsurf_get_guidance: markdownDocument("Installation guidance or code examples for the selected topic."),
+  growsurf_get_program_settings: {
+    type: "object",
+    description: "The current fields for the selected settings section, without a wrapping envelope.",
+    anyOf: [CAMPAIGN_DESIGN, CAMPAIGN_EMAILS, withRewardEvidence(CAMPAIGN_OPTIONS), CAMPAIGN_INSTALLATION],
+  },
+  growsurf_update_program_settings: sameShapeAs(
+    "The full updated section. Same shape as the matching section from `growsurf_get_program_settings`.",
+  ),
   growsurf_integration_guide: markdownDocument(
     "A guided, happy-path GrowSurf integration plan, as a markdown document.",
   ),

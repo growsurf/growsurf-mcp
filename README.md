@@ -72,6 +72,57 @@ This MCP server is NOT for:
   - Normalize webhook payloads
   - Generate best‑effort idempotency keys for webhook deduplication
 
+## Choosing a tool
+
+Use program and participant tools to read or change records. Guidance tools return advice or code for you to apply:
+
+| Task | Tool |
+| --- | --- |
+| Choose a program design and reward structure | `growsurf_program_design_advisor` |
+| Plan a web integration | `growsurf_integration_guide` |
+| Get browser JavaScript examples | `growsurf_client_snippets` |
+| Get one embeddable element's HTML | `growsurf_embeddable_element_snippet` |
+| Generate page-level participant auto authentication code | `growsurf_grsf_config_snippet` |
+| Get backend REST API library examples | `growsurf_api_library_snippets` |
+| Integrate a native iOS or Android app | `growsurf_mobile_sdk_guide` |
+| Diagnose a program problem | `growsurf_troubleshoot_referral_tracking` |
+| Generate checks for an agent's program-creation workflow | `growsurf_agent_program_creation_eval` |
+
+Published tool names and fields use `campaign` for a program, including `campaignId`. These identifiers remain supported. Display titles use program terminology; Campaign Reward remains the name for a reward configuration.
+
+To delete one participant, pass one ID or email in `participants` to `growsurf_bulk_delete_participants`. The same permanent-deletion warnings apply. A separate single-participant tool is not needed. Program deletion and explicit reward fulfillment are outside this MCP tool set; completing a program is not deletion, and configuring a reward is not proof that it was delivered.
+
+## Optional compact connection
+
+The default connection lists all 63 tools. Add `--compact` to select 32 tools for program setup, installation, participant management, referral tracking, rewards, and analytics. Your credential permissions can reduce the visible set further.
+
+```bash
+npx -y @growsurfteam/growsurf-mcp --compact
+```
+
+In a stdio client configuration, append `"--compact"` to the package's `args` array. Server integrations can call `createGrowSurfMcpServer({ toolSurface: "compact" })`. Omit the option to keep the full catalog.
+
+Compact combines related guidance and settings tools:
+
+| Tool | Selection | Arguments |
+| --- | --- | --- |
+| `growsurf_get_guidance` | `topic`: `integration`, `browser`, `api_libraries`, `mobile_sdk`, `embeddable_element`, `participant_auto_auth`, or `program_creation_checks` | Put the selected guide's existing arguments under `input`. Use `{}` for defaults. |
+| `growsurf_get_program_settings` | `section`: `design`, `emails`, `options`, or `installation` | Put `campaignId` under `input`, or use the configured default. |
+| `growsurf_update_program_settings` | The same `section` values | Put `campaignId` and the `fields` patch under `input`. Read the section first. |
+
+For example, read a program's installation settings:
+
+```json
+{
+  "name": "growsurf_get_program_settings",
+  "arguments": { "section": "installation", "input": { "campaignId": "YOUR_PROGRAM_ID" } }
+}
+```
+
+Program recommendations and troubleshooting keep their own tools. Participant reads, updates, deletion, referral actions, and sale or refund actions remain separate. Compact prompts, resources, guidance, and proposed configuration calls use the compact tool names and arguments.
+
+Use the full connection for account creation, team administration, program cloning, participant resources, webhook creation/updates/deletion/tests, participant emails, payout destinations, and webhook normalization. Remove `--compact` and reconnect. These operations remain available with their existing contracts on the full connection; compact rejects calls to tools outside its catalog. The tool-selection table above describes the full connection.
+
 ## Requirements
 
 - Node.js 22+

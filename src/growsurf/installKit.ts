@@ -50,7 +50,11 @@ export const integrationGuideInputSchema = z.object({
   webhookSecurity: z.enum(["signature", "token_in_url", "none"]).default("signature"),
 });
 
-export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInputSchema>, env: InstallKitEnv = {}) => {
+export const renderIntegrationGuide = (
+  input: z.infer<typeof integrationGuideInputSchema>,
+  env: InstallKitEnv = {},
+  formatToolReferences: (text: string) => string = (text) => text,
+) => {
   const campaignId = env.campaignId ?? "YOUR_CAMPAIGN_ID";
 
   const sections: string[] = [];
@@ -87,7 +91,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
         "  - `hash = HMAC_SHA256(participantAuthSecret, email).hex`",
         "- Then initialize GrowSurf on the client with `{ email, hash }`.",
         "",
-        "For testing, call `growsurf_participant_auth_hash` with an explicit test `participantAuthSecret`. For production, authenticate the user and sign on your backend; never send production secrets through MCP.",
+        formatToolReferences("For testing, call `growsurf_participant_auth_hash` with an explicit test `participantAuthSecret`. For production, authenticate the user and sign on your backend; never send production secrets through MCP."),
         "",
       ].join("\n"),
     );
@@ -110,9 +114,9 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
         "- **If the qualifying action is a purchase** and the stack uses Stripe, Chargebee, or Recurly, recommend connecting that billing integration so referred purchases are tracked automatically (see the \"Connect integrations\" section below).",
         "",
         "MCP tools you’ll likely use:",
-        "- `growsurf_add_participant`",
-        "- `growsurf_trigger_referral` (only needed for `signup_plus_qualifying_action`)",
-        "- `growsurf_get_campaign` (to inspect rewards/type quickly)",
+        formatToolReferences("- `growsurf_add_participant`"),
+        formatToolReferences("- `growsurf_trigger_referral` (only needed for `signup_plus_qualifying_action`)"),
+        formatToolReferences("- `growsurf_get_campaign` (to inspect rewards/type quickly)"),
         "",
       ].join("\n"),
     );
@@ -123,11 +127,11 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
       [
         "### 4) Affiliate program flow",
         "",
-        "- **Before signup**: read `affiliateApplicationMode` with `growsurf_get_campaign_options` and review the configured GrowSurf Program Page and application copy.",
+        formatToolReferences("- **Before signup**: read `affiliateApplicationMode` with `growsurf_get_campaign_options` and review the configured GrowSurf Program Page and application copy."),
         "- **Public applicants**:",
         "  - `OPEN_ENROLLMENT`: use the participant-facing GrowSurf signup flow. For native direct signup with configured Terms, show the Terms and send `termsAccepted` only after consent.",
         "  - `MANUAL_REVIEW` or `AUTO_APPROVE`: send applicants through the configured GrowSurf Program Page. Do not call trusted REST Add Participant for a public application.",
-        "- **Trusted direct enrollment**: use `growsurf_add_participant` with `isAffiliate: true` only when the customer intentionally enrolls a known affiliate. Set `isAffiliate: false` when intentionally creating a non-affiliate participant.",
+        formatToolReferences("- **Trusted direct enrollment**: use `growsurf_add_participant` with `isAffiliate: true` only when the customer intentionally enrolls a known affiliate. Set `isAffiliate: false` when intentionally creating a non-affiliate participant."),
         "- **On sale/payment event** for a referred customer: record a transaction via GrowSurf REST.",
         "  - Use `invoiceId` / `chargeId` / `paymentIntentId` / etc. to ensure idempotency.",
         "  - Use webhooks to know when commissions are added.",
@@ -136,10 +140,10 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
         "- **Pay commissions**: recommend connecting PayPal or Wise based on the customer's payout workflow (see the \"Connect integrations\" section below).",
         "",
         "MCP tools you’ll likely use:",
-        "- `growsurf_get_campaign_options`",
-        "- `growsurf_add_participant`",
-        "- `growsurf_record_sale`",
-        "- `growsurf_webhook_normalize`",
+        formatToolReferences("- `growsurf_get_campaign_options`"),
+        formatToolReferences("- `growsurf_add_participant`"),
+        formatToolReferences("- `growsurf_record_sale`"),
+        formatToolReferences("- `growsurf_webhook_normalize`"),
         "",
       ].join("\n"),
     );
@@ -158,7 +162,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
         "  - `growsurf.getUpfrontDiscount(integrationType?)` — returns `{ integration, promotionCode, couponId }` or `null`.",
         "",
         "MCP tools you'll likely use:",
-        "- `growsurf_client_snippets` (includes upfront discount code examples)",
+        formatToolReferences("- `growsurf_client_snippets` (includes upfront discount code examples)"),
         "",
       ].join("\n"),
     );
@@ -215,7 +219,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
     "",
     "`<key>` is the integration's id, for example " +
       stackKeyExamples +
-      ". A few are camelCase (`constantContact`, `helpScout`). Or call the MCP tool `growsurf_get_integration_connect_link` with an integration key to get the exact link and label back; it also lists every supported key.",
+      formatToolReferences(". A few are camelCase (`constantContact`, `helpScout`). Or call the MCP tool `growsurf_get_integration_connect_link` with an integration key to get the exact link and label back; it also lists every supported key."),
     "",
   ];
 
@@ -247,7 +251,7 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
       "",
       "Follow [GrowSurf webhook verification](https://docs.growsurf.com/developer-tools/webhooks/securing-your-webhooks) for the signature format.",
       "",
-      "`growsurf_webhook_normalize` validates the payload shape and suggests an idempotency key. It does not verify signatures or authenticate requests.",
+      formatToolReferences("`growsurf_webhook_normalize` validates the payload shape and suggests an idempotency key. It does not verify signatures or authenticate requests."),
       "",
     ].join("\n"),
   );
@@ -269,11 +273,11 @@ export const renderIntegrationGuide = (input: z.infer<typeof integrationGuideInp
       "",
       "- It **calls GrowSurf REST** for happy-path server-side actions (campaign, add participant, trigger referral, record sale).",
       "- It **guides implementation** for web, backend, and native iOS/Android SDK 0.7.0 paths.",
-      "- It **advises on program design** with `growsurf_program_design_advisor` and **diagnoses tracking, reward, and email problems** symptom-first with `growsurf_troubleshoot_referral_tracking`.",
-      "- For native mobile apps, use `growsurf_mobile_sdk_guide` for Mobile SDK, attribution, `trackShare`, and native GrowSurf Window examples.",
+      formatToolReferences("- It **advises on program design** with `growsurf_program_design_advisor` and **diagnoses tracking, reward, and email problems** symptom-first with `growsurf_troubleshoot_referral_tracking`."),
+      formatToolReferences("- For native mobile apps, use `growsurf_mobile_sdk_guide` for Mobile SDK, attribution, `trackShare`, and native GrowSurf Window examples."),
       "- It **helps compute participant-auth hashes** and create participant-scoped mobile SDK tokens.",
-      "- For broader production REST API coverage, use `growsurf_api_library_snippets` and the official GrowSurf API Libraries: https://docs.growsurf.com/developer-tools/rest-api/api-libraries",
-      "- It **links to the dashboard** to connect integrations (Stripe, PayPal, Mailchimp, and more) via `growsurf_get_integration_connect_link`; the connection itself is set up in the dashboard, not via API.",
+      formatToolReferences("- For broader production REST API coverage, use `growsurf_api_library_snippets` and the official GrowSurf API Libraries: https://docs.growsurf.com/developer-tools/rest-api/api-libraries"),
+      formatToolReferences("- It **links to the dashboard** to connect integrations (Stripe, PayPal, Mailchimp, and more) via `growsurf_get_integration_connect_link`; the connection itself is set up in the dashboard, not via API."),
       "- It **does not** embed the Universal Code for you (you copy that snippet from GrowSurf).",
       "- It **does not** host a webhook endpoint (you run that in your app), but it can normalize/validate payloads.",
       "",
@@ -335,7 +339,11 @@ export const grsfConfigSnippetSchema = z
     message: "If enableParticipantAutoAuth is true, provide email and hash.",
   });
 
-export const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>, env: InstallKitEnv = {}) => {
+export const renderClientSnippets = (
+  input: z.infer<typeof clientSnippetsSchema>,
+  env: InstallKitEnv = {},
+  formatToolReferences: (text: string) => string = (text) => text,
+) => {
   const lines: string[] = [];
 
   lines.push("## GrowSurf client-side snippets");
@@ -519,7 +527,7 @@ export const renderClientSnippets = (input: z.infer<typeof clientSnippetsSchema>
     lines.push("</script>");
     lines.push("```");
     lines.push("");
-    lines.push("Use MCP tool `growsurf_embeddable_element_snippet` to generate the exact HTML block for a specific element.");
+    lines.push(formatToolReferences("Use MCP tool `growsurf_embeddable_element_snippet` to generate the exact HTML block for a specific element."));
     lines.push("");
   }
 

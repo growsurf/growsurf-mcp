@@ -154,6 +154,9 @@ const requiresSingleTeamScopes = (
 // Every listed MCP tool is represented here so new tools fail the completeness test until their
 // discoverability rules are deliberate. REST remains the authorization enforcement boundary.
 export const TOOL_AUTHORIZATION_MANIFEST = {
+  growsurf_get_guidance: unrestricted(TOOL_BEHAVIOR.READ),
+  growsurf_get_program_settings: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
+  growsurf_update_program_settings: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_integration_guide: unrestricted(TOOL_BEHAVIOR.READ),
   growsurf_agent_program_creation_eval: unrestricted(TOOL_BEHAVIOR.READ),
   growsurf_mobile_sdk_guide: unrestricted(TOOL_BEHAVIOR.READ),
@@ -249,12 +252,15 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
 // every tool, so titles live beside the manifest and a new tool fails the completeness check
 // until it has one.
 export const TOOL_TITLES = {
-  growsurf_integration_guide: "Integration Guide",
-  growsurf_agent_program_creation_eval: "Program Creation Evals",
-  growsurf_mobile_sdk_guide: "Mobile SDK Guide",
-  growsurf_program_design_advisor: "Program Design Advisor",
+  growsurf_get_guidance: "Get Integration Guidance and Code",
+  growsurf_get_program_settings: "Get Program Settings",
+  growsurf_update_program_settings: "Update Program Settings",
+  growsurf_integration_guide: "Plan Program Integration",
+  growsurf_agent_program_creation_eval: "Generate Program Creation Checks",
+  growsurf_mobile_sdk_guide: "Get Mobile SDK Guide",
+  growsurf_program_design_advisor: "Recommend Program Design",
   growsurf_troubleshoot_referral_tracking: "Troubleshoot Referral Tracking",
-  growsurf_api_library_snippets: "API Library Snippets",
+  growsurf_api_library_snippets: "Generate REST API Library Snippets",
   growsurf_get_campaign: "Get Program",
   growsurf_list_campaigns: "List Programs",
   growsurf_create_campaign: "Create Program",
@@ -308,15 +314,15 @@ export const TOOL_TITLES = {
   growsurf_create_mobile_participant_token: "Create Mobile Participant Token",
   growsurf_participant_auth_hash: "Compute Participant Auth Hash",
   growsurf_webhook_normalize: "Normalize Webhook Payload",
-  growsurf_client_snippets: "Client Snippets",
-  growsurf_embeddable_element_snippet: "Embeddable Element Snippet",
+  growsurf_client_snippets: "Generate Browser JavaScript Snippets",
+  growsurf_embeddable_element_snippet: "Generate Embeddable Element HTML",
   growsurf_grsf_config_snippet: "Generate Participant Auto Authentication Code",
   growsurf_get_integration_connect_link: "Get Integration Connect Link",
 } as const satisfies Record<keyof typeof TOOL_AUTHORIZATION_MANIFEST, string>;
 
 // Adds the manifest-owned standard MCP annotations to one listed tool. Throwing preserves the
 // completeness guarantee if a future tool bypasses the manifest.
-export const withToolAuthorizationMetadata = <T extends { name: string; _meta?: Record<string, unknown> }>(
+export const withToolAuthorizationMetadata = <T extends { name: string; _meta?: Record<string, unknown> | undefined }>(
   tool: T,
 ): T & { title: string; annotations: ToolDisplayAnnotations; _meta: Record<string, unknown> } => {
   const requirement = TOOL_AUTHORIZATION_MANIFEST[tool.name as keyof typeof TOOL_AUTHORIZATION_MANIFEST];

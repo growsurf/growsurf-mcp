@@ -25,8 +25,9 @@ const MARKDOWN_TOOL_ARGS: Record<string, Record<string, unknown>> = {
   growsurf_troubleshoot_referral_tracking: { symptom: "referral_not_credited" },
 };
 
-const connectClient = async () => {
+const connectClient = async (toolSurface: "full" | "compact" = "full") => {
   const server = createGrowSurfMcpServer({
+    toolSurface,
     env: {
       GROWSURF_API_KEY: "api_key",
       GROWSURF_CAMPAIGN_ID: "abc123",
@@ -63,7 +64,13 @@ describe("tool output schemas", () => {
 
   it("advertises an output schema for every listed tool", async () => {
     const client = await connectClient();
-    const { tools } = await client.listTools();
+    const compactClient = await connectClient("compact");
+    const tools = [...new Map([
+      ...(await client.listTools()).tools,
+      ...(await compactClient.listTools()).tools,
+    ].map(tool => [tool.name, tool])).values()];
+    await compactClient.close();
+    await client.close();
 
     for (const tool of tools) {
       expect(tool.outputSchema, `${tool.name} must advertise an outputSchema`).toMatchObject({ type: "object" });
