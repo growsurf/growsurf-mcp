@@ -125,7 +125,7 @@
       "justifications": {
         "read_only_justification": "Not read-only because it overwrites program settings in the customer's GrowSurf account.",
         "open_world_justification": "Only acts inside the GrowSurf team and program the credential is bound to, not an open-ended set of external entities.",
-        "destructive_justification": "Destructive because it overwrites a program's name, branding,, which replaces or removes prior state that cannot be restored from this tool."
+        "destructive_justification": "Destructive because it overwrites a program's name and branding, which replaces or removes prior state that cannot be restored from this tool."
       }
     },
     "growsurf_clone_campaign": {

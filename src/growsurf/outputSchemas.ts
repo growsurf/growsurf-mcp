@@ -9,6 +9,8 @@
 // against these schemas. Keep them in sync with the public GrowSurf REST API documentation
 // whenever a response shape changes.
 
+import { PROGRAM_LANGUAGE_CODES_TEXT } from "./programLanguages.js";
+
 export type ToolOutputSchema = { type: "object"; [key: string]: unknown };
 
 // A permissive stand-in for tools that return a shape another tool already documents in full.
@@ -177,6 +179,11 @@ const PARTICIPANT: ToolOutputSchema = {
     metadata: METADATA,
     notes: { type: ["string", "null"], description: "Internal notes. Never shown to participants." },
     unsubscribed: { type: "boolean", description: "`true` if the participant unsubscribed from program emails." },
+    language: {
+      type: "string",
+      description:
+        "The language code of the participant's portal and program emails, such as `es`. The program's base language unless the participant (or you) picked another of the program's languages.",
+    },
     rewards: {
       type: "array",
       items: PARTICIPANT_REWARD,
@@ -537,7 +544,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     referralStatus: {
       type: "object",
       description:
-        "The section listing who a participant invited and each invite's progress. `revealInviteEmails` lets a signed-in participant see original invitation addresses when disclosure permission was recorded. Private invites and full email masking keep addresses hidden. Other referral addresses stay masked. `revealInviteEmailText` supplies the sign-in prompt; `followUp` supplies the invitation follow-up labels and messages.",
+        "The section listing who a participant invited and each invite's progress. `revealInviteEmails` lets a signed-in participant see original invitation addresses when disclosure permission was recorded. Private invites and full email masking keep addresses hidden. Other referral addresses stay masked. `revealInviteEmailText` supplies the sign-in prompt; `loadErrorMessage` is shown when the list cannot load; `followUp` supplies the invitation follow-up labels and messages.",
     },
     leaderboard: { type: "object", description: "The leaderboard section: labels, selectors, and name masking." },
     referredExperience: {
@@ -684,7 +691,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     participantSettings: {
       type: "object",
       description:
-        "The participant's account settings area (logout, PayPal and Wise payout confirmation/status messages, tax details).",
+        "The participant's account settings area (logout, language picker, PayPal and Wise payout confirmation/status messages, tax details). `languageSectionTitle` and `languageSectionInstructionsText` (up to 500 characters each) are the title and help text of the language row, shown when the program has more than one language. `taxSection.instructionsText` and `taxSection.residencyLabel` show when tax forms are required; `taxSection.vatOnlyInstructionsText` and `taxSection.vatOnlyResidencyLabel` show instead when an affiliate program collects VAT numbers without requiring tax forms.",
     },
     landingPages: {
       type: "object",
@@ -950,6 +957,22 @@ const CAMPAIGN_OPTIONS: ToolOutputSchema = {
     notificationEmails: {
       type: "object",
       description: "Owner notification settings: `recipients` plus per-event `events` toggles.",
+    },
+    languages: {
+      type: "object",
+      description:
+        "The languages the program runs in. Participants see the portal and program emails in their language. Turning on additional languages requires the Business plan or higher. Translations are managed in the dashboard.",
+      properties: {
+        baseLanguage: {
+          type: "string",
+          description: `The language the program is written in (default \`en\`). Participants see it when their language is not one of the program's languages, and for untranslated text. ${PROGRAM_LANGUAGE_CODES_TEXT}`,
+        },
+        additionalLanguages: {
+          type: "array",
+          items: { type: "string" },
+          description: "Other languages participants can see, besides `baseLanguage`, using the same codes. `PATCH` replaces the whole list; `[]` turns them off. The base language is dropped from the list and duplicates collapse. Removing a language keeps its translations.",
+        },
+      },
     },
   },
 };

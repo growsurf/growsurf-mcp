@@ -37,6 +37,7 @@ export type GrowSurfParticipantInput = {
   fingerprint?: string;
   mobileInstanceId?: string;
   metadata?: Record<string, unknown>;
+  language?: string | null;
 };
 
 export type PrepareProgramResourceFileInput = {

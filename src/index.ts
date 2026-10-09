@@ -15,7 +15,7 @@ import {
 } from "./compactTools.js";
 export { COMPACT_TOOL_NAMES, SUPPORTED_TOOL_SURFACES, type ToolSurface } from "./compactTools.js";
 
-export const GROWSURF_MCP_VERSION = "0.19.12";
+export const GROWSURF_MCP_VERSION = "0.19.13";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -38,6 +38,7 @@ import { mobileSdkGuideInputSchema, renderMobileSdkGuide } from "./growsurf/mobi
 import { TOOL_OUTPUT_SCHEMAS, type ToolOutputSchema } from "./growsurf/outputSchemas.js";
 import { computeParticipantAuthHash } from "./growsurf/participantAuth.js";
 import { PAYOUT_DESTINATION_PROVIDER_INPUTS } from "./growsurf/payoutProviders.js";
+import { PROGRAM_LANGUAGE_CODES_TEXT } from "./growsurf/programLanguages.js";
 import {
   agentProgramCreationEvalInputSchema,
   renderAgentProgramCreationEval,
@@ -380,7 +381,16 @@ const addParticipantSchema = z.object({
   fingerprint: z.string().optional(),
   mobileInstanceId: z.string().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
+  // `null` uses the program's base language. The API validates the code against the program's languages.
+  language: z.string().nullable().optional(),
 });
+
+// Shared by `growsurf_add_participant` and `growsurf_create_mobile_participant_token`, which both
+// send the public create-participant request body.
+const CREATE_PARTICIPANT_LANGUAGE_INPUT = {
+  type: ["string", "null"],
+  description: `The language of the participant's portal and program emails. Must be one of the program's languages (\`languages\` in \`growsurf_get_campaign_options\`); any other code returns a \`400\`. Applies only when this call creates the participant. Omit it or send \`null\` to use the program's base language. ${PROGRAM_LANGUAGE_CODES_TEXT}`,
+} as const;
 
 const triggerReferralSchema = z
   .object({
@@ -1110,6 +1120,8 @@ const updateParticipantSchema = z
     vanityKeys: z.array(z.string().min(1).max(20).regex(/^[A-Za-z0-9_-]+$/)).max(5).optional(),
     unsubscribed: z.boolean().optional(),
     notes: z.string().max(500).optional(),
+    // `null` is a real value here: it clears the participant's language back to the program's base.
+    language: z.string().nullable().optional(),
   })
   .refine(hasParticipantIdentity, { message: PARTICIPANT_IDENTITY_HINT })
   .refine(
@@ -1125,6 +1137,7 @@ const updateParticipantSchema = z
         v.vanityKeys,
         v.unsubscribed,
         v.notes,
+        v.language,
       ].some((x) => x !== undefined),
     { message: "Provide at least one participant field to update." },
   );
@@ -1853,13 +1866,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_design",
           description:
-            "Fetch the configured design fields for your GrowSurf program, including GrowSurf Window content, colors, sharing sections, participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget`, the participant Traffic report under `trafficInsights` (it starts on for new affiliate programs and hidden for referral programs, and every setting is returned with its default copy), participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and country-name overrides under `countryLabels`. `participantAvatarStyle` is `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`; missing or unknown values mean `INITIALS`. The confirmation section is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the configured design fields for your GrowSurf program, including GrowSurf Window content, colors, sharing sections, participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget`, the participant Traffic report under `trafficInsights` (it starts on for new affiliate programs and hidden for referral programs, and every setting is returned with its default copy), participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, country-name overrides under `countryLabels`, and the participant Settings panel under `participantSettings` (its `languageSectionTitle` and `languageSectionInstructionsText` label the language picker shown when the program has more than one language). `participantAvatarStyle` is `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`; missing or unknown values mean `INITIALS`. The confirmation section is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_design",
           description:
-            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget` (button or card, placement, timing, and visible pages), the participant Traffic report under `trafficInsights`, participant sign-in copy under `login`, and payout-destination confirmation page copy under `payoutDestinationConfirmation`. `trafficInsights.isPublicDisplayed` controls visibility; its labels cannot be blank. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. Only supplied `fields` change; omitted fields retain their existing content and arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget` (button or card, placement, timing, and visible pages), the participant Traffic report under `trafficInsights`, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and the participant Settings panel under `participantSettings`, such as the language picker's `languageSectionTitle` and `languageSectionInstructionsText` (up to 500 characters each). `trafficInsights.isPublicDisplayed` controls visibility; its labels cannot be blank. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. Only supplied `fields` change; omitted fields retain their existing content and arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1914,13 +1927,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_options",
           description:
-            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, affiliate enrollment and application review, notifications, and other behavior options). Returns the full object with every field and its current value, the same shape you send back on update. `autoFulfillRewards: false` permits manual fulfillment and does not prove that any reward went undelivered. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, affiliate enrollment and application review, notifications, the program's languages under `languages`, and other behavior options). Returns the full object with every field and its current value, the same shape you send back on update. `autoFulfillRewards: false` permits manual fulfillment and does not prove that any reward went undelivered. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_options",
           description:
-            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. Turning languages on requires the Business plan or higher and returns a `403` otherwise. Translations are managed in the GrowSurf dashboard, not through this tool. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2278,6 +2291,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               fingerprint: { type: "string" },
               mobileInstanceId: { type: "string" },
               metadata: { type: "object", additionalProperties: true },
+              language: CREATE_PARTICIPANT_LANGUAGE_INPUT,
             },
             required: ["email"],
             additionalProperties: false,
@@ -2315,6 +2329,10 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 maxLength: 500,
                 description: "Freeform internal notes (internal only, never exposed to participants).",
               },
+              language: {
+                type: ["string", "null"],
+                description: `The language of the participant's portal and program emails. Must be one of the program's languages (\`languages\` in \`growsurf_get_campaign_options\`); any other code returns a \`400\`. Send \`null\` or the program's base language to clear it, so the participant follows the base language. ${PROGRAM_LANGUAGE_CODES_TEXT}`,
+              },
             },
             anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
             additionalProperties: false,
@@ -2347,7 +2365,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_email_participant",
           description:
-            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). For programs with `settings.design.layoutMode` set to `INLINE`, `body` must include `{{emailFooter}}`; `{{emailHeader}}` is optional. Free-form emails are sent with the same compliance handling (company name, postal address, and an unsubscribe link are added automatically, and unsubscribed participants are suppressed). Sending requires the team to be verified by GrowSurf and a verified custom email domain on the program (set up in *Campaign Editor > 3. Emails > Email Settings*). Returns 400 until one is verified. The email is accepted for delivery. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). For programs with `settings.design.layoutMode` set to `INLINE`, `body` must include `{{emailFooter}}`; `{{emailHeader}}` is optional. Free-form emails are sent with the same compliance handling (company name, postal address, and an unsubscribe link are added automatically, and unsubscribed participants are suppressed). Sending requires the team to be verified by GrowSurf and a verified custom email domain on the program (set up in *Program Editor > 3. Emails > Email Settings*). Returns 400 until one is verified. The email is accepted for delivery. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2621,6 +2639,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               fingerprint: { type: "string" },
               mobileInstanceId: { type: "string" },
               metadata: { type: "object", additionalProperties: true },
+              language: CREATE_PARTICIPANT_LANGUAGE_INPUT,
             },
             required: ["email"],
             additionalProperties: false,

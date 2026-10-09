@@ -33,6 +33,7 @@ This repo owns the public GrowSurf Model Context Protocol server package `@grows
 | `src/growsurf/installKit.ts` | Install-kit renderers for agent-driven GrowSurf installation |
 | `src/growsurf/secretDenyList.ts` | Deny-list of sensitive file patterns agents must never surface |
 | `test/` | Vitest coverage for MCP behavior and snippets |
+| `glama.json` | Maintainer claim for the Glama directory listing. Glama builds the server from its own generated Dockerfile (`pnpm install`, `pnpm run build`, then `mcp-proxy -- node dist/cli.js`), not from `Dockerfile`. To reproduce a Glama build failure, copy that generated Dockerfile from the listing's admin page; a passing `Dockerfile` build proves nothing about Glama. |
 | `README.md` | Public package documentation |
 
 ## Reserved npm Names

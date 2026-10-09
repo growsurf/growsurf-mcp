@@ -134,7 +134,7 @@ Include:
 - Installation or launch action still needed
 - GrowSurf preview screenshots from `growsurf_capture_referral_flow_screenshots`, shown inline
 - A What's next block: the Program Editor link `https://app.growsurf.com/editor/<campaignId>`, one question about who installs GrowSurf (the agent with approval, a developer invited at `https://app.growsurf.com/settings#team-members` with the Installation step link `https://app.growsurf.com/editor/<campaignId>/installation/instructions`, or the user), then integrations via `growsurf_get_integration_connect_link`
-- Campaign Editor URL when the user wants to inspect design defaults
+- Program Editor URL when the user wants to inspect design defaults
 
 ## One-Shot Eval Examples
 

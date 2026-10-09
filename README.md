@@ -431,7 +431,7 @@ Program, reward-configuration, options, and participant reads also include a `re
   Read or patch the Program Editor Emails tab config.
 
 - `growsurf_get_campaign_options` / `growsurf_update_campaign_options`
-  Read or patch the Program Editor Options tab config.
+  Read or patch the Program Editor Options tab config, including the program's `languages`.
 
 - `growsurf_get_campaign_installation` / `growsurf_update_campaign_installation`
   Read or patch the Program Editor Installation tab config.
@@ -464,7 +464,7 @@ Program, reward-configuration, options, and participant reads also include a `re
   Fetch one participant by GrowSurf participant ID or email address.
 
 - `growsurf_update_participant`
-  Update a participant by ID or email (including internal `notes`).
+  Update a participant by ID or email (including internal `notes` and the participant's `language`).
 
 - `growsurf_bulk_delete_participants` — Check each row outcome. `analyticsErasure.status: "pending"` means analytics erasure is still pending; do not repeat successful rows.
   Permanently delete up to 200 participants (by ID and/or email, mixed lists allowed) in one request, with per-row `DELETED`/`NOT_FOUND`/`DUPLICATE`/`ERROR` results. Irreversible — removes the participants' referrals, rewards, commissions, and payout records.
@@ -502,7 +502,7 @@ Program, reward-configuration, options, and participant reads also include a `re
 ### Helpers
 
 - `growsurf_participant_auth_hash`
-  Generate participant auto-auth HMAC hashes (to authenicate participants automatically).
+  Generate participant auto-auth HMAC hashes (to authenticate participants automatically).
 
 - `growsurf_webhook_normalize`
   Normalize webhook payloads and generate idempotency keys (to deduplicate webhook deliveries).
@@ -527,7 +527,7 @@ GrowSurf signs webhook deliveries when the webhook has a `secret` configured: ea
 - Validate the payload shape and expected event type
 - Deduplicate webhook events using an idempotency key, because the same event can arrive more than once
 
-The GrowSurf MCP server provides a helper tool (`growsurf_webhook_normalize` ) that normalizes webhook payloads and generates a best-effort idempotency key to simplify safe webhook processing.
+The GrowSurf MCP server provides a helper tool (`growsurf_webhook_normalize`) that normalizes webhook payloads and generates a best-effort idempotency key to simplify safe webhook processing.
 
 ## Development and Testing
 
