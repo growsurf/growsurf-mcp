@@ -1933,7 +1933,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_options",
           description:
-            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. Turning languages on requires the Business plan or higher and returns a `403` otherwise. Translations are managed in the GrowSurf dashboard, not through this tool. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. Turning languages on, and any change while they are on (including turning them off), requires the Business plan or higher and returns a `403` otherwise. Translations are managed in the GrowSurf dashboard, not through this tool. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {

@@ -961,7 +961,7 @@ const CAMPAIGN_OPTIONS: ToolOutputSchema = {
     languages: {
       type: "object",
       description:
-        "The languages the program runs in. Participants see the portal and program emails in their language. Turning on additional languages requires the Business plan or higher. Translations are managed in the dashboard.",
+        "The languages the program runs in. Participants see the portal and program emails in their language. Turning on additional languages, and any change while they are on, requires the Business plan or higher. Translations are managed in the dashboard.",
       properties: {
         baseLanguage: {
           type: "string",
