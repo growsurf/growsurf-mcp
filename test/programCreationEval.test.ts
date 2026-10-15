@@ -41,10 +41,10 @@ describe("program creation steering eval", () => {
   it("includes referral and affiliate one-shot fixtures by default", () => {
     const text = renderAgentProgramCreationEval(agentProgramCreationEvalInputSchema.parse({}));
 
-    expect(text).toContain("Developer-tools referral");
-    expect(text).toContain("Voice AI affiliate");
+    expect(text).toContain("Telehealth referral");
+    expect(text).toContain("Fintech app affiliate");
     expect(text).toContain("B2B SaaS referral");
-    expect(text).toContain("Founder-led SaaS affiliate");
+    expect(text).toContain("Voice AI affiliate");
   });
 
   it("can filter fixtures to one program type", () => {
@@ -52,9 +52,9 @@ describe("program creation steering eval", () => {
       agentProgramCreationEvalInputSchema.parse({ programType: "affiliate" }),
     );
 
+    expect(text).toContain("Fintech app affiliate");
     expect(text).toContain("Voice AI affiliate");
-    expect(text).toContain("Founder-led SaaS affiliate");
-    expect(text).not.toContain("Developer-tools referral");
+    expect(text).not.toContain("Telehealth referral");
     expect(text).not.toContain("B2B SaaS referral");
   });
 
@@ -74,8 +74,8 @@ describe("program creation steering eval", () => {
       });
       const first = result.content[0];
       expect(first?.type).toBe("text");
-      expect(first && "text" in first ? first.text : "").toContain("Developer-tools referral");
-      expect(first && "text" in first ? first.text : "").not.toContain("Voice AI affiliate");
+      expect(first && "text" in first ? first.text : "").toContain("Telehealth referral");
+      expect(first && "text" in first ? first.text : "").not.toContain("Fintech app affiliate");
     } finally {
       await client.close();
     }

@@ -1,10 +1,24 @@
 import { z } from "zod";
+import { DOCS_SITE_URL } from "./insights.js";
 import { kotlinString } from "./snippetLiterals.js";
 
-const MOBILE_SDK_GUIDANCE_VERSION = "0.7.0";
+const MOBILE_SDK_GUIDANCE_VERSION = "0.9.0";
 const IOS_DISTRIBUTION_REPO = "growsurf/growsurf-ios-sdk-distribution";
 const IOS_DISTRIBUTION_URL = `https://github.com/${IOS_DISTRIBUTION_REPO}.git`;
 const IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_REPO}/v${MOBILE_SDK_GUIDANCE_VERSION}/GrowSurfSDK.podspec`;
+// The React Native package has its own version and pins its native SDK versions itself.
+const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.1.0";
+const REACT_NATIVE_PACKAGE_NAME = "growsurf-react-native-sdk";
+const REACT_NATIVE_SDK_DOCS_URL = `${DOCS_SITE_URL}/developer-tools/react-native-sdk`;
+// Device-specific SDK preferences that must not move to another installation through Android backup.
+const ANDROID_BACKUP_EXCLUDED_PREFERENCES = [
+  "growsurf_tokens.xml",
+  "growsurf_window_cache_encrypted.xml",
+  "growsurf_attribution.xml",
+  "growsurf_identity.xml",
+  "growsurf_window_cache.xml",
+  "growsurf_participant_engagement.xml",
+];
 const FIXTURE_EMAIL = "gavin@hooli.com";
 const FIXTURE_FIRST_NAME = "Gavin";
 const FIXTURE_LAST_NAME = "Belson";
@@ -17,7 +31,8 @@ const placeholder = (value: string | undefined, fallback: string) => {
 };
 
 export const mobileSdkGuideInputSchema = z.object({
-  platform: z.enum(["ios", "android", "both"]).default("both"),
+  // `both` means the native iOS and Android SDKs. `react_native` renders the React Native SDK, which covers both.
+  platform: z.enum(["ios", "android", "both", "react_native"]).default("both"),
   attributionProvider: z
     .enum(["all", "direct_link", "google_play", "branch", "adjust", "appsflyer", "singular", "none"])
     .default("all"),
@@ -56,10 +71,23 @@ const providerDisplayName = (provider: ProviderCallback) =>
     singular: "Singular",
   })[provider];
 
+// Listed in the order the guide names them.
+const PROVIDER_IOS_DEFERRED_SETUP: Record<ProviderCallback, string> = {
+  branch: "Branch NativeLink",
+  adjust: "Adjust LinkMe",
+  appsflyer: "AppsFlyer Unified Deep Linking",
+  singular: "Singular Clipboard-Based DDL",
+};
+const providerIosDeferredSetup = (provider: ProviderCallback) => PROVIDER_IOS_DEFERRED_SETUP[provider];
+const orList = (items: readonly string[]) =>
+  items.length > 1 ? `${items.slice(0, -1).join(", ")}, or ${items[items.length - 1]}` : items.join("");
+
 const IOS_DEFERRED_BEST_EFFORT =
   " iOS deferred is best-effort even when configured — clipboard providers (Branch/Adjust/Singular) can miss if the user declines the iOS paste prompt or overwrites the clipboard before first launch, AppsFlyer (server-side UDL) can miss outside its ~15-minute window, and an in-app/non-Safari browser can break the click — so always pair it with a fallback such as manual referral-code entry. Android's Play Install Referrer is deterministic.";
 const VISIT_CAPTURE_TEXT =
   " The handler captures `utm_id`, `utm_source`, `utm_medium`, `utm_campaign`, `utm_source_platform`, `utm_term`, `utm_content`, `utm_creative_format`, and `utm_marketing_tactic`. It queues one stable visit automatically, retries after an offline launch, and keeps only the origin and path for destination and referrer URLs.";
+const WINDOW_FOLLOW_UP_TEXT =
+  "The native Window offers Follow up only for outstanding direct invitations with Company as the Invite Email sender and when sending is available. Confirmation sends the configured invitation email; a three-day cooldown applies. Popup-only claims never qualify. The optional `displayStatus` value `OFFER_CLAIMED` uses the editable Claimed Offer label, with completed signup taking precedence. When Follow-Up Reminder is enabled, new invitations automatically qualify for a reminder to the referrer after the configured delay (2–30 days, default 3). No participant opt-in or `sendInvites` parameter is needed. This never schedules email to invited contacts.";
 
 const iosAttributionText = (provider: AttributionProvider) => {
   if (provider === "none") return "Skip attribution handling only if this app never accepts referred installs.";
@@ -257,7 +285,7 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
   }
 
   sections.push(
-    "The native Window offers Follow up only for outstanding direct invitations with Company as the Invite Email sender and when sending is available. Confirmation sends the configured invitation email; a three-day cooldown applies. Popup-only claims never qualify. The optional `displayStatus` value `OFFER_CLAIMED` uses the editable Claimed Offer label, with completed signup taking precedence. When Follow-Up Reminder is enabled, new invitations automatically qualify for a reminder to the referrer after the configured delay (2–30 days, default 3). No participant opt-in or `sendInvites` parameter is needed. This never schedules email to invited contacts.",
+    WINDOW_FOLLOW_UP_TEXT,
     "Recommended sharing path: present the native GrowSurf Window from your own app button or menu. Use a backend-minted token for signed-in users, or `result.participantToken` from a just-created SDK participant if opening the window immediately. The SDK already stores returned participant tokens; keep one yourself only when you need this explicit window handoff.",
     codeBlock(
       "swift",
@@ -361,7 +389,7 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
   }
 
   sections.push(
-    "The native Window offers Follow up only for outstanding direct invitations with Company as the Invite Email sender and when sending is available. Confirmation sends the configured invitation email; a three-day cooldown applies. Popup-only claims never qualify. The optional `displayStatus` value `OFFER_CLAIMED` uses the editable Claimed Offer label, with completed signup taking precedence. When Follow-Up Reminder is enabled, new invitations automatically qualify for a reminder to the referrer after the configured delay (2–30 days, default 3). No participant opt-in or `sendInvites` parameter is needed. This never schedules email to invited contacts.",
+    WINDOW_FOLLOW_UP_TEXT,
     "Recommended sharing path: present the native GrowSurf Window from your own app button or menu. Use a backend-minted token for signed-in users, or `result.participantToken` from a just-created SDK participant if opening the window immediately. The SDK already stores returned participant tokens; keep one yourself only when you need this explicit window handoff.",
     codeBlock(
       "kotlin",
@@ -384,13 +412,227 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
   return sections.join("\n\n");
 };
 
+const reactNativeAttributionText = (provider: AttributionProvider) => {
+  if (provider === "none") return "Skip attribution handling only if this app never accepts referred installs.";
+  const parts: string[] = [];
+  if (provider === "all" || provider === "direct_link") {
+    parts.push("Pass the cold-start URL from `Linking.getInitialURL()` and every warm `Linking` `url` event to `handleDeepLink(url)`. Links can contain referral identity, supported UTM values, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`. Call `links.remove()` when the component that added the listener unmounts.");
+  }
+  if (provider === "all" || provider === "google_play") {
+    parts.push("On Android, `handleDeferredDeepLink()` reads the Google Play Install Referrer, which arrives only for genuine Google Play Store installs. `addReferredParticipant()` also checks it once when no pending attribution exists. iOS rejects `handleDeferredDeepLink()` with `UNSUPPORTED_PLATFORM`, so call it only when `Platform.OS` is `\"android\"`.");
+  }
+  const callbackProvider = providerCallbackFor(provider);
+  if (callbackProvider) {
+    const names = provider === "all" ? "Branch, AppsFlyer, Adjust, or Singular" : providerDisplayName(callbackProvider);
+    const iosSetup = provider === "all"
+      ? orList(Object.values(PROVIDER_IOS_DEFERRED_SETUP))
+      : providerIosDeferredSetup(callbackProvider);
+    parts.push(`Pass ${names} callback parameters from that provider's React Native SDK to \`handleAttributionParameters(parameters, provider)\`. Provider payloads may contain \`grsf\`, \`ref\`, \`referredBy\`, supported UTM values, or a GrowSurf-hosted share URL. Deferred (no-app-installed) iOS referrals still need the provider's iOS setup (${iosSetup}); call this guide with \`platform: "ios"\` for those steps.${IOS_DEFERRED_BEST_EFFORT}`);
+  }
+  parts.push(`Capture attribution before calling \`addReferredParticipant()\`. The native SDK keeps pending attribution and applies it during signup.${VISIT_CAPTURE_TEXT}`);
+  return parts.join("\n\n");
+};
+
+const renderReactNativeAttributionSnippet = (provider: AttributionProvider) => {
+  const imports: string[] = [];
+  const snippets: string[] = [];
+
+  if (provider === "all" || provider === "direct_link") {
+    imports.push("Linking");
+    snippets.push(
+      [
+        "const initialUrl = await Linking.getInitialURL();",
+        "if (initialUrl) await GrowSurf.handleDeepLink(initialUrl);",
+        "",
+        "const links = Linking.addEventListener(\"url\", ({ url }) => {",
+        "  void GrowSurf.handleDeepLink(url);",
+        "});",
+      ].join("\n"),
+    );
+  }
+
+  if (provider === "all" || provider === "google_play") {
+    imports.push("Platform");
+    snippets.push(
+      [
+        "if (Platform.OS === \"android\") {",
+        "  await GrowSurf.handleDeferredDeepLink();",
+        "}",
+      ].join("\n"),
+    );
+  }
+
+  const callbackProvider = providerCallbackFor(provider);
+  if (callbackProvider) {
+    snippets.push(
+      [
+        "await GrowSurf.handleAttributionParameters(",
+        "  {",
+        '    grsf: "referrer_id",',
+        '    click_id: "click_123",',
+        '    unique: "true",',
+        '    utm_source: "newsletter",',
+        '    utm_campaign: "launch",',
+        "  },",
+        `  "${callbackProvider}",`,
+        ");",
+      ].join("\n"),
+    );
+  }
+
+  if (snippets.length === 0) return undefined;
+  if (imports.length > 0) snippets.unshift(`import { ${imports.join(", ")} } from "react-native";`);
+  return codeBlock("ts", snippets.join("\n\n"));
+};
+
+const renderAndroidBackupRules = () => {
+  const excludes = (indent: string) =>
+    ANDROID_BACKUP_EXCLUDED_PREFERENCES.map((name) => `${indent}<exclude domain="sharedpref" path="${name}" />`);
+  return [
+    "Create `res/xml/growsurf_backup_rules.xml`:",
+    codeBlock("xml", ["<full-backup-content>", ...excludes("  "), "</full-backup-content>"].join("\n")),
+    "Create `res/xml/growsurf_data_extraction_rules.xml`:",
+    codeBlock(
+      "xml",
+      [
+        "<data-extraction-rules>",
+        "  <cloud-backup>",
+        ...excludes("    "),
+        "  </cloud-backup>",
+        "  <device-transfer>",
+        ...excludes("    "),
+        "  </device-transfer>",
+        "</data-extraction-rules>",
+      ].join("\n"),
+    ),
+  ];
+};
+
+const renderReactNative = (input: MobileSdkGuideInput, campaignId: string, mobilePublicKey: string) => {
+  const sections: string[] = [
+    `### React Native SDK ${REACT_NATIVE_SDK_GUIDANCE_VERSION}`,
+    `Full reference: ${REACT_NATIVE_SDK_DOCS_URL}`,
+    "The SDK supports bare React Native apps and Expo development builds on React Native 0.74 and newer, with the old or New Architecture where that React Native version offers both. React Native 0.82 and newer run only the New Architecture. Expo Go cannot load this native module. The package installs the native GrowSurf iOS and Android SDK versions it pins and presents the native GrowSurf Window.",
+  ];
+
+  if (input.includeInstallSnippets) {
+    sections.push(
+      "Install from npm:",
+      codeBlock("sh", `npm install ${REACT_NATIVE_PACKAGE_NAME}`),
+      "In a bare app, run `pod install` in the `ios` directory. If CocoaPods cannot resolve the pinned GrowSurf SDK, run `pod install --repo-update`. iOS requires iOS 15 or newer. Android requires `minSdk` 24, `compileSdk` 36, and Kotlin 2.1.21 or newer.",
+      "For Expo, add the config plugin, then rebuild the development client. The plugin merges the Android backup exclusions below into your app's rules. If the manifest refers to another library's backup XML, copy that XML into your app's `res/xml` directory first so the plugin can merge it.",
+      codeBlock(
+        "json",
+        [
+          "{",
+          '  "expo": {',
+          `    "plugins": ["${REACT_NATIVE_PACKAGE_NAME}"]`,
+          "  }",
+          "}",
+        ].join("\n"),
+      ),
+      `React Native 0.74 needs newer build tools than its app template: JDK 21, Gradle 8.13, Android Gradle Plugin 8.13.0, Kotlin 2.1.21, Android build tools 36.0.0, and an iOS 15 deployment target. Follow the React Native 0.74 setup in the SDK reference (${REACT_NATIVE_SDK_DOCS_URL}) or the package README before you build.`,
+    );
+  }
+
+  sections.push(
+    "Configure the SDK once at app start with the program ID and public Mobile SDK key:",
+    codeBlock(
+      "ts",
+      [
+        `import GrowSurf from "${REACT_NATIVE_PACKAGE_NAME}";`,
+        "",
+        "await GrowSurf.configure({",
+        `  campaignId: ${JSON.stringify(campaignId)},`,
+        `  publicKey: ${JSON.stringify(mobilePublicKey)},`,
+        "});",
+      ].join("\n"),
+    ),
+    reactNativeAttributionText(input.attributionProvider),
+  );
+  const attributionSnippet = renderReactNativeAttributionSnippet(input.attributionProvider);
+  if (attributionSnippet) sections.push(attributionSnippet);
+
+  if (input.participantState === "new_participant" || input.participantState === "both") {
+    sections.push(
+      "For referral-only signup tracking, add the participant only after GrowSurf validates a referrer. `addReferredParticipant()` returns the API's JSON, or `null` when no participant-create request succeeds. A response can ask for a participant token (`requiresParticipantToken`) instead of returning participant data:",
+      codeBlock(
+        "ts",
+        [
+          "const response = await GrowSurf.addReferredParticipant({",
+          `  email: ${JSON.stringify(FIXTURE_EMAIL)},`,
+          `  firstName: ${JSON.stringify(FIXTURE_FIRST_NAME)},`,
+          `  lastName: ${JSON.stringify(FIXTURE_LAST_NAME)},`,
+          "});",
+          "",
+          "if (response && \"participant\" in response) {",
+          "  const participant = response.participant;",
+          "  // Use participant",
+          "}",
+        ].join("\n"),
+      ),
+      "For a public signup flow that intentionally creates every user, call `addParticipant()`. For direct signup to an `OPEN_ENROLLMENT` affiliate program with configured Terms, show those Terms and set `termsAccepted: true` only after consent. If `affiliateApplicationMode` is `MANUAL_REVIEW` or `AUTO_APPROVE`, send applicants through the configured GrowSurf Program Page instead of direct signup:",
+      codeBlock(
+        "ts",
+        [
+          "const directSignup = await GrowSurf.addParticipant({",
+          `  email: ${JSON.stringify(FIXTURE_EMAIL)},`,
+          `  firstName: ${JSON.stringify(FIXTURE_FIRST_NAME)},`,
+          `  lastName: ${JSON.stringify(FIXTURE_LAST_NAME)},`,
+          "  termsAccepted: true,",
+          "});",
+        ].join("\n"),
+      ),
+    );
+  }
+
+  sections.push(
+    WINDOW_FOLLOW_UP_TEXT,
+    "Recommended sharing path: present the native GrowSurf Window from your own app button or menu. Use `{ type: \"existingParticipantToken\", token }` with a backend-minted token for signed-in users, `{ type: \"participantFields\", input: { email, termsAccepted } }` for signup, or `{ type: \"anonymous\" }`. `addWindowListener` receives `open`, `close`, `participantCreated`, `shareTracked`, `inviteSent`, `payoutOrSettingsAction`, and `error` events, and each event's `windowId` matches the returned Window's `id`. Do not log participant tokens.",
+    codeBlock(
+      "ts",
+      [
+        "const participantToken = \"participant_token_from_your_backend\";",
+        "",
+        "const events = GrowSurf.addWindowListener((event) => {",
+        "  if (event.type === \"shareTracked\") console.log(\"Share tracked:\", event.data.shareType);",
+        "  if (event.type === \"error\") console.warn(\"GrowSurf Window error:\", event.data.code);",
+        "});",
+        "",
+        "const growsurfWindow = await GrowSurf.presentGrowSurfWindow({",
+        "  identity: { type: \"existingParticipantToken\", token: participantToken },",
+        "  theme: { primaryColorHex: \"#13795B\", presentationStyle: \"automatic\" },",
+        "});",
+        "",
+        "// Later, to close this Window and stop listening:",
+        "await growsurfWindow.close();",
+        "events.remove();",
+      ].join("\n"),
+    ),
+    "Data methods return the Mobile API's JSON with generated TypeScript types. Promise errors expose `code` and `httpStatus`; `httpStatus` is `null` for a local SDK error.",
+    "Android backup: exclude the SDK's " + ANDROID_BACKUP_EXCLUDED_PREFERENCES.length + " preference files from backup and device transfer so participant tokens and attribution never move to another installation. The Expo config plugin merges these exclusions for you. In a bare app, add `android:fullBackupContent=\"@xml/growsurf_backup_rules\"` and `android:dataExtractionRules=\"@xml/growsurf_data_extraction_rules\"` to the manifest's `<application>` element. Merge the exclusions into any existing rules, including qualified XML resources, and keep exclusions other SDKs require.",
+  );
+  // The exclusion list is configuration the app needs, not an install example, so it always renders.
+  sections.push(...renderAndroidBackupRules());
+
+  sections.push(
+    "When the app's user logs out, close any open Window and call `shutdown()` to clear SDK state:",
+    codeBlock("ts", ["await GrowSurf.closeGrowSurfWindow();", "await GrowSurf.shutdown();"].join("\n")),
+  );
+
+  return sections.join("\n\n");
+};
+
 export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: MobileSdkGuideContext = {}) => {
   const campaignId = placeholder(input.campaignId ?? context.campaignId, "YOUR_CAMPAIGN_ID");
   const mobilePublicKey = placeholder(input.mobilePublicKey, "YOUR_MOBILE_SDK_PUBLIC_KEY");
+  const reactNative = input.platform === "react_native";
   const sections: string[] = [
-    "## GrowSurf native mobile SDK guide",
+    reactNative ? "## GrowSurf React Native SDK guide" : "## GrowSurf native mobile SDK guide",
     "",
-    `- Use SDK version \`${MOBILE_SDK_GUIDANCE_VERSION}\`.`,
+    reactNative
+      ? `- Use React Native SDK version \`${REACT_NATIVE_SDK_GUIDANCE_VERSION}\` (npm package \`${REACT_NATIVE_PACKAGE_NAME}\`).`
+      : `- Use SDK version \`${MOBILE_SDK_GUIDANCE_VERSION}\`.`,
     "- Native apps use a public Mobile SDK key, not the secret REST API key.",
     "- The recommended mobile referral or affiliate portal is the native GrowSurf Window opened from your own app UI.",
     "- For signed-in users, mint a participant-scoped mobile token on your backend and pass it to the SDK.",
@@ -398,9 +640,13 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
     "- Deep-link, deferred-link, and provider handlers queue a versioned visit automatically. Do not call `recordAttribution()` after a handler. Use it only for a visit the app constructs itself.",
     "- GrowSurf keeps server-signed first-visit and last-visit receipts and sends them during participant creation. The server applies the program's first-click or last-click setting.",
     "- Use `validateReferrer()` when you only need to check referral identity without creating a participant.",
-    "- Use `addReferredParticipant()` for referral-only signup tracking. GrowSurf applies stored signed receipts using the program’s first-click or last-click setting, with a validated referral code as fallback. A missing or invalid later code does not discard a valid receipt. For a newly added participant, the result’s `referredBy` identifies the referrer the server credited. `validReferral` can be true even when `referredBy` is absent. Existing-participant responses do not disclose that participant’s stored referral credit. If no valid referral remains, GrowSurf does not create a direct participant.",
+    reactNative
+      ? "- Use `addReferredParticipant()` for referral-only signup tracking. GrowSurf uses captured attribution with the program’s first-click or last-click setting, with a validated referral code as fallback. A missing or invalid later code does not discard a valid earlier referral. For a newly added participant, `participant.referredBy` in the returned API JSON identifies the credited referrer. Existing-participant responses do not disclose that participant’s stored referral credit. If no valid referral remains, GrowSurf does not create a direct participant and the method returns `null`."
+      : "- Use `addReferredParticipant()` for referral-only signup tracking. GrowSurf applies stored signed receipts using the program’s first-click or last-click setting, with a validated referral code as fallback. A missing or invalid later code does not discard a valid receipt. For a newly added participant, the result’s `referredBy` identifies the referrer the server credited. `validReferral` can be true even when `referredBy` is absent. Existing-participant responses do not disclose that participant’s stored referral credit. If no valid referral remains, GrowSurf does not create a direct participant.",
     "- Use `addParticipant()` only when the app intentionally creates every signup. Check `affiliateApplicationMode` first so reviewed affiliate applicants use the configured GrowSurf Program Page.",
     "- When `addReferredParticipant()` or `addParticipant()` returns a `participantToken`, the SDK stores it automatically.",
+    "- When the program offers more than one language, GrowSurf picks one for each request: the `language` configure option, then the participant's saved language, then the device languages (sent in the `Accept-Language` header), then the program's base language.",
+    "- To set the language from your app, pass `language` when you configure the SDK, using a code the program offers, such as `es` or `pt-BR`. It is a configure option only; to change it, configure the SDK again. When it is set, the native GrowSurf Window hides its Language setting. Otherwise participants can pick a language there, and a custom UI can save one with `updateParticipant` and a `language` value. GrowSurf rejects a language the program does not offer.",
   ];
 
   if (input.serverVerifiedQualifyingAction) {
@@ -412,6 +658,7 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
   sections.push("");
   if (shouldRenderPlatform(input, "ios")) sections.push(renderIos(input, campaignId, mobilePublicKey));
   if (shouldRenderPlatform(input, "android")) sections.push(renderAndroid(input, campaignId, mobilePublicKey));
+  if (reactNative) sections.push(renderReactNative(input, campaignId, mobilePublicKey));
 
   sections.push(
     [
@@ -419,8 +666,12 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
       "",
       "- Use the REST API or official REST API libraries to call `Create Mobile Participant Token` with the same participant fields as Add Participant.",
       "- For signed-in referred users, read the SDK's pending attribution in the app and send its `referredBy` value to your backend before minting the token; also include the SDK mobile instance ID as `mobileInstanceId` for anti-fraud. Server-to-server REST calls cannot access app-local attribution or storage automatically.",
-      "- Pass the returned `participantToken` to `.existingParticipantToken(...)` on iOS or `GrowSurfWindowIdentity.ExistingParticipantToken(...)` on Android.",
-      "- Share tracking types used by the native SDK are `copyRefLink`, `iosNativeShare`, and `androidNativeShare`.",
+      reactNative
+        ? "- In React Native, read those values with `getPendingAttribution()` and `getMobileInstanceId()`. Pass the returned `participantToken` to the Window identity `{ type: \"existingParticipantToken\", token }`, or store it with `setParticipantToken(token)`. Keep your REST API key on the backend."
+        : "- Pass the returned `participantToken` to `.existingParticipantToken(...)` on iOS or `GrowSurfWindowIdentity.ExistingParticipantToken(...)` on Android.",
+      reactNative
+        ? "- Share types for `trackShare()` include `copyRefLink`, `email`, `sms`, or a social channel type from the GrowSurf Window data."
+        : "- Share tracking types used by the native SDK are `copyRefLink`, `iosNativeShare`, and `androidNativeShare`.",
     ].join("\n"),
   );
 

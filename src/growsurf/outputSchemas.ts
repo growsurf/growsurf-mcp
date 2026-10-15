@@ -972,6 +972,10 @@ const CAMPAIGN_OPTIONS: ToolOutputSchema = {
           items: { type: "string" },
           description: "Other languages participants can see, besides `baseLanguage`, using the same codes. `PATCH` replaces the whole list; `[]` turns them off. The base language is dropped from the list and duplicates collapse. Removing a language keeps its translations.",
         },
+        showFlags: {
+          type: "boolean",
+          description: "Shows a flag next to each language name in the language picker participants use. New programs start with `false`.",
+        },
       },
     },
   },
@@ -2278,7 +2282,7 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
   growsurf_agent_program_creation_eval: markdownDocument(
     "Program-creation eval prompts and acceptance checks, as a markdown document.",
   ),
-  growsurf_mobile_sdk_guide: markdownDocument("Native iOS/Android SDK guidance, as a markdown document."),
+  growsurf_mobile_sdk_guide: markdownDocument("Native iOS/Android or React Native SDK guidance, as a markdown document."),
   growsurf_program_design_advisor: {
     type: "object",
     description: "Program-design advice and proposed tool calls. The plan is read-only until its calls are executed after the customer resolves the open choices.",

@@ -138,5 +138,4 @@ Include:
 
 ## One-Shot Eval Examples
 
-- Referral: "Create a GrowSurf referral program for DevTrace, an AI developer tool at https://devtrace.example. Goal: drive qualified developer signups from existing users. Use a double-sided $25 credit concept, keep rewards disabled until I confirm funding, and summarize the Design, Emails, Options, Installation, and Rewards settings."
-- Affiliate: "Create a GrowSurf affiliate program for EchoKit, a voice AI API at https://echokit.example. Goal: let integration consultants refer qualified customers. Use a 20% recurring commission concept, keep payouts disabled until I confirm payout operations, and summarize the Design, Emails, Options, Installation, and Rewards settings."
+Call `growsurf_agent_program_creation_eval` for the current referral and affiliate one-shot prompts. Pass `programType` to get only one type.

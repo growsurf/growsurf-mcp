@@ -15,7 +15,7 @@ import {
 } from "./compactTools.js";
 export { COMPACT_TOOL_NAMES, SUPPORTED_TOOL_SURFACES, type ToolSurface } from "./compactTools.js";
 
-export const GROWSURF_MCP_VERSION = "0.19.13";
+export const GROWSURF_MCP_VERSION = "0.19.15";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -1260,7 +1260,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
     const tools: Tool[] = [
         {
           name: "growsurf_integration_guide",
-          description: "Plan a web integration for a referral or affiliate program. Returns Markdown steps for installing the Universal Code, identifying participants, tracking referrals or sales, and verifying webhooks. Does not inspect or change a program. Use `growsurf_client_snippets` for browser JavaScript examples, `growsurf_api_library_snippets` for backend code, or `growsurf_mobile_sdk_guide` for native apps.",
+          description: "Plan a web integration for a referral or affiliate program. Returns Markdown steps for installing the Universal Code, identifying participants, tracking referrals or sales, and verifying webhooks. Does not inspect or change a program. Use `growsurf_client_snippets` for browser JavaScript examples, `growsurf_api_library_snippets` for backend code, or `growsurf_mobile_sdk_guide` for native or React Native apps.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1339,11 +1339,16 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_mobile_sdk_guide",
           description:
-            "Get Markdown implementation guidance for native iOS/Android SDK 0.7.0, including attribution, `shareUrl` sharing, `trackShare`, and the native GrowSurf Window. Choose `platform` and `participantState` to tailor the guide; `includeInstallSnippets` controls installation examples. Does not install an SDK or create a participant token. Use `growsurf_client_snippets` for browser JavaScript or `growsurf_api_library_snippets` for backend token-creation code.",
+            "Get Markdown implementation guidance for native iOS/Android SDK 0.9.0 or React Native SDK 0.1.0, including attribution, `shareUrl` sharing, `trackShare`, and the native GrowSurf Window. Choose `platform` and `participantState` to tailor the guide; `includeInstallSnippets` controls installation examples. Does not install an SDK or create a participant token. Use `growsurf_client_snippets` for browser JavaScript or `growsurf_api_library_snippets` for backend token-creation code.",
           inputSchema: {
             type: "object",
             properties: {
-              platform: { type: "string", enum: ["ios", "android", "both"], default: "both" },
+              platform: {
+                type: "string",
+                enum: ["ios", "android", "both", "react_native"],
+                default: "both",
+                description: "`both` renders the native iOS and Android SDKs. `react_native` renders the React Native SDK for bare React Native apps and Expo development builds.",
+              },
               attributionProvider: {
                 type: "string",
                 enum: ["all", "direct_link", "google_play", "branch", "adjust", "appsflyer", "singular", "none"],
@@ -1365,7 +1370,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_api_library_snippets",
           description:
-            "Generate Markdown code examples for the official backend REST API libraries in TypeScript, Python, PHP, Ruby, and Java. Select `language` and `workflow`; both default to `all`. Covers setup, program lookup, participant creation, referral credit, sales, and mobile participant tokens. Returns code without executing API calls. Use `growsurf_client_snippets` for browser JavaScript or `growsurf_mobile_sdk_guide` for native app setup.",
+            "Generate Markdown code examples for the official backend REST API libraries in TypeScript, Python, PHP, Ruby, and Java. Select `language` and `workflow`; both default to `all`. Covers setup, program lookup, participant creation, referral credit, sales, and mobile participant tokens. Returns code without executing API calls. Use `growsurf_client_snippets` for browser JavaScript or `growsurf_mobile_sdk_guide` for native or React Native app setup.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1933,7 +1938,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_options",
           description:
-            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. Turning languages on, and any change while they are on (including turning them off), requires the Business plan or higher and returns a `403` otherwise. Translations are managed in the GrowSurf dashboard, not through this tool. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. `languages.showFlags` shows or hides the flag next to each language name. Turning languages on, and any change while they are on (including turning them off or changing `showFlags`), requires the Business plan or higher and returns a `403` otherwise. Translations are managed in the GrowSurf dashboard, not through this tool. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {

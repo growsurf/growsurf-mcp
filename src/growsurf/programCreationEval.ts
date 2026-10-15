@@ -10,15 +10,15 @@ type ProgramType = "referral" | "affiliate";
 const ONE_SHOT_PROMPTS: Array<{ programType: ProgramType; title: string; prompt: string }> = [
   {
     programType: "referral",
-    title: "Developer-tools referral",
+    title: "Telehealth referral",
     prompt:
-      "Create a GrowSurf referral program for DevTrace, an AI developer tool at https://devtrace.example. Goal: drive qualified developer signups from existing users. Use a double-sided $25 credit concept, keep rewards disabled until I confirm funding, and summarize the Design, Emails, Options, Installation, and Rewards settings.",
+      "Create a GrowSurf referral program for VitalPath, a telehealth membership at https://vitalpath.example. Goal: turn current members into referrals for new paid memberships. Use a double-sided $25 membership credit concept, keep rewards disabled until I confirm funding, and summarize the Design, Emails, Options, Installation, and Rewards settings.",
   },
   {
     programType: "affiliate",
-    title: "Voice AI affiliate",
+    title: "Fintech app affiliate",
     prompt:
-      "Create a GrowSurf affiliate program for EchoKit, a voice AI API at https://echokit.example. Goal: let integration consultants refer qualified customers. Use a 20% recurring commission concept, keep payouts disabled until I confirm payout operations, and summarize the Design, Emails, Options, Installation, and Rewards settings.",
+      "Create a GrowSurf affiliate program for Ledgerly, a personal finance app at https://ledgerly.example. Goal: recruit personal finance creators and newsletter writers as affiliates. Use a $150 per funded account concept, leave payout exposure off, and summarize the affiliate portal, referred-friend, payout, and reward settings.",
   },
   {
     programType: "referral",
@@ -28,9 +28,9 @@ const ONE_SHOT_PROMPTS: Array<{ programType: ProgramType; title: string; prompt:
   },
   {
     programType: "affiliate",
-    title: "Founder-led SaaS affiliate",
+    title: "Voice AI affiliate",
     prompt:
-      "Create a GrowSurf affiliate program for LaunchBoard, a founder analytics app at https://launchboard.example. Goal: recruit operators and newsletter writers as affiliates. Use a $150 per paid customer concept, leave payout exposure off, and summarize the affiliate portal, referred-friend, payout, and reward settings.",
+      "Create a GrowSurf affiliate program for EchoKit, a voice AI API at https://echokit.example. Goal: let integration consultants refer qualified customers. Use a 20% recurring commission concept, keep payouts disabled until I confirm payout operations, and summarize the Design, Emails, Options, Installation, and Rewards settings.",
   },
 ];
 

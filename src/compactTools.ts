@@ -20,7 +20,7 @@ const SETTINGS_SECTIONS = ["design", "emails", "options", "installation"] as con
 const GROUPS = [
   {
     name: "growsurf_get_guidance", selector: "topic",
-    description: "Get installation guidance or code examples. Choose `integration` for a web integration plan, `browser` for browser JavaScript, `api_libraries` for backend code, `mobile_sdk` for native apps, `embeddable_element` for HTML, `participant_auto_auth` for automatic sign-in code, or `program_creation_checks` for evaluation prompts. Pass the chosen topic's inputs under `input`. Returns Markdown; does not inspect or change a program.",
+    description: "Get installation guidance or code examples. Choose `integration` for a web integration plan, `browser` for browser JavaScript, `api_libraries` for backend code, `mobile_sdk` for native or React Native apps, `embeddable_element` for HTML, `participant_auto_auth` for automatic sign-in code, or `program_creation_checks` for evaluation prompts. Pass the chosen topic's inputs under `input`. Returns Markdown; does not inspect or change a program.",
     targets: GUIDANCE_TOPICS,
   },
   {

@@ -32,7 +32,7 @@ This MCP server is NOT for:
 
 - **Guided Integration**:
   - Universal Code install
-  - Native iOS/Android SDK implementation guidance
+  - Native iOS/Android and React Native SDK implementation guidance
   - Native GrowSurf Window guidance
   - Signup flow
   - Qualifying action flow
@@ -84,7 +84,7 @@ Use program and participant tools to read or change records. Guidance tools retu
 | Get one embeddable element's HTML | `growsurf_embeddable_element_snippet` |
 | Generate page-level participant auto authentication code | `growsurf_grsf_config_snippet` |
 | Get backend REST API library examples | `growsurf_api_library_snippets` |
-| Integrate a native iOS or Android app | `growsurf_mobile_sdk_guide` |
+| Integrate a native iOS, Android, or React Native app | `growsurf_mobile_sdk_guide` |
 | Diagnose a program problem | `growsurf_troubleshoot_referral_tracking` |
 | Generate checks for an agent's program-creation workflow | `growsurf_agent_program_creation_eval` |
 
@@ -329,7 +329,7 @@ Program, reward-configuration, options, and participant reads also include a `re
   Step-by-step guidance for implementing a GrowSurf referral or affiliate program.
 
 - `growsurf_mobile_sdk_guide`
-  Native iOS/Android SDK guidance for attribution, `shareUrl`, `trackShare`, and the native GrowSurf Window.
+  Native iOS/Android or React Native SDK guidance for attribution, `shareUrl`, `trackShare`, and the native GrowSurf Window. Set `platform` to `react_native` for the React Native SDK.
 
 - `growsurf_api_library_snippets`
   Official REST API library snippets for TypeScript, Python, PHP, Ruby, and Java.
@@ -543,9 +543,10 @@ Read developer docs at the following:
 - JavaScript SDK reference: https://docs.growsurf.com/developer-tools/javascript-sdk/api-reference
 - REST API reference: https://docs.growsurf.com/developer-tools/rest-api/api-reference
 - REST API libraries: https://docs.growsurf.com/developer-tools/rest-api/api-libraries
-- Native mobile guide: https://docs.growsurf.com/getting-started-for-native-mobile
+- Native mobile guide: https://docs.growsurf.com/getting-started-for-mobile
 - iOS SDK: https://docs.growsurf.com/developer-tools/ios-sdk
 - Android SDK: https://docs.growsurf.com/developer-tools/android-sdk
+- React Native SDK: https://docs.growsurf.com/developer-tools/react-native-sdk
 - Getting Started with GrowSurf: https://docs.growsurf.com/getting-started
 
 The GrowSurf MCP server helps GrowSurf customers implement referral programs and affiliate programs quickly.

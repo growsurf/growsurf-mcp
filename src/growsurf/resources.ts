@@ -11,7 +11,7 @@ export const PUBLIC_GROWSURF_RESOURCES = [
 
 const GROWSURF_AGENT_INDEX_MARKDOWN = `# GrowSurf agent and developer index
 
-GrowSurf is referral program software and affiliate program software for marketing and product teams at digital businesses with an established audience and a trackable referral outcome.
+GrowSurf is referral program software and affiliate program software. Best fit: telehealth, fintech, insurance, and subscription app companies, plus SaaS companies, that want an in-product customer referral program or an affiliate program without building it in-house.
 
 ## Tools on this connection
 
