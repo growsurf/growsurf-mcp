@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mobileSdkGuideInputSchema, renderMobileSdkGuide } from "../src/growsurf/mobileSdkGuide.js";
 
 describe("renderMobileSdkGuide", () => {
-  it("renders SDK 0.7.0 native window guidance for both mobile platforms", () => {
+  it("renders SDK 0.9.0 native window guidance for both mobile platforms", () => {
     const text = renderMobileSdkGuide(
       {
         platform: "both",
@@ -15,7 +15,7 @@ describe("renderMobileSdkGuide", () => {
       { campaignId: "abc123" },
     );
 
-    expect(text).toContain("SDK version `0.7.0`");
+    expect(text).toContain("SDK version `0.9.0`");
     expect(text).toContain("GrowSurf.configure");
     expect(text).toContain("GrowSurfSdk.configure");
     expect(text).toContain("addReferredParticipant");
@@ -44,7 +44,7 @@ describe("renderMobileSdkGuide", () => {
     expect(text).toContain("abc123");
   });
 
-  it("emits configured SDK 0.7.0 install coordinates", () => {
+  it("emits configured SDK 0.9.0 install coordinates", () => {
     const text = renderMobileSdkGuide(
       {
         platform: "both",
@@ -57,8 +57,8 @@ describe("renderMobileSdkGuide", () => {
     );
 
     expect(text).toContain("growsurf-ios-sdk-distribution");
-    expect(text).toContain("pod 'GrowSurfSDK', :podspec => 'https://raw.githubusercontent.com/growsurf/growsurf-ios-sdk-distribution/v0.7.0/GrowSurfSDK.podspec'");
-    expect(text).toContain("com.growsurf:growsurf-android-sdk:0.7.0");
+    expect(text).toContain("pod 'GrowSurfSDK', :podspec => 'https://raw.githubusercontent.com/growsurf/growsurf-ios-sdk-distribution/v0.9.0/GrowSurfSDK.podspec'");
+    expect(text).toContain("com.growsurf:growsurf-android-sdk:0.9.0");
   });
 
   it("includes install snippets by default", () => {
@@ -237,5 +237,30 @@ describe("mobile snippet literal boundaries", () => {
     const literal = '"\\${error(\\"injected\\")} \\$identifier\\\\\\n\\u000cend"';
     expect(text).toContain(`campaignId = ${literal}`);
     expect(text).toContain(`publicKey = ${literal}`);
+  });
+  it("renders the React Native SDK instead of the native SDKs for platform react_native", () => {
+    const text = renderMobileSdkGuide(
+      {
+        platform: "react_native",
+        attributionProvider: "all",
+        participantState: "both",
+        serverVerifiedQualifyingAction: true,
+        includeInstallSnippets: false,
+      },
+      { campaignId: "abc123" },
+    );
+
+    expect(text).toContain("## GrowSurf React Native SDK guide");
+    expect(text).toContain("React Native SDK version `0.1.0`");
+    expect(text).toContain('import GrowSurf from "growsurf-react-native-sdk";');
+    expect(text).toContain("Linking.getInitialURL()");
+    expect(text).toContain('if (Platform.OS === "android")');
+    expect(text).toContain("getPendingAttribution()");
+    // The backup exclusions are configuration, so they render even without install snippets.
+    expect(text).toContain('<exclude domain="sharedpref" path="growsurf_tokens.xml" />');
+    expect(text).not.toContain("npm install growsurf-react-native-sdk");
+    expect(text).not.toContain("GrowSurfSdk.configure");
+    expect(text).not.toContain("handleDeepLink(_:)");
+    expect(text).not.toContain("iosNativeShare");
   });
 });

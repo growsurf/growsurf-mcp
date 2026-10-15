@@ -23,7 +23,7 @@ This repo owns the public GrowSurf Model Context Protocol server package `@grows
 | --- | --- |
 | `src/index.ts` | MCP server entry point |
 | `src/growsurf/client.ts` | GrowSurf API client helpers |
-| `src/growsurf/mobileSdkGuide.ts` | Mobile SDK guidance surfaced through MCP |
+| `src/growsurf/mobileSdkGuide.ts` | Native iOS/Android and React Native SDK guidance surfaced through MCP (`platform: react_native`) |
 | `src/growsurf/insights.ts` | Program-design advisor and referral-tracking troubleshooter; render an optional insights bundle passed as `createGrowSurfMcpServer({ insights })` |
 | `src/growsurf/apiLibrarySnippets.ts` | API/library install and usage snippets |
 | `src/growsurf/participantAuth.ts` | Participant token/auth guidance |

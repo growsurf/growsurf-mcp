@@ -69,7 +69,7 @@ export const SUPPORT_ARTICLE_URLS: Readonly<Record<string, string>> = {
   "493": "https://support.growsurf.com/article/493-view-participant-rankings-for-different-time-periods",
 };
 
-const DOCS_SITE_URL = "https://docs.growsurf.com";
+export const DOCS_SITE_URL = "https://docs.growsurf.com";
 
 // Turns a `support NNN` or `docs <path>` reference into a link, preferring the bundle's own map.
 export const docLink = (reference: string, links?: Readonly<Record<string, string>>): string => {
