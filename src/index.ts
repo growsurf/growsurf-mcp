@@ -15,7 +15,7 @@ import {
 } from "./compactTools.js";
 export { COMPACT_TOOL_NAMES, SUPPORTED_TOOL_SURFACES, type ToolSurface } from "./compactTools.js";
 
-export const GROWSURF_MCP_VERSION = "0.19.15";
+export const GROWSURF_MCP_VERSION = "0.19.16";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -2346,7 +2346,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_bulk_delete_participants",
           description:
-            "Bulk delete participants from your GrowSurf program in one request. DESTRUCTIVE: deletion is permanent, cannot be undone, and removes the participants' referrals, rewards, commissions, and payout records. Each entry in `participants` is a GrowSurf participant ID or an email address (mixed lists are allowed), up to 200 entries per request — chunk larger lists across multiple calls. Returns a `summary` (total, deletedCount, notFoundCount, duplicateCount, errorCount) plus per-row `results` in request order, each with `status` DELETED, NOT_FOUND, DUPLICATE (resolves to the same participant as an earlier entry), or ERROR — both `200` and `202` responses can include NOT_FOUND or ERROR rows, and the summary reports these outcomes. A `202` response includes `analyticsErasure` when analytics erasure is pending. `DELETED` means participant cleanup completed; reports can retain the participant until analytics erasure completes. Repeating successful rows does not finish analytics erasure. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Bulk delete participants from your GrowSurf program in one request. DESTRUCTIVE: deletion is permanent and cannot be undone. Successful rows lose participant access immediately; related record cleanup completes automatically, subject to required financial record retention. Each entry in `participants` is a GrowSurf participant ID or an email address (mixed lists are allowed), up to 200 entries per request — chunk larger lists across multiple calls. Returns a `summary` (total, deletedCount, notFoundCount, duplicateCount, errorCount) plus per-row `results` in request order, each with `status` DELETED, NOT_FOUND, DUPLICATE (resolves to the same participant as an earlier entry), or ERROR — both `200` and `202` responses can include NOT_FOUND or ERROR rows, and the summary reports these outcomes. A `202` response includes `analyticsErasure` when analytics erasure is pending. `DELETED` means participant access was removed; reports can retain the participant until cleanup completes. Do not repeat successful rows to finish cleanup. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {

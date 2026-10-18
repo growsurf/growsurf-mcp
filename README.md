@@ -467,7 +467,7 @@ Program, reward-configuration, options, and participant reads also include a `re
   Update a participant by ID or email (including internal `notes` and the participant's `language`).
 
 - `growsurf_bulk_delete_participants` — Check each row outcome. `analyticsErasure.status: "pending"` means analytics erasure is still pending; do not repeat successful rows.
-  Permanently delete up to 200 participants (by ID and/or email, mixed lists allowed) in one request, with per-row `DELETED`/`NOT_FOUND`/`DUPLICATE`/`ERROR` results. Irreversible — removes the participants' referrals, rewards, commissions, and payout records.
+  Permanently delete up to 200 participants (by ID and/or email, mixed lists allowed) in one request, with per-row `DELETED`/`NOT_FOUND`/`DUPLICATE`/`ERROR` results. Irreversible. Successful rows lose participant access immediately; related record cleanup completes automatically, subject to required financial record retention.
 
 - `growsurf_email_participant`
   Email a participant using a configured template or a free-form subject/body.

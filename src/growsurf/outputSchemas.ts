@@ -618,6 +618,11 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         revealDelaySeconds: { type: "integer", minimum: 0, maximum: 120, description: "Seconds to wait after the `reveal` trigger before showing the element. `0` shows it the moment the trigger fires." },
         returnAfterDays: { type: "integer", minimum: 0, maximum: 365, description: "Days before the card is offered again to someone who closed it. Until then they keep the button, so they can still open the program. `0` never offers it again." },
         isHiddenOnMobile: { type: "boolean", description: "Whether to leave phones alone. On small screens the card fills the bottom of the page." },
+        clickAction: {
+          type: "string",
+          enum: ["WINDOW", "PROGRAM_PAGE"],
+          description: "What opens when someone clicks the card's button or the bubble: the GrowSurf Window on top of the page (`WINDOW`), or the Program Page in a new tab (`PROGRAM_PAGE`).",
+        },
         pageRules: {
           type: "object",
           description: "Which pages the widget appears on. This controls the widget only — referral tracking, embedded elements, and opening the window from the site's own code keep working on every page where GrowSurf is installed.",
