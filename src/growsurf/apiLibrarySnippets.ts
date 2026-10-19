@@ -29,7 +29,13 @@ export type ApiLibrarySnippetsContext = {
 type Language = Exclude<ApiLibrarySnippetsInput["language"], "all">;
 type Workflow = Exclude<ApiLibrarySnippetsInput["workflow"], "all">;
 
-const REST_API_LIBRARY_VERSION = "1.12.0";
+const REST_API_LIBRARY_VERSIONS = {
+  typescript: "1.17.0",
+  python: "1.15.0",
+  php: "1.16.0",
+  ruby: "1.15.0",
+  java: "1.17.0",
+} as const;
 const FIXTURE_EMAIL = "gavin@hooli.com";
 const FIXTURE_FIRST_NAME = "Gavin";
 const FIXTURE_LAST_NAME = "Belson";
@@ -54,7 +60,7 @@ const renderTypeScript = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = [`### TypeScript (\`growsurf-typescript\` ${REST_API_LIBRARY_VERSION}+)`];
+  const sections: string[] = [`### TypeScript (\`growsurf-typescript\` ${REST_API_LIBRARY_VERSIONS.typescript}+)`];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
       codeBlock(
@@ -141,7 +147,7 @@ const renderPython = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = [`### Python (\`growsurf-python\` ${REST_API_LIBRARY_VERSION}+)`];
+  const sections: string[] = [`### Python (\`growsurf-python\` ${REST_API_LIBRARY_VERSIONS.python}+)`];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
       codeBlock("sh", "pip install growsurf-python"),
@@ -220,7 +226,7 @@ const renderPhp = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = [`### PHP (\`growsurf/growsurf-php\` ${REST_API_LIBRARY_VERSION}+)`];
+  const sections: string[] = [`### PHP (\`growsurf/growsurf-php\` ${REST_API_LIBRARY_VERSIONS.php}+)`];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
       codeBlock(
@@ -302,10 +308,10 @@ const renderRuby = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = [`### Ruby (\`growsurf-ruby\` ${REST_API_LIBRARY_VERSION}+)`];
+  const sections: string[] = [`### Ruby (\`growsurf-ruby\` ${REST_API_LIBRARY_VERSIONS.ruby}+)`];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
-      codeBlock("ruby", `gem \"growsurf-ruby\", \"~> ${REST_API_LIBRARY_VERSION}\"`),
+      codeBlock("ruby", `gem \"growsurf-ruby\", \"~> ${REST_API_LIBRARY_VERSIONS.ruby}\"`),
       codeBlock(
         "ruby",
         [
@@ -378,10 +384,10 @@ const renderJava = (
   mobileEmail: string,
   referredBy: string,
 ) => {
-  const sections: string[] = [`### Java (\`com.growsurf.api:growsurf-java\` ${REST_API_LIBRARY_VERSION}+)`];
+  const sections: string[] = [`### Java (\`com.growsurf.api:growsurf-java\` ${REST_API_LIBRARY_VERSIONS.java}+)`];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
-      codeBlock("kotlin", `implementation(\"com.growsurf.api:growsurf-java:${REST_API_LIBRARY_VERSION}\")`),
+      codeBlock("kotlin", `implementation(\"com.growsurf.api:growsurf-java:${REST_API_LIBRARY_VERSIONS.java}\")`),
       codeBlock(
         "java",
         [

@@ -15,7 +15,7 @@ import {
 } from "./compactTools.js";
 export { COMPACT_TOOL_NAMES, SUPPORTED_TOOL_SURFACES, type ToolSurface } from "./compactTools.js";
 
-export const GROWSURF_MCP_VERSION = "0.19.16";
+export const GROWSURF_MCP_VERSION = "0.19.17";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -35,7 +35,7 @@ import {
   ACCEPTED_INTEGRATION_KEYS,
 } from "./growsurf/integrations.js";
 import { mobileSdkGuideInputSchema, renderMobileSdkGuide } from "./growsurf/mobileSdkGuide.js";
-import { TOOL_OUTPUT_SCHEMAS, type ToolOutputSchema } from "./growsurf/outputSchemas.js";
+import { REWARD_IMAGE_ICON_KEYS, TOOL_OUTPUT_SCHEMAS, type ToolOutputSchema } from "./growsurf/outputSchemas.js";
 import { computeParticipantAuthHash } from "./growsurf/participantAuth.js";
 import { PAYOUT_DESTINATION_PROVIDER_INPUTS } from "./growsurf/payoutProviders.js";
 import { PROGRAM_LANGUAGE_CODES_TEXT } from "./growsurf/programLanguages.js";
@@ -719,6 +719,7 @@ const rewardWritableFields = {
   event: z.enum(["LEAD", "CONVERSION"]).optional(),
   referralDescription: z.string().nullable().optional(),
   imageUrl: z.string().nullable().optional(),
+  imageIconKey: z.enum(REWARD_IMAGE_ICON_KEYS).nullable().optional(),
   isVisible: z.boolean().optional(),
   isUnlimited: z.boolean().optional(),
   referredRewardUpfront: z.boolean().optional(),
@@ -1497,6 +1498,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               },
               referralDescription: { type: ["string", "null"] },
               imageUrl: { type: ["string", "null"] },
+              imageIconKey: {
+                type: ["string", "null"],
+                enum: [...REWARD_IMAGE_ICON_KEYS, null],
+                description:
+                  "The starter icon shown for the reward, or `null` when `imageUrl` is your own image. Participant pages draw this icon in your program's accent color. Also set `imageUrl` to the icon's image so the iOS and Android SDKs can show it. Sending `imageUrl` without `imageIconKey` clears it.",
+              },
               isVisible: { type: "boolean" },
               isUnlimited: { type: "boolean" },
               referredRewardUpfront: { type: "boolean" },
@@ -1574,6 +1581,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               },
               referralDescription: { type: ["string", "null"] },
               imageUrl: { type: ["string", "null"] },
+              imageIconKey: {
+                type: ["string", "null"],
+                enum: [...REWARD_IMAGE_ICON_KEYS, null],
+                description:
+                  "The starter icon shown for the reward, or `null` when `imageUrl` is your own image. Participant pages draw this icon in your program's accent color. Also set `imageUrl` to the icon's image so the iOS and Android SDKs can show it. Sending `imageUrl` without `imageIconKey` clears it.",
+              },
               isVisible: { type: "boolean" },
               isUnlimited: { type: "boolean" },
               referredRewardUpfront: { type: "boolean" },
@@ -2946,6 +2959,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             event: input.event,
             referralDescription: input.referralDescription,
             imageUrl: input.imageUrl,
+            imageIconKey: input.imageIconKey,
             isVisible: input.isVisible,
             isUnlimited: input.isUnlimited,
             referredRewardUpfront: input.referredRewardUpfront,

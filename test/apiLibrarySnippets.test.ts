@@ -49,11 +49,17 @@ describe("renderApiLibrarySnippets", () => {
   it("uses current SDK versions and Pied Piper fixtures", () => {
     const text = renderApiLibrarySnippets({ language: "all", workflow: "all" }, { campaignId: "abc123" });
 
-    for (const language of ["TypeScript", "Python", "PHP", "Ruby", "Java"]) {
-      expect(text).toMatch(new RegExp(`### ${language} .*1\\.12\\.0\\+`));
+    for (const [language, version] of [
+      ["TypeScript", "1.17.0"],
+      ["Python", "1.15.0"],
+      ["PHP", "1.16.0"],
+      ["Ruby", "1.15.0"],
+      ["Java", "1.17.0"],
+    ]) {
+      expect(text).toMatch(new RegExp(`### ${language} .*${version.replaceAll(".", "\\.")}\\+`));
     }
-    expect(text).toContain('gem "growsurf-ruby", "~> 1.12.0"');
-    expect(text).toContain('implementation("com.growsurf.api:growsurf-java:1.12.0")');
+    expect(text).toContain('gem "growsurf-ruby", "~> 1.15.0"');
+    expect(text).toContain('implementation("com.growsurf.api:growsurf-java:1.17.0")');
     expect(text).not.toContain("1.2.1");
     expect(text).toContain("gavin@hooli.com");
     expect(text).toContain("Gavin");

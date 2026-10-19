@@ -40,6 +40,12 @@ const withRewardEvidence = (schema: ToolOutputSchema): ToolOutputSchema => ({
   },
 });
 
+/** Starter icon keys accepted by a Campaign Reward's `imageIconKey`. */
+export const REWARD_IMAGE_ICON_KEYS = [
+  "GIFT_1", "GIFT_2", "GIFT_3", "GIFT_4", "GIFT_5", "GIFT_6", "GIFT_CARD", "CASH", "COIN", "CARD", "STAR_1",
+  "STAR_2", "STAR_3", "TROPHY", "CROWN", "SEAL", "HEART_1", "HEART_2", "TAG", "DIAMOND", "CONFETTI", "ROCKET",
+] as const;
+
 const MONEY_MINOR_UNITS = "in minor currency units (e.g. cents)";
 
 const METADATA = {
@@ -295,6 +301,11 @@ const REWARD: ToolOutputSchema = {
       description: "The window over which `limit` applies.",
     },
     imageUrl: { type: ["string", "null"], description: "The reward image URL." },
+    imageIconKey: {
+      type: ["string", "null"],
+      enum: [...REWARD_IMAGE_ICON_KEYS, null],
+      description: "The starter icon shown for the reward, or `null` when `imageUrl` is your own image.",
+    },
     couponCode: {
       type: ["string", "null"],
       description:
