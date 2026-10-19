@@ -15,7 +15,7 @@ import {
 } from "./compactTools.js";
 export { COMPACT_TOOL_NAMES, SUPPORTED_TOOL_SURFACES, type ToolSurface } from "./compactTools.js";
 
-export const GROWSURF_MCP_VERSION = "0.19.18";
+export const GROWSURF_MCP_VERSION = "0.19.19";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -1340,7 +1340,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_mobile_sdk_guide",
           description:
-            "Get Markdown implementation guidance for native iOS/Android SDK 0.10.0 or React Native SDK 0.1.1, including attribution, `shareUrl` sharing, `trackShare`, and the native GrowSurf Window. Choose `platform` and `participantState` to tailor the guide; `includeInstallSnippets` controls installation examples. Does not install an SDK or create a participant token. Use `growsurf_client_snippets` for browser JavaScript or `growsurf_api_library_snippets` for backend token-creation code.",
+            "Get Markdown implementation guidance for native iOS/Android SDK 0.10.0 or React Native SDK 0.2.0, including attribution, `shareUrl` sharing, `trackShare`, and the native GrowSurf Window. Choose `platform` and `participantState` to tailor the guide; `includeInstallSnippets` controls installation examples. Does not install an SDK or create a participant token. Use `growsurf_client_snippets` for browser JavaScript or `growsurf_api_library_snippets` for backend token-creation code.",
           inputSchema: {
             type: "object",
             properties: {
