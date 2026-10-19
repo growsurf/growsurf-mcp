@@ -31,8 +31,8 @@ type Workflow = Exclude<ApiLibrarySnippetsInput["workflow"], "all">;
 
 const REST_API_LIBRARY_VERSIONS = {
   typescript: "1.17.0",
-  python: "1.15.0",
-  php: "1.16.0",
+  python: "1.15.1",
+  php: "1.16.1",
   ruby: "1.15.0",
   java: "1.17.0",
 } as const;

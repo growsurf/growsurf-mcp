@@ -51,8 +51,8 @@ describe("renderApiLibrarySnippets", () => {
 
     for (const [language, version] of [
       ["TypeScript", "1.17.0"],
-      ["Python", "1.15.0"],
-      ["PHP", "1.16.0"],
+      ["Python", "1.15.1"],
+      ["PHP", "1.16.1"],
       ["Ruby", "1.15.0"],
       ["Java", "1.17.0"],
     ]) {
