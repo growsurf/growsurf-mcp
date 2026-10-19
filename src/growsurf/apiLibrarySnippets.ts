@@ -30,11 +30,11 @@ type Language = Exclude<ApiLibrarySnippetsInput["language"], "all">;
 type Workflow = Exclude<ApiLibrarySnippetsInput["workflow"], "all">;
 
 const REST_API_LIBRARY_VERSIONS = {
-  typescript: "1.17.0",
-  python: "1.15.1",
-  php: "1.16.1",
-  ruby: "1.15.0",
-  java: "1.17.0",
+  typescript: "1.18.0",
+  python: "1.16.0",
+  php: "1.17.0",
+  ruby: "1.16.0",
+  java: "1.18.0",
 } as const;
 const FIXTURE_EMAIL = "gavin@hooli.com";
 const FIXTURE_FIRST_NAME = "Gavin";

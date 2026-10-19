@@ -475,7 +475,7 @@ const DELETE_PROGRAM_RESOURCE_RESPONSE: ToolOutputSchema = {
 const CAMPAIGN_DESIGN: ToolOutputSchema = {
   type: "object",
   description:
-    "A program's design configuration, organized by section. The sections available depend on the program type. `GET` returns configured fields; `payoutDestinationConfirmation` is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. `PATCH` back only the sections or fields you want to change.",
+    "A program's design configuration, organized by section. The sections available depend on the program type. `GET` returns configured fields; `payoutDestinationConfirmation` is omitted when no confirmation fields are stored. Stored `null` fields are returned as `null`; omitted and `null` fields use localized defaults. `PATCH` back only the sections or fields you want to change. Summary tiles support `stats.<tile>.icon` (`type`: `DEFAULT`, `IMAGE`, or `NONE`; starter `key`; `imageUrl`). Rewards, Referral Status, Leaderboard, Resources, and affiliate Commissions/Payouts support `emptyStateGraphic` with the same fields; its starter keys are `SOFT_DISC`, `DASHED_RING`, `GHOST_ROWS`, `CARD_STACK`, `DOT_FIELD`, and `HALO`.",
   properties: {
     participantAvatarStyle: {
       type: "string",
@@ -491,7 +491,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     resources: {
       type: "object",
       description:
-        "Participant Resources presentation settings: visibility, title, link and copy labels, the message shown when nothing is published, and the section icon. Resource items use the program Resource tools.",
+        "Participant Resources presentation settings: visibility, title, link and copy labels, the message shown when nothing is published, the section icon, and `emptyStateGraphic` (`type`: `DEFAULT`, `IMAGE`, or `NONE`; starter `key`; `imageUrl`). Resource items use the program Resource tools.",
     },
     login: {
       type: "object",
@@ -711,7 +711,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     },
     landingPages: {
       type: "object",
-      description: "Portal and landing pages: company info, `content`, `styles`, third-party script ids, and SEO meta tags.",
+      description: "Portal and landing pages: company info, `content`, `styles`, third-party script ids, and SEO meta tags. `content.howItWorksSteps` replaces the full ordered step array. Each step supports `text`, `imageUrl`, and `iconKey`; `NUMBER` shows the current step number, while keys such as `SHARE` and `REWARD` show starter icons.",
     },
     theme: {
       type: "object",

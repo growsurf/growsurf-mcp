@@ -2,12 +2,12 @@ import { z } from "zod";
 import { DOCS_SITE_URL } from "./insights.js";
 import { kotlinString } from "./snippetLiterals.js";
 
-const MOBILE_SDK_GUIDANCE_VERSION = "0.9.0";
+const MOBILE_SDK_GUIDANCE_VERSION = "0.10.0";
 const IOS_DISTRIBUTION_REPO = "growsurf/growsurf-ios-sdk-distribution";
 const IOS_DISTRIBUTION_URL = `https://github.com/${IOS_DISTRIBUTION_REPO}.git`;
 const IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_REPO}/v${MOBILE_SDK_GUIDANCE_VERSION}/GrowSurfSDK.podspec`;
 // The React Native package has its own version and pins its native SDK versions itself.
-const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.1.0";
+const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.1.1";
 const REACT_NATIVE_PACKAGE_NAME = "growsurf-react-native-sdk";
 const REACT_NATIVE_SDK_DOCS_URL = `${DOCS_SITE_URL}/developer-tools/react-native-sdk`;
 // Device-specific SDK preferences that must not move to another installation through Android backup.

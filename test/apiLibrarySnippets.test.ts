@@ -50,16 +50,16 @@ describe("renderApiLibrarySnippets", () => {
     const text = renderApiLibrarySnippets({ language: "all", workflow: "all" }, { campaignId: "abc123" });
 
     for (const [language, version] of [
-      ["TypeScript", "1.17.0"],
-      ["Python", "1.15.1"],
-      ["PHP", "1.16.1"],
-      ["Ruby", "1.15.0"],
-      ["Java", "1.17.0"],
+      ["TypeScript", "1.18.0"],
+      ["Python", "1.16.0"],
+      ["PHP", "1.17.0"],
+      ["Ruby", "1.16.0"],
+      ["Java", "1.18.0"],
     ]) {
       expect(text).toMatch(new RegExp(`### ${language} .*${version.replaceAll(".", "\\.")}\\+`));
     }
-    expect(text).toContain('gem "growsurf-ruby", "~> 1.15.0"');
-    expect(text).toContain('implementation("com.growsurf.api:growsurf-java:1.17.0")');
+    expect(text).toContain('gem "growsurf-ruby", "~> 1.16.0"');
+    expect(text).toContain('implementation("com.growsurf.api:growsurf-java:1.18.0")');
     expect(text).not.toContain("1.2.1");
     expect(text).toContain("gavin@hooli.com");
     expect(text).toContain("Gavin");
