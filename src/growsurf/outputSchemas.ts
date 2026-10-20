@@ -134,8 +134,9 @@ const PARTICIPANT: ToolOutputSchema = {
     createdAt: { type: "integer", description: "When the participant joined, as a Unix timestamp in milliseconds." },
     referralSource: {
       type: "string",
-      enum: ["DIRECT", "PARTICIPANT"],
-      description: "How the participant joined the program.",
+      enum: ["DIRECT", "PARTICIPANT", "DELETED_PARTICIPANT", "IMPORT", "MANUAL"],
+      description:
+        "How the participant joined the program. `DIRECT` means without a referrer, `PARTICIPANT` means through a participant referral, `IMPORT` means through a CSV import, `MANUAL` means through the dashboard, and `DELETED_PARTICIPANT` means the original referrer was later deleted.",
     },
     referralStatus: {
       type: "string",
@@ -354,7 +355,7 @@ const CAMPAIGN: ToolOutputSchema = {
     currencyISO: { type: ["string", "null"], description: "The program currency as an ISO 4217 code (e.g. `USD`)." },
     status: {
       type: "string",
-      enum: ["DRAFT", "IN_PROGRESS", "COMPLETE", "DELETED"],
+      enum: ["DRAFT", "PENDING", "IN_PROGRESS", "COMPLETE", "CANCELLED", "DELETED"],
       description: "The program status.",
     },
     rewards: {
@@ -511,6 +512,18 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         cooldown: { type: "string", description: "Message shown when another link cannot be requested yet." },
         serverError: { type: "string", description: "Message shown when GrowSurf cannot request a sign-in link." },
         invalidLink: { type: "string", description: "Message shown when a sign-in link is invalid or expired." },
+        verificationHeading: {
+          type: "string",
+          description: "Heading shown when an identified participant verifies their email without entering an address.",
+        },
+        verificationDescription: {
+          type: "string",
+          description: "Explains that the sign-in link goes to the email address on the participant's account.",
+        },
+        verificationSuccessBody: {
+          type: "string",
+          description: "Instructions shown after an identified participant requests a sign-in link.",
+        },
       },
     },
     payoutDestinationConfirmation: {

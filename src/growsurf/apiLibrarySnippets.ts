@@ -229,15 +229,7 @@ const renderPhp = (
   const sections: string[] = [`### PHP (\`growsurf/growsurf-php\` ${REST_API_LIBRARY_VERSIONS.php}+)`];
   if (shouldRenderWorkflow(input, "setup")) {
     sections.push(
-      codeBlock(
-        "json",
-        [
-          "{",
-          "  \"repositories\": [{ \"type\": \"vcs\", \"url\": \"git@github.com:growsurf/growsurf-php.git\" }],",
-          "  \"require\": { \"growsurf/growsurf-php\": \"dev-main\" }",
-          "}",
-        ].join("\n"),
-      ),
+      codeBlock("sh", "composer require growsurf/growsurf-php"),
       codeBlock(
         "php",
         [

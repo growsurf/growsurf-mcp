@@ -464,6 +464,9 @@ describe("tool output schemas", () => {
       "cooldown",
       "serverError",
       "invalidLink",
+      "verificationHeading",
+      "verificationDescription",
+      "verificationSuccessBody",
     ]);
   });
 

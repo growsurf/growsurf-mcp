@@ -621,18 +621,11 @@ export class GrowSurfClient {
   }
 
   private async recordSale(participantPath: string, sale: Record<string, unknown>): Promise<unknown> {
-    // Docs show ".../transaction" while some examples use ".../sales".
-    // Prefer the documented endpoint and fall back to the legacy path if needed.
-    const base = `/campaign/${encodeURIComponent(this.campaignId)}${participantPath}`;
-    try {
-      return await this.requestJson("POST", `${base}/transaction`, sale);
-    } catch (err) {
-      const maybe = err as GrowSurfRequestError;
-      if (maybe && typeof maybe === "object" && (maybe.status === 404 || maybe.status === 405)) {
-        return await this.requestJson("POST", `${base}/sales`, sale);
-      }
-      throw err;
-    }
+    return await this.requestJson(
+      "POST",
+      `/campaign/${encodeURIComponent(this.campaignId)}${participantPath}/transaction`,
+      sale,
+    );
   }
 
   private async requestJson(
