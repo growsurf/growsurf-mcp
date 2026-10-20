@@ -15,7 +15,7 @@ import {
 } from "./compactTools.js";
 export { COMPACT_TOOL_NAMES, SUPPORTED_TOOL_SURFACES, type ToolSurface } from "./compactTools.js";
 
-export const GROWSURF_MCP_VERSION = "0.19.21";
+export const GROWSURF_MCP_VERSION = "0.19.22";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -1890,7 +1890,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_design",
           description:
-            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup, the website widget under `widget` (button or card, placement, timing, and visible pages), the participant Traffic report under `trafficInsights`, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and the participant Settings panel under `participantSettings`, such as the language picker's `languageSectionTitle` and `languageSectionInstructionsText` (up to 500 characters each). `trafficInsights.isPublicDisplayed` controls visibility; its labels cannot be blank. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. Only supplied `fields` change; omitted fields retain their existing content and arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup and the side content of its GrowSurf page (`referredExperience.offerPageDescription` HTML, up to 5 `offerPageSteps` of `{ text, iconKey }`, and up to 3 `offerPageLinks` of `{ text, url }` where an empty `url` links to the Share URL), the website widget under `widget` (button or card, placement, timing, and visible pages), the participant Traffic report under `trafficInsights`, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and the participant Settings panel under `participantSettings`, such as the language picker's `languageSectionTitle` and `languageSectionInstructionsText` (up to 500 characters each). `trafficInsights.isPublicDisplayed` controls visibility; its labels cannot be blank. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. Only supplied `fields` change; omitted fields retain their existing content and arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1977,7 +1977,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               fields: {
                 type: "object",
                 description:
-                  "Installation fields to patch. Common keys include `shareUrl`, `allowedUrls`, `signupEvent`, `referralTrigger`, `signup`, and `instructionSelections`. Arrays replace wholesale.",
+                  "Installation fields to patch. Common keys include `shareUrl`, `allowedUrls`, `signupEvent`, `referralTrigger`, `signup`, `offerPageRedirectSeconds`, and `instructionSelections`. Arrays replace wholesale.",
                 properties: {
                   shareUrl: {
                     type: "string",
@@ -2005,6 +2005,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                       trackInputFields: { type: "boolean" },
                     },
                     additionalProperties: true,
+                  },
+                  offerPageRedirectSeconds: {
+                    type: ["integer", "null"],
+                    enum: [5, 10, 15, null],
+                    description:
+                      "Shows the Claim Offer Popup on a GrowSurf page before a referred friend reaches the customer's site, then redirects after this many seconds. Requires `useGrowSurfHostedLinks: true`. `null` turns the page off. Set the page's side content with `referredExperience.offerPageDescription`, `offerPageSteps`, and `offerPageLinks` through `growsurf_update_campaign_design`.",
                   },
                   instructionSelections: {
                     type: "object",

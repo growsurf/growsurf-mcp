@@ -595,6 +595,31 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         offerPopupSecondaryLinkText: { type: ["string", "null"], maxLength: 100, description: "Optional post-claim link text." },
         offerPopupSecondaryLinkUrl: { type: ["string", "null"], maxLength: 255, description: "Optional post-claim link destination. When saving, use `http://` or `https://`. Send `null` or an empty string to clear it." },
         isOfferPopupOverlayDimmed: { type: "boolean", description: "Whether a centered popup dims the page behind it." },
+        offerPageDescription: { type: "string", maxLength: 150000, description: "HTML shown beside the popup on its GrowSurf page." },
+        offerPageSteps: {
+          type: "array",
+          maxItems: 5,
+          description: "How it works steps shown beside the popup on its GrowSurf page.",
+          items: {
+            type: "object",
+            properties: {
+              text: { type: "string", maxLength: 255, description: "Step text." },
+              iconKey: { type: "string", maxLength: 100, description: "Step icon key, such as `SIGNUP`, `APPROVED`, or `REWARD`." },
+            },
+          },
+        },
+        offerPageLinks: {
+          type: "array",
+          maxItems: 3,
+          description: "Links shown beside the popup on its GrowSurf page.",
+          items: {
+            type: "object",
+            properties: {
+              text: { type: "string", maxLength: 100, description: "Link text." },
+              url: { type: "string", maxLength: 500, description: "Link destination. An empty string links to the Share URL." },
+            },
+          },
+        },
       },
     },
     widget: {
@@ -1035,6 +1060,12 @@ const CAMPAIGN_INSTALLATION: ToolOutputSchema = {
     useGrowSurfHostedLinks: {
       type: "boolean",
       description: "Use GrowSurf-hosted referral links that route clicks by the visitor's device. Mainly for mobile apps.",
+    },
+    offerPageRedirectSeconds: {
+      type: ["integer", "null"],
+      enum: [5, 10, 15, null],
+      description:
+        "Seconds a GrowSurf page with the Claim Offer Popup waits before redirecting a referred friend. Needs `useGrowSurfHostedLinks`. `null` means the page is off.",
     },
     allowedUrls: {
       type: "array",
