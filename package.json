@@ -1,6 +1,6 @@
 {
   "name": "@growsurfteam/growsurf-mcp",
-  "version": "0.19.23",
+  "version": "0.19.24",
   "mcpName": "com.growsurf/growsurf",
   "description": "Official GrowSurf CLI and Model Context Protocol (MCP) server for referral and affiliate programs.",
   "publishConfig": {
@@ -74,7 +74,7 @@
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1",
     "@modelcontextprotocol/sdk": "^1.32.1",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

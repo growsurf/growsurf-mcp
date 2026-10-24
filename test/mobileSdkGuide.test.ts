@@ -251,7 +251,7 @@ describe("mobile snippet literal boundaries", () => {
     );
 
     expect(text).toContain("## GrowSurf React Native SDK guide");
-    expect(text).toContain("React Native SDK version `0.2.0`");
+    expect(text).toContain("React Native SDK version `0.2.1`");
     expect(text).toContain('import GrowSurf from "growsurf-react-native-sdk";');
     expect(text).toContain("Linking.getInitialURL()");
     expect(text).toContain('if (Platform.OS === "android")');

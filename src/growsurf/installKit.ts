@@ -272,7 +272,7 @@ export const renderIntegrationGuide = (
       "### 7) What this MCP server does / does not do",
       "",
       "- It **calls GrowSurf REST** for happy-path server-side actions (campaign, add participant, trigger referral, record sale).",
-      "- It **guides implementation** for web, backend, native iOS/Android SDK 0.10.1, and React Native SDK 0.2.0 paths.",
+      "- It **guides implementation** for web, backend, native iOS/Android SDK 0.10.1, and React Native SDK 0.2.1 paths.",
       formatToolReferences("- It **advises on program design** with `growsurf_program_design_advisor` and **diagnoses tracking, reward, and email problems** symptom-first with `growsurf_troubleshoot_referral_tracking`."),
       formatToolReferences("- For native or React Native mobile apps, use `growsurf_mobile_sdk_guide` for Mobile SDK, attribution, `trackShare`, and native GrowSurf Window examples."),
       "- It **helps compute participant-auth hashes** and create participant-scoped mobile SDK tokens.",

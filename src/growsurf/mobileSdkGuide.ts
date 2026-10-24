@@ -7,7 +7,7 @@ const IOS_DISTRIBUTION_REPO = "growsurf/growsurf-ios-sdk-distribution";
 const IOS_DISTRIBUTION_URL = `https://github.com/${IOS_DISTRIBUTION_REPO}.git`;
 const IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_REPO}/v${MOBILE_SDK_GUIDANCE_VERSION}/GrowSurfSDK.podspec`;
 // The React Native package has its own version and pins its native SDK versions itself.
-const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.2.0";
+const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.2.1";
 const REACT_NATIVE_PACKAGE_NAME = "growsurf-react-native-sdk";
 const REACT_NATIVE_SDK_DOCS_URL = `${DOCS_SITE_URL}/developer-tools/react-native-sdk`;
 // Device-specific SDK preferences that must not move to another installation through Android backup.
@@ -209,7 +209,7 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
 
   if (input.includeInstallSnippets) {
     sections.push(
-      "Install via Swift Package Manager or CocoaPods:",
+      "Use Swift Package Manager for new iOS integrations. CocoaPods apps can use the tag-pinned GitHub podspec below without CocoaPods Trunk:",
       codeBlock(
         "swift",
         [
@@ -519,8 +519,8 @@ const renderReactNative = (input: MobileSdkGuideInput, campaignId: string, mobil
     sections.push(
       "Install from npm:",
       codeBlock("sh", `npm install ${REACT_NATIVE_PACKAGE_NAME}`),
-      "In a bare app, run `pod install` in the `ios` directory. If CocoaPods cannot resolve the pinned GrowSurf SDK, run `pod install --repo-update`. iOS requires iOS 15 or newer. Android requires `minSdk` 24, `compileSdk` 36, and Kotlin 2.1.21 or newer.",
-      "For Expo, add the config plugin, then rebuild the development client. The plugin merges the Android backup exclusions below into your app's rules. If the manifest refers to another library's backup XML, copy that XML into your app's `res/xml` directory first so the plugin can merge it.",
+      "In a bare app, first add `GrowSurfSDK` to the app target in `ios/Podfile` using the tag-pinned GitHub `:podspec` URL in the SDK reference install steps. Match the podspec version to the native iOS version pinned by the installed React Native package, then run `pod install` in the `ios` directory. This avoids CocoaPods Trunk. iOS requires iOS 15 or newer. Android requires `minSdk` 24, `compileSdk` 36, and Kotlin 2.1.21 or newer.",
+      "For Expo, run `npx expo install expo-build-properties`. Add the GrowSurf plugin below and merge `expo-build-properties` with `ios.extraPods` for the same GitHub podspec, following the SDK reference install steps. Keep any existing build-properties configuration and match the native iOS pin. Then rebuild the development client. The GrowSurf plugin merges the Android backup exclusions below into your app's rules. If the manifest refers to another library's backup XML, copy that XML into your app's `res/xml` directory first so the plugin can merge it.",
       codeBlock(
         "json",
         [
