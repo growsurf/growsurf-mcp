@@ -124,6 +124,10 @@ export const INTEGRATIONS: readonly Integration[] = [
   { key: "webhook", label: "Webhooks", category: "Custom & webhooks" },
   // Other
   { key: "baskHealth", label: "Bask Health", category: "Other", referralOnly: true },
+  { key: "carevalidate", label: "CareValidate", category: "Other", referralOnly: true },
+  { key: "mdIntegrations", label: "MD Integrations", category: "Other", referralOnly: true },
+  { key: "lithos", label: "Lithos", category: "Other", referralOnly: true },
+  { key: "telegra", label: "Telegra", category: "Other", referralOnly: true },
 ] as const;
 
 /** All connectable integration keys, in registry order. */

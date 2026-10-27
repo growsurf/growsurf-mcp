@@ -749,7 +749,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     },
     landingPages: {
       type: "object",
-      description: "Portal and landing pages: company info, `content`, `styles`, third-party script ids, and SEO meta tags. `content.howItWorksSteps` replaces the full ordered step array. Each step supports `text`, `imageUrl`, and `iconKey`; `NUMBER` shows the current step number, while keys such as `SHARE` and `REWARD` show starter icons.",
+      description: "Portal and landing pages: company info, `content`, `styles`, third-party script ids, and SEO meta tags. `content.howItWorksTitle` is the plain-text heading above the How it works steps (up to 255 characters). The Program Page shows it, and the GrowSurf window shows it while `content.howItWorks` is still the starter heading `<h5>How It Works</h5>`. Programs that never set it read back `How it works`; send `null` or blank text to show `How it works` again. `content.howItWorksSteps` replaces the full ordered step array. Each step supports `text`, `imageUrl`, and `iconKey`; `NUMBER` shows the current step number, while keys such as `SHARE` and `REWARD` show starter icons.",
     },
     theme: {
       type: "object",
