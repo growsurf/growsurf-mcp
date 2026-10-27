@@ -225,7 +225,7 @@ export const renderIntegrationGuide = (
 
   if (!isAffiliateOnly && !isReferralOnly) {
     connectSection.push(
-      "Tango Card, Tremendous, and Bask Health apply to referral programs only (they're hidden on affiliate programs).",
+      "Tango Card, Tremendous, Bask Health, CareValidate, MD Integrations, Lithos, and Telegra apply to referral programs only (they're hidden on affiliate programs).",
       "Wise applies to affiliate programs only.",
       "",
     );

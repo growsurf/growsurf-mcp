@@ -1440,8 +1440,8 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             properties: {
               type: { type: "string", enum: ["REFERRAL", "AFFILIATE"] },
               name: { type: "string", minLength: 1 },
-              companyName: { type: ["string", "null"] },
-              companyLogoImageUrl: { type: ["string", "null"] },
+              companyName: { type: ["string", "null"], minLength: 1 },
+              companyLogoImageUrl: { type: ["string", "null"], minLength: 1 },
               currencyISO: { type: "string" },
               goal: {
                 type: "string",
@@ -1468,8 +1468,8 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             type: "object",
             properties: {
               name: { type: "string", minLength: 1 },
-              companyName: { type: ["string", "null"] },
-              companyLogoImageUrl: { type: ["string", "null"] },
+              companyName: { type: ["string", "null"], minLength: 1 },
+              companyLogoImageUrl: { type: ["string", "null"], minLength: 1 },
               status: {
                 type: "string",
                 enum: ["IN_PROGRESS", "COMPLETE"],
@@ -1963,13 +1963,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_options",
           description:
-            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, affiliate enrollment and application review, notifications, the program's languages under `languages`, and other behavior options). Returns the full object with every field and its current value, the same shape you send back on update. `attributionModel`: Selects which server-verified visit receives conversion credit within `referralCookieWindowDays`. `autoFulfillRewards: false` permits manual fulfillment and does not prove that any reward went undelivered. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, affiliate enrollment and application review, notifications, the program's languages under `languages`, and other behavior options). Returns the full object with every field and its current value, the same shape you send back on update. `autoFulfillRewards: false` permits manual fulfillment and does not prove that any reward went undelivered. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_options",
           description:
-            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `attributionModel`: Selects which server-verified visit receives conversion credit within `referralCookieWindowDays`. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. `languages.showFlags` shows or hides the flag next to each language name. Turning on `languages.additionalLanguages` returns `403` if your account does not include additional languages. While any are on, every `languages` change, including turning them off, returns the same `403`. Translations are managed in the GrowSurf dashboard, not through this tool. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. `languages.showFlags` shows or hides the flag next to each language name. Turning on `languages.additionalLanguages` returns `403` if your account does not include additional languages. While any are on, every `languages` change, including turning them off, returns the same `403`. Translations are managed in the GrowSurf dashboard, not through this tool. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2315,7 +2315,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_add_participant",
           description:
-            "Add or fetch a participant by email. If the email already exists, the existing participant is returned unchanged. One exception: if that participant claimed an offer in the Claim Offer Popup and the signup is not complete yet, Add completes the signup with the original referrer and saves any non-blank `firstName`, `lastName`, and `metadata` you send. This is trusted direct enrollment and bypasses the public application review flow for affiliates. For affiliate programs, set `isAffiliate` to `true` to enroll a new participant as approved or `false` to create a non-affiliate. If you omit it, a valid `referredBy` creates a referred non-affiliate; without a valid referrer, the new participant is enrolled as approved. A valid `referredBy` can be combined with `isAffiliate: true`. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Add or fetch a participant by email. If the email already exists, the existing participant is returned unchanged. One exception: if that participant claimed an offer in the Claim Offer Popup and the signup is not complete yet, this call completes the signup with the original referrer and saves any non-blank `firstName`, `lastName`, and `metadata` you send. This is trusted direct enrollment and bypasses the public application review flow for affiliates. For affiliate programs, set `isAffiliate` to `true` to enroll a new participant as approved or `false` to create a non-affiliate. If you omit it, a valid `referredBy` creates a referred non-affiliate; without a valid referrer, the new participant is enrolled as approved. A valid `referredBy` can be combined with `isAffiliate: true`. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2787,7 +2787,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_integration_connect_link",
           description:
-            "Return a dashboard link to an integration's connect panel in the GrowSurf Program Editor (Options > Integrations). Connecting Stripe, PayPal, Wise, or another account requires the user to complete the dashboard flow; the API cannot connect an account on their behalf. `integration` accepts supported keys, including camelCase keys such as `constantContact` and `helpScout`. The result reports whether the integration is `connected`, `enabled`, or `autoDisabled`. If the program check cannot run, `programVerified` is `false` and the result still includes a production dashboard link. Tango Card, Tremendous, and Bask Health apply only to referral programs. Wise applies only to affiliate programs. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Return a dashboard link to an integration's connect panel in the GrowSurf Program Editor (Options > Integrations). Connecting Stripe, PayPal, Wise, or another account requires the user to complete the dashboard flow; the API cannot connect an account on their behalf. `integration` accepts supported keys, including camelCase keys such as `constantContact` and `helpScout`. The result reports whether the integration is `connected`, `enabled`, or `autoDisabled`. If the program check cannot run, `programVerified` is `false` and the result still includes a production dashboard link. Tango Card, Tremendous, Bask Health, CareValidate, MD Integrations, Lithos, and Telegra apply only to referral programs. Wise applies only to affiliate programs. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {

@@ -8,6 +8,8 @@ export type ToolInputValidationDetail = {
   message: string;
 };
 
+const MAX_MATCHED_PARTICIPANT_IDS = 20;
+
 const INTERNAL_SOURCE_LOCATION_PATTERN =
   /(?:file:\/\/\/|[A-Za-z]:[\\/]|\/)(?:[^/\\\s()'"]+[\\/])*[^/\\\s()'"]+\.(?:[cm]?[jt]sx?|map):\d+(?::\d+)?/g;
 
@@ -91,10 +93,15 @@ export const toToolErrorText = (err: unknown): string => {
     if (typeof maybe.status === "number" && Number.isFinite(maybe.status)) {
       publicError.status = maybe.status;
     }
+    // The API does not bound this list, so cap it to keep one blocked signup from flooding the
+    // model context. The total says how many matched when the list is cut.
     const matchedParticipantIds: unknown = maybe.matchedParticipantIds;
     if (Array.isArray(matchedParticipantIds)) {
       const ids = matchedParticipantIds.filter((id): id is string => typeof id === "string");
-      if (ids.length > 0) publicError.matchedParticipantIds = ids.map(sanitizeToolErrorString);
+      if (ids.length > 0) {
+        publicError.matchedParticipantIds = ids.slice(0, MAX_MATCHED_PARTICIPANT_IDS).map(sanitizeToolErrorString);
+        if (ids.length > MAX_MATCHED_PARTICIPANT_IDS) publicError.matchedParticipantIdsTotal = ids.length;
+      }
     }
     const validationErrors = sanitizeValidationErrors(maybe.errors);
     if (validationErrors) publicError.errors = validationErrors;
