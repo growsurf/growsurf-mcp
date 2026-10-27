@@ -992,7 +992,7 @@ const CAMPAIGN_OPTIONS: ToolOutputSchema = {
       type: "string",
       enum: ["OPEN_ENROLLMENT", "MANUAL_REVIEW", "AUTO_APPROVE"],
       description:
-        "Affiliate programs only. How public signups join the program. `OPEN_ENROLLMENT` enrolls them directly; `MANUAL_REVIEW` collects an application you approve or deny; `AUTO_APPROVE` collects the application and approves it immediately. A reviewed mode requires the program's published application page. Enrollment through the API, CSV import, dashboard, or invites is never blocked by this setting.",
+        "Affiliate programs only. How public signups join the program. `OPEN_ENROLLMENT` enrolls them directly; `MANUAL_REVIEW` collects an application you approve or deny; `AUTO_APPROVE` collects the application and approves it immediately. Switching to a reviewed mode requires a saved Program Page. Enrollment through the API, CSV import, dashboard, or invites is never blocked by this setting.",
     },
     affiliateReapplicationPolicy: {
       type: "string",
