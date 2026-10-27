@@ -22,7 +22,11 @@ export type GrowSurfRequestError = {
   message?: string;
   status?: number;
   supportUrl?: string;
+  policyName?: string;
   errors?: unknown;
+  // Returned when a participant signup is blocked.
+  matchedParticipantIds?: string[];
+  blockedAt?: string;
   [key: string]: unknown;
 };
 
@@ -31,6 +35,7 @@ export type GrowSurfParticipantInput = {
   isAffiliate?: boolean;
   referredBy?: string;
   referralStatus?: "CREDIT_PENDING" | "CREDIT_AWARDED";
+  referredAt?: number | null;
   firstName?: string;
   lastName?: string;
   ipAddress?: string;

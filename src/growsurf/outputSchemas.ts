@@ -144,6 +144,11 @@ const PARTICIPANT: ToolOutputSchema = {
       description: "The referrer's credit status for this participant. Present only when the participant was referred.",
     },
     referredBy: { type: "string", description: "Id of the referrer. Present only when the participant was referred." },
+    referralLeadQualifiedAt: {
+      type: ["integer", "null"],
+      description:
+        "When this referred signup counted as a lead for the referrer, in Unix milliseconds. Set only when the program's `referralTrigger` is `CUSTOM`. Lead-event Campaign Rewards and commissions use it.",
+    },
     fraudRiskLevel: {
       type: "string",
       enum: ["LOW", "MEDIUM", "HIGH"],
@@ -482,7 +487,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
       type: "string",
       enum: ["CHARACTERS", "INITIALS", "ANIMALS", "GRADIENT"],
       description:
-        "How participant avatars appear in the GrowSurf Window. New programs use `CHARACTERS`; missing or unknown stored values return `INITIALS`.",
+        "How participant avatars appear in the GrowSurf Window. New programs start with `INITIALS`. Programs with a missing or unknown stored value return `INITIALS` for backward compatibility.",
     },
     window: { type: "object", description: "Layout of the GrowSurf window (`navigationMode`: `TABS` or `LIST`)." },
     header: { type: "object", description: "Header content for participants (`postText`) and non-participants (`preText`)." },
@@ -568,7 +573,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     referralStatus: {
       type: "object",
       description:
-        "The section listing who a participant invited and each invite's progress. `revealInviteEmails` lets a signed-in participant see original invitation addresses when disclosure permission was recorded. Private invites and full email masking keep addresses hidden. Other referral addresses stay masked. `revealInviteEmailText` supplies the sign-in prompt; `loadErrorMessage` is shown when the list cannot load; `followUp` supplies the invitation follow-up labels and messages.",
+        "The section listing who a participant invited and each invite's progress. `revealInviteEmails` lets a signed-in participant see original invitation addresses when disclosure permission was recorded. Private invites and full email masking keep addresses hidden. Other referral addresses stay masked. `revealInviteEmailText` supplies the sign-in prompt; `loadErrorMessage` is shown when the list cannot load; `followUp` supplies the invitation follow-up labels and messages. `statusTooltip` sets the tooltip text for each referral status. `sortFilter` controls the sort and filter menu: `isEnabled` shows or hides it, and the other fields set its labels and options.",
     },
     leaderboard: { type: "object", description: "The leaderboard section: labels, selectors, and name masking." },
     referredExperience: {
@@ -620,6 +625,11 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
             },
           },
         },
+        isPageTitleReplacementActive: {
+          type: "boolean",
+          description:
+            "Whether referred visitors see `pageTitleReplacement` as the browser tab title. Programs that never set it read back `false`.",
+        },
       },
     },
     widget: {
@@ -649,9 +659,9 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         icon: {
           type: "string",
           enum: ["CUSTOM", "NONE", "DEFAULT"],
-          description: "An uploaded image instead of a `markKey` drawing. `CUSTOM` uses `iconImageUrl`; `NONE` shows no image. `DEFAULT` is the old GrowSurf image: a program already set to it keeps it and can read it back, but it cannot be set. Requires a paid plan.",
+          description: "An uploaded image instead of a `markKey` drawing. `CUSTOM` uses `iconImageUrl`; `NONE` shows no image. `DEFAULT` is the old GrowSurf image: a program already set to it keeps it and can read it back, but it cannot be set.",
         },
-        iconImageUrl: { type: ["string", "null"], maxLength: 500, description: "The uploaded image, used when `icon` is `CUSTOM`. Requires a paid plan." },
+        iconImageUrl: { type: ["string", "null"], maxLength: 500, description: "The uploaded image, used when `icon` is `CUSTOM`." },
         placement: {
           type: "string",
           enum: ["TOP_LEFT", "TOP_CENTER", "TOP_RIGHT", "BOTTOM_LEFT", "BOTTOM_CENTER", "BOTTOM_RIGHT"],
@@ -733,7 +743,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     },
     referralSummary: {
       type: "object",
-      description: "Referral programs only. The participant's row of summary tiles (clicks, leads, referrals, rewards).",
+      description: "Referral programs only. The participant's row of summary tiles (clicks, leads, referrals, rewards). `stats.rewardsEarned.displayMode` selects `COUNT` (approved reward count) or `AMOUNT` (total of the approved rewards' saved `metadata.rewardAmount` values, in the program currency). Telehealth programs default to `AMOUNT`; other referral programs default to `COUNT`. An explicit choice overrides the default. If any approved reward lacks a valid saved amount or matching currency, the participant sees the reward count. Changing a Campaign Reward's amount affects future rewards only.",
     },
     affiliateSummary: {
       type: "object",
@@ -749,7 +759,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     },
     landingPages: {
       type: "object",
-      description: "Portal and landing pages: company info, `content`, `styles`, third-party script ids, and SEO meta tags. `content.howItWorksTitle` is the plain-text heading above the How it works steps (up to 255 characters). The Program Page shows it, and the GrowSurf window shows it while `content.howItWorks` is still the starter heading `<h5>How It Works</h5>`. Programs that never set it read back `How it works`; send `null` or blank text to show `How it works` again. `content.howItWorksSteps` replaces the full ordered step array. Each step supports `text`, `imageUrl`, and `iconKey`; `NUMBER` shows the current step number, while keys such as `SHARE` and `REWARD` show starter icons.",
+      description: "Portal and landing pages: company info, `content`, `styles`, third-party script ids, and SEO meta tags. `content.howItWorksTitle` is the plain-text heading above the How it works steps (up to 255 characters). The Program Page shows it, and the GrowSurf window shows it while `content.howItWorks` is still the starter heading `<h5>How It Works</h5>`. Programs that never set it read back `How it works`; send `null` or blank text to show `How it works` again. `content.howItWorksSteps` replaces the full ordered step array. Each step supports `text`, `imageUrl`, and `iconKey`; `NUMBER` shows the current step number, while keys such as `SHARE` and `REWARD` show starter icons. `isProgramPageEnabled` turns on the Program Page for a referral program. After you turn it on, you cannot turn it off. `programPage` holds the Program Page content: `hero`, `blocks`, `sectionOrder`, `sectionVisibility` (`false` hides a section), `headerLinks` (referral programs only, up to 3), `applicationForm.fields` (affiliate programs only, 1 to 30 fields), `requirements`, and `messages`. Updates get the same checks as a dashboard save. An array replaces the stored array. Blank `messages` text reads back as the default text.",
     },
     theme: {
       type: "object",
@@ -757,7 +767,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
       properties: {
         referredExperienceOfferPopup: {
           type: "object",
-          description: "Paid-plan color settings for the Claim Offer Popup.",
+          description: "Color settings for the Claim Offer Popup.",
           properties: {
             color: { type: ["string", "null"], maxLength: 255, description: "Popup text color." },
             backgroundColor: { type: ["string", "null"], maxLength: 255, description: "Popup background color." },
@@ -765,7 +775,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         },
         widget: {
           type: "object",
-          description: "Paid-plan color settings for the website widget.",
+          description: "Color settings for the website widget.",
           properties: {
             color: { type: ["string", "null"], maxLength: 255, description: "Text and drawing color on the button, and on the card's own button." },
             backgroundColor: { type: ["string", "null"], maxLength: 255, description: "Fill color of the button, and of the card's own button." },
@@ -961,6 +971,12 @@ const CAMPAIGN_OPTIONS: ToolOutputSchema = {
       type: "boolean",
       description: "Do not attribute referrals from visitors who arrived through paid ads.",
     },
+    attributionModel: {
+      type: "string",
+      enum: ["LAST_CLICK", "FIRST_CLICK"],
+      description:
+        "Selects which server-verified visit receives conversion credit within `referralCookieWindowDays`. `LAST_CLICK` is used when this field is missing, including for programs created before attribution models were configurable.",
+    },
     referralCookieWindowDays: {
       type: "integer",
       enum: [1, 3, 7, 14, 30, 60, 90, 180, 365, 400],
@@ -1015,7 +1031,7 @@ const CAMPAIGN_OPTIONS: ToolOutputSchema = {
     languages: {
       type: "object",
       description:
-        "The languages the program runs in. Participants see the portal and program emails in their language. Turning on additional languages, and any change while they are on, requires the Business plan or higher. Translations are managed in the dashboard.",
+        "The languages the program runs in. Participants see the portal and program emails in their language. Translations are managed in the dashboard.",
       properties: {
         baseLanguage: {
           type: "string",

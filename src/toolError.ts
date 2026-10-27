@@ -83,13 +83,18 @@ export const toToolErrorText = (err: unknown): string => {
   if (typeof err === "object") {
     const maybe = err as GrowSurfRequestError;
     const publicError: Record<string, unknown> = {};
-    for (const key of ["name", "code", "message", "supportUrl", "policyName", "level", "timestamp"] as const) {
+    for (const key of ["name", "code", "message", "supportUrl", "policyName", "level", "timestamp", "blockedAt"] as const) {
       if (typeof maybe[key] === "string") {
         publicError[key] = sanitizeToolErrorString(maybe[key]);
       }
     }
     if (typeof maybe.status === "number" && Number.isFinite(maybe.status)) {
       publicError.status = maybe.status;
+    }
+    const matchedParticipantIds: unknown = maybe.matchedParticipantIds;
+    if (Array.isArray(matchedParticipantIds)) {
+      const ids = matchedParticipantIds.filter((id): id is string => typeof id === "string");
+      if (ids.length > 0) publicError.matchedParticipantIds = ids.map(sanitizeToolErrorString);
     }
     const validationErrors = sanitizeValidationErrors(maybe.errors);
     if (validationErrors) publicError.errors = validationErrors;
