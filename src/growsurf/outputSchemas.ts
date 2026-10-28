@@ -489,6 +489,12 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
       description:
         "How participant avatars appear in the GrowSurf Window. New programs start with `INITIALS`. Programs with a missing or unknown stored value return `INITIALS` for backward compatibility.",
     },
+    visualStyle: {
+      type: "string",
+      enum: ["GLOW", "CLEAN", "FLAT", "ROUND"],
+      description:
+        "The program Style. It sets corners, shadows, button shape and background on program pages and the GrowSurf Window. New referral programs start with `GLOW` and new affiliate programs with `CLEAN`. Omitted when the program has no saved Style; those programs keep their original look.",
+    },
     window: { type: "object", description: "Layout of the GrowSurf window (`navigationMode`: `TABS` or `LIST`)." },
     header: { type: "object", description: "Header content for participants (`postText`) and non-participants (`preText`)." },
     stats: { type: "object", description: "The participant's referral-progress stats panel. Only `title` is editable." },
