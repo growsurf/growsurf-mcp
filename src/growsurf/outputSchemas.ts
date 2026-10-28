@@ -491,7 +491,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     },
     visualStyle: {
       type: "string",
-      enum: ["GLOW", "CLEAN", "FLAT", "ROUND"],
+      enum: ["GLOW", "CLEAN", "FLAT", "ROUND", "TINT", "GLASS"],
       description:
         "The program Style. It sets corners, shadows, button shape and background on program pages and the GrowSurf Window. New referral programs start with `GLOW` and new affiliate programs with `CLEAN`. Omitted when the program has no saved Style; those programs keep their original look.",
     },

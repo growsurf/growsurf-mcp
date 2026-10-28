@@ -13,3 +13,6 @@ growsurf-docs
 
 # Local and CI dependency audit reports
 /audit-reports/
+
+/.impeccable
+/.scratch
