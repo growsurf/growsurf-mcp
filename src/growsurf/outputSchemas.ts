@@ -749,7 +749,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     },
     referralSummary: {
       type: "object",
-      description: "Referral programs only. The participant's row of summary tiles (clicks, leads, referrals, rewards). `stats.rewardsEarned.displayMode` selects `COUNT` (approved reward count) or `AMOUNT` (total of the approved rewards' saved `metadata.rewardAmount` values, in the program currency). Telehealth programs default to `AMOUNT`; other referral programs default to `COUNT`. An explicit choice overrides the default. If any approved reward lacks a valid saved amount or matching currency, the participant sees the reward count. Changing a Campaign Reward's amount affects future rewards only.",
+      description: "Referral programs only. The participant's row of summary tiles (clicks, leads, referrals, rewards). `stats.rewardsEarned.displayMode` selects `COUNT` (approved reward count) or `AMOUNT` (total of the approved rewards’ saved recipient amounts, using `referredRewardAmount` for a friend when present and otherwise `rewardAmount`, with saved currency matching the program currency). Telehealth programs default to `AMOUNT`; other referral programs default to `COUNT`. An explicit choice overrides the default. If any approved reward lacks a valid saved amount or matching currency, the participant sees the reward count. Changing a Campaign Reward's amount affects future rewards only.",
     },
     affiliateSummary: {
       type: "object",

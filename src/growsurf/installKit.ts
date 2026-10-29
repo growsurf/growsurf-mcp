@@ -238,7 +238,7 @@ export const renderIntegrationGuide = (
       "### 5) Webhooks (recommended)",
       "",
       "- Configure a webhook URL in GrowSurf (Program Editor → Options → Webhooks).",
-      "- Build your handler to be idempotent because the same event can arrive more than once.",
+      "- For referral reward delivery, handle only approved rewards and use the program ID plus earned reward ID as an atomic delivery key. The normalization key identifies event deliveries; it is not a reward-delivery key. Follow https://docs.growsurf.com/developer-tools/webhooks#using-reward-metadata for recipient amounts, saved currency, and safe retries.",
       "",
       "#### Webhook security",
       "",
