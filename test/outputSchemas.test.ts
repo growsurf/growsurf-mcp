@@ -254,7 +254,7 @@ describe("tool output schemas", () => {
     const reward = (rewardList.properties?.rewards as { items?: { properties?: Record<string, unknown> } }).items;
     const event = reward?.properties?.event as { enum?: unknown[]; description?: string };
 
-    expect(event.enum).toEqual(["LEAD", "CONVERSION", null]);
+    expect(event.enum).toEqual(["LEAD", "CONVERSION"]);
     expect(event.description).toContain("referred signup");
     expect(event.description).toContain("qualifying action");
 

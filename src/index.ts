@@ -206,6 +206,10 @@ const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
   "growsurf_update_campaign_options",
   "growsurf_get_campaign_installation",
   "growsurf_update_campaign_installation",
+  "growsurf_get_campaign_custom_domain",
+  "growsurf_set_campaign_custom_domain",
+  "growsurf_verify_campaign_custom_domain",
+  "growsurf_remove_campaign_custom_domain",
   "growsurf_capture_referral_flow_screenshots",
   "growsurf_get_campaign_analytics",
   "growsurf_get_campaign_activation_analytics",
@@ -373,24 +377,24 @@ const omitUndefined = <T extends Record<string, unknown>>(obj: T): Partial<T> =>
 const addParticipantSchema = z.object({
   email: z.string().min(3),
   isAffiliate: z.boolean().optional(),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  referredBy: z.string().optional(),
+  firstName: z.string().max(255).optional(),
+  lastName: z.string().max(255).optional(),
+  referredBy: z.string().max(100).optional(),
   referralStatus: z.enum(["CREDIT_PENDING", "CREDIT_AWARDED"]).optional(),
   referredAt: z.number().int().min(0).nullable().optional(),
-  ipAddress: z.string().optional(),
-  fingerprint: z.string().optional(),
+  ipAddress: z.string().max(255).optional(),
+  fingerprint: z.string().max(255).optional(),
   mobileInstanceId: z.string().max(255).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-  // `null` uses the program's base language. The API validates the code against the program's languages.
-  language: z.string().nullable().optional(),
+  // Omit to use the program's base language. A value that is not one of the program's languages is ignored.
+  language: z.string().optional(),
 });
 
 // Shared by `growsurf_add_participant` and `growsurf_create_mobile_participant_token`, which both
 // send the public create-participant request body.
 const CREATE_PARTICIPANT_LANGUAGE_INPUT = {
-  type: ["string", "null"],
-  description: `The language of the participant's portal and program emails. Stored when it is one of the program's languages (\`languages\` in \`growsurf_get_campaign_options\`). A regional tag maps to its language (for example, \`es-MX\` is stored as \`es\`). Any other value is ignored and the program's base language applies. Applies only when this call creates the participant. Omit it or send \`null\` to use the program's base language. ${PROGRAM_LANGUAGE_CODES_TEXT}`,
+  type: "string",
+  description: `The language of the participant's portal and program emails. Stored when it is one of the program's languages (\`languages\` in \`growsurf_get_campaign_options\`). A regional tag maps to its language (for example, \`es-MX\` is stored as \`es\`). Any other value is ignored and the program's base language applies. Applies only when this call creates the participant. Omit it to use the program's base language. ${PROGRAM_LANGUAGE_CODES_TEXT}`,
 } as const;
 
 const CREATE_PARTICIPANT_REFERRED_AT_INPUT = {
@@ -471,15 +475,15 @@ const recordSaleSchema = z
     participantEmail: z.string().min(3).optional(),
     currency: z.string().length(3).regex(/^[A-Za-z]{3}$/),
     grossAmount: z.number().int().positive(),
-    invoiceId: z.string().min(1).optional(),
-    chargeId: z.string().min(1).optional(),
-    paymentIntentId: z.string().min(1).optional(),
-    transactionId: z.string().min(1).optional(),
-    externalId: z.string().min(1).optional(),
-    orderId: z.string().min(1).optional(),
-    paymentId: z.string().min(1).optional(),
-    customerId: z.string().min(1).optional(),
-    subscriptionId: z.string().min(1).optional(),
+    invoiceId: z.string().min(1).max(500).optional(),
+    chargeId: z.string().min(1).max(500).optional(),
+    paymentIntentId: z.string().min(1).max(500).optional(),
+    transactionId: z.string().min(1).max(500).optional(),
+    externalId: z.string().min(1).max(500).optional(),
+    orderId: z.string().min(1).max(500).optional(),
+    paymentId: z.string().min(1).max(500).optional(),
+    customerId: z.string().min(1).max(500).optional(),
+    subscriptionId: z.string().min(1).max(500).optional(),
     netAmount: z.number().int().nonnegative().optional(),
     taxAmount: z.number().int().nonnegative().optional(),
     amountCashNet: z.number().int().nonnegative().optional(),
@@ -514,18 +518,18 @@ const refundTransactionSchema = z
     amendmentType: z.enum(["REFUND", "CHARGEBACK"]).optional(),
     amountRefunded: z.number().int().nonnegative().optional(),
     amount: z.number().int().positive().optional(),
-    refundId: z.string().min(1).optional(),
-    refundStatus: z.string().min(1).optional(),
+    refundId: z.string().min(1).max(500).optional(),
+    refundStatus: z.string().min(1).max(500).optional(),
     refundAmount: z.number().int().nonnegative().optional(),
     refundHistoryComplete: z.boolean().optional(),
-    currency: z.string().min(3).optional(),
-    invoiceId: z.string().min(1).optional(),
-    chargeId: z.string().min(1).optional(),
-    paymentIntentId: z.string().min(1).optional(),
-    transactionId: z.string().min(1).optional(),
-    externalId: z.string().min(1).optional(),
-    orderId: z.string().min(1).optional(),
-    paymentId: z.string().min(1).optional(),
+    currency: z.string().length(3).regex(/^[A-Za-z]{3}$/).optional(),
+    invoiceId: z.string().min(1).max(500).optional(),
+    chargeId: z.string().min(1).max(500).optional(),
+    paymentIntentId: z.string().min(1).max(500).optional(),
+    transactionId: z.string().min(1).max(500).optional(),
+    externalId: z.string().min(1).max(500).optional(),
+    orderId: z.string().min(1).max(500).optional(),
+    paymentId: z.string().min(1).max(500).optional(),
     description: z.string().max(500).optional(),
   })
   .refine((v) => Boolean(v.participantId) || Boolean(v.participantEmail), {
@@ -605,6 +609,11 @@ const campaignInstallationUpdateSchema = campaignConfigUpdateSchema.extend({
   replaceExistingShareUrl: z.boolean().optional(),
 });
 
+// Mirrors openapi CampaignCustomDomainRequest. The API owns hostname-format validation (`400`).
+const setCampaignCustomDomainSchema = z.object({
+  domain: z.string().min(1).max(255),
+});
+
 // Tax valuation settings shared by the reward `value` and `referredValue` fields
 // (openapi RewardTaxValuation). For configurable non-commission rewards, a null `taxCharacter`
 // inherits the program's confirmed treatment; Commission always uses `NONEMPLOYEE_SERVICES`.
@@ -634,20 +643,20 @@ const COMMISSION_AMOUNT_DESCRIPTION =
 
 const commissionStructureSchema = z
   .object({
-    type: z.enum(["PERCENT", "FIXED"]).optional(),
-    event: z.enum(["CLICK", "LEAD", "SALE"]).optional(),
+    type: z.enum(["PERCENT", "FIXED"]).nullable().optional(),
+    event: z.enum(["CLICK", "LEAD", "SALE"]).nullable().optional(),
     amount: z.number().int().min(1).max(COMMISSION_AMOUNT_MAXIMUM).nullable().optional().describe(COMMISSION_AMOUNT_DESCRIPTION),
     amountISO: z.string().nullable().optional(),
     percent: z.number().nullable().optional(),
-    minPaidReferrals: z.number().int().min(1).optional(),
-    holdDuration: z.number().int().optional(),
-    duration: z.enum(["FOREVER", "REPEATING", "ONCE"]).optional(),
+    minPaidReferrals: z.number().int().nullable().optional(),
+    holdDuration: z.number().int().nullable().optional(),
+    duration: z.enum(["FOREVER", "REPEATING", "ONCE"]).nullable().optional(),
     durationInMonths: z.number().int().nullable().optional(),
-    approvalRequired: z.boolean().optional(),
-    hasMaxAmount: z.boolean().optional(),
+    approvalRequired: z.boolean().nullable().optional(),
+    hasMaxAmount: z.boolean().nullable().optional(),
     maxAmount: z.number().int().nullable().optional().describe(COMMISSION_MINOR_UNITS_DESCRIPTION),
     maxAmountISO: z.string().nullable().optional(),
-    hasIntro: z.boolean().optional(),
+    hasIntro: z.boolean().nullable().optional(),
     introType: z.enum(["PERCENT", "FIXED"]).nullable().optional(),
     introPercent: z.number().nullable().optional(),
     introAmount: z.number().int().nullable().optional().describe(COMMISSION_MINOR_UNITS_DESCRIPTION),
@@ -682,10 +691,10 @@ const commissionStructureJsonSchema = {
   description:
     "Affiliate commission structure (AFFILIATE rewards only). Provide a positive `amount` (+ optional `amountISO`) for a FIXED commission, or `percent` for a PERCENT commission. CLICK and LEAD commissions must use FIXED.",
   properties: {
-    type: { type: "string", enum: ["PERCENT", "FIXED"] },
+    type: { type: ["string", "null"], enum: ["PERCENT", "FIXED", null] },
     event: {
-      type: "string",
-      enum: ["CLICK", "LEAD", "SALE"],
+      type: ["string", "null"],
+      enum: ["CLICK", "LEAD", "SALE", null],
       description: "The affiliate event that earns the commission. `CLICK` and `LEAD` must use `FIXED`.",
     },
     amount: {
@@ -696,15 +705,15 @@ const commissionStructureJsonSchema = {
     },
     amountISO: { type: ["string", "null"] },
     percent: { type: ["number", "null"] },
-    minPaidReferrals: { type: "integer", minimum: 1 },
-    holdDuration: { type: "integer" },
-    duration: { type: "string", enum: ["FOREVER", "REPEATING", "ONCE"] },
+    minPaidReferrals: { type: ["integer", "null"] },
+    holdDuration: { type: ["integer", "null"] },
+    duration: { type: ["string", "null"], enum: ["FOREVER", "REPEATING", "ONCE", null] },
     durationInMonths: { type: ["integer", "null"] },
-    approvalRequired: { type: "boolean" },
-    hasMaxAmount: { type: "boolean" },
+    approvalRequired: { type: ["boolean", "null"] },
+    hasMaxAmount: { type: ["boolean", "null"] },
     maxAmount: { type: ["integer", "null"], description: COMMISSION_MINOR_UNITS_DESCRIPTION },
     maxAmountISO: { type: ["string", "null"] },
-    hasIntro: { type: "boolean" },
+    hasIntro: { type: ["boolean", "null"] },
     introType: { type: ["string", "null"] },
     introPercent: { type: ["number", "null"] },
     introAmount: { type: ["integer", "null"], description: COMMISSION_MINOR_UNITS_DESCRIPTION },
@@ -731,11 +740,15 @@ const commissionStructureJsonSchema = {
 } as const;
 
 // Writable fields shared by the create and update campaign-reward tools.
+const REWARD_METADATA_DESCRIPTION =
+  "Custom key/value metadata. Sending it replaces the stored object. Each value must be a string, number, or boolean of up to 500 characters. Each key must have 1 to 40 characters once camelCased, and two keys that camelCase to the same key are rejected. Up to 50 keys. An entry that breaks these rules returns `400`. " +
+  "For DOUBLE_SIDED referral rewards, `rewardAmount` is the referrer's amount and `referredRewardAmount` the friend's; without `referredRewardAmount` the friend uses `rewardAmount` unless `referralDescription` is a percent or free offer. Positive amounts use whole units for zero-decimal currencies and at most two decimals otherwise.";
+
 const rewardWritableFields = {
-  title: z.string().min(1).optional(),
-  description: z.string().optional(),
+  title: z.string().min(1).max(100).optional(),
+  description: z.string().max(255).optional(),
   event: z.enum(["LEAD", "CONVERSION"]).optional(),
-  referralDescription: z.string().nullable().optional(),
+  referralDescription: z.string().max(255).nullable().optional(),
   imageUrl: z.string().nullable().optional(),
   imageIconKey: z.enum(REWARD_IMAGE_ICON_KEYS).nullable().optional(),
   isVisible: z.boolean().optional(),
@@ -746,14 +759,14 @@ const rewardWritableFields = {
   numberOfWinners: z.number().int().min(0).optional(),
   order: z.number().int().optional(),
   limitDuration: z.enum(["IN_TOTAL", "PER_MONTH", "PER_YEAR"]).optional(),
-  nextMilestonePrefix: z.string().nullable().optional(),
-  nextMilestoneSuffix: z.string().nullable().optional(),
-  couponCode: z.string().nullable().optional(),
-  referralCouponCode: z.string().nullable().optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
+  nextMilestonePrefix: z.string().max(255).nullable().optional(),
+  nextMilestoneSuffix: z.string().max(255).nullable().optional(),
+  couponCode: z.string().max(100).nullable().optional(),
+  referralCouponCode: z.string().max(100).nullable().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional().describe(REWARD_METADATA_DESCRIPTION),
   commissionStructure: commissionStructureSchema.optional(),
-  value: rewardTaxValuationSchema.optional(),
-  referredValue: rewardTaxValuationSchema.optional(),
+  value: rewardTaxValuationSchema.nullable().optional(),
+  referredValue: rewardTaxValuationSchema.nullable().optional(),
 };
 
 const createCampaignRewardSchema = z.object({
@@ -1358,7 +1371,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_mobile_sdk_guide",
           description:
-            "Get Markdown implementation guidance for native iOS/Android SDK 0.10.1 or React Native SDK 0.2.1, including attribution, `shareUrl` sharing, `trackShare`, and the native GrowSurf Window. Choose `platform` and `participantState` to tailor the guide; `includeInstallSnippets` controls installation examples. Does not install an SDK or create a participant token. Use `growsurf_client_snippets` for browser JavaScript or `growsurf_api_library_snippets` for backend token-creation code.",
+            "Get Markdown implementation guidance for native iOS/Android SDK 0.10.2 or React Native SDK 0.3.0, including attribution, `shareUrl` sharing, `trackShare`, and the native GrowSurf Window. Choose `platform` and `participantState` to tailor the guide; `includeInstallSnippets` controls installation examples. Does not install an SDK or create a participant token. Use `growsurf_client_snippets` for browser JavaScript or `growsurf_api_library_snippets` for backend token-creation code.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1506,15 +1519,15 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             type: "object",
             properties: {
               type: { type: "string", enum: ["SINGLE_SIDED", "DOUBLE_SIDED", "MILESTONE", "LEADERBOARD", "AFFILIATE"] },
-              title: { type: "string" },
-              description: { type: "string" },
+              title: { type: "string", maxLength: 100 },
+              description: { type: "string", maxLength: 255 },
               event: {
                 type: "string",
                 enum: ["LEAD", "CONVERSION"],
                 description:
                   "The referral event that earns this Campaign Reward. Use `LEAD` for a referred signup or `CONVERSION` for a qualifying action. A `LEAD` reward requires a later custom conversion trigger. Referral reward types only.",
               },
-              referralDescription: { type: ["string", "null"] },
+              referralDescription: { type: ["string", "null"], maxLength: 255 },
               imageUrl: { type: ["string", "null"] },
               imageIconKey: {
                 type: ["string", "null"],
@@ -1530,14 +1543,14 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               numberOfWinners: { type: "integer", minimum: 0 },
               order: { type: "integer" },
               limitDuration: { type: "string", enum: ["IN_TOTAL", "PER_MONTH", "PER_YEAR"] },
-              nextMilestonePrefix: { type: ["string", "null"] },
-              nextMilestoneSuffix: { type: ["string", "null"] },
-              couponCode: { type: ["string", "null"] },
-              referralCouponCode: { type: ["string", "null"] },
-              metadata: { type: "object", additionalProperties: true },
+              nextMilestonePrefix: { type: ["string", "null"], maxLength: 255 },
+              nextMilestoneSuffix: { type: ["string", "null"], maxLength: 255 },
+              couponCode: { type: ["string", "null"], maxLength: 100 },
+              referralCouponCode: { type: ["string", "null"], maxLength: 100 },
+              metadata: { type: "object", additionalProperties: true, description: REWARD_METADATA_DESCRIPTION },
               commissionStructure: commissionStructureJsonSchema,
               value: {
-                type: "object",
+                type: ["object", "null"],
                 description:
                   "Tax valuation for the reward (the referrer's side of a double-sided reward). `fairMarketValueUSD` is the manual fair-market value in USD (major units). `taxCharacter` is the reason the recipient earns the reward. For configurable non-commission rewards, `null` inherits the program's confirmed treatment. Commission rewards always use `NONEMPLOYEE_SERVICES`.",
                 properties: {
@@ -1557,7 +1570,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 additionalProperties: false,
               },
               referredValue: {
-                type: "object",
+                type: ["object", "null"],
                 description:
                   "Tax valuation for the referred friend's side of a double-sided reward. `taxCharacter` is the reason the recipient earns the reward. For configurable non-commission rewards, `null` inherits the program's confirmed treatment. Commission rewards have no referred-friend side, so GrowSurf clears these settings. Use `PURCHASE_REBATE` only when that is the correct tax character.",
                 properties: {
@@ -1589,15 +1602,15 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             type: "object",
             properties: {
               campaignRewardId: { type: "string" },
-              title: { type: "string" },
-              description: { type: "string" },
+              title: { type: "string", maxLength: 100 },
+              description: { type: "string", maxLength: 255 },
               event: {
                 type: "string",
                 enum: ["LEAD", "CONVERSION"],
                 description:
                   "The referral event that earns this Campaign Reward. Use `LEAD` for a referred signup or `CONVERSION` for a qualifying action. A `LEAD` reward requires a later custom conversion trigger. Referral reward types only.",
               },
-              referralDescription: { type: ["string", "null"] },
+              referralDescription: { type: ["string", "null"], maxLength: 255 },
               imageUrl: { type: ["string", "null"] },
               imageIconKey: {
                 type: ["string", "null"],
@@ -1613,14 +1626,14 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               numberOfWinners: { type: "integer", minimum: 0 },
               order: { type: "integer" },
               limitDuration: { type: "string", enum: ["IN_TOTAL", "PER_MONTH", "PER_YEAR"] },
-              nextMilestonePrefix: { type: ["string", "null"] },
-              nextMilestoneSuffix: { type: ["string", "null"] },
-              couponCode: { type: ["string", "null"] },
-              referralCouponCode: { type: ["string", "null"] },
-              metadata: { type: "object", additionalProperties: true },
+              nextMilestonePrefix: { type: ["string", "null"], maxLength: 255 },
+              nextMilestoneSuffix: { type: ["string", "null"], maxLength: 255 },
+              couponCode: { type: ["string", "null"], maxLength: 100 },
+              referralCouponCode: { type: ["string", "null"], maxLength: 100 },
+              metadata: { type: "object", additionalProperties: true, description: REWARD_METADATA_DESCRIPTION },
               commissionStructure: commissionStructureJsonSchema,
               value: {
-                type: "object",
+                type: ["object", "null"],
                 description:
                   "Tax valuation for the reward (the referrer's side of a double-sided reward). `fairMarketValueUSD` is the manual fair-market value in USD (major units). `taxCharacter` is the reason the recipient earns the reward. For configurable non-commission rewards, `null` inherits the program's confirmed treatment. Commission rewards always use `NONEMPLOYEE_SERVICES`.",
                 properties: {
@@ -1640,7 +1653,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 additionalProperties: false,
               },
               referredValue: {
-                type: "object",
+                type: ["object", "null"],
                 description:
                   "Tax valuation for the referred friend's side of a double-sided reward. `taxCharacter` is the reason the recipient earns the reward. For configurable non-commission rewards, `null` inherits the program's confirmed treatment. Commission rewards have no referred-friend side, so GrowSurf clears these settings. Use `PURCHASE_REBATE` only when that is the correct tax character.",
                 properties: {
@@ -1908,7 +1921,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_design",
           description:
-            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup and the side content of its GrowSurf page (`referredExperience.offerPageDescription` HTML, up to 5 `offerPageSteps` of `{ text, iconKey }`, and up to 3 `offerPageLinks` of `{ text, url }` where an empty `url` links to the Share URL), the website widget under `widget` (button or card, placement, timing, and visible pages), the participant Traffic report under `trafficInsights`, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and the participant Settings panel under `participantSettings`, such as the language picker's `languageSectionTitle` and `languageSectionInstructionsText` (up to 500 characters each). `trafficInsights.isPublicDisplayed` controls visibility; its labels cannot be blank. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. `visualStyle` accepts `GLOW`, `CLEAN`, `FLAT`, `ROUND`, `TINT`, or `GLASS`; it sets corners, shadows, button shape and background on program pages and the GrowSurf Window. Changing it also fills `theme.buttons.borderRadius` and the `theme.globalBoxShadow` fields unless the same request sets them. Only supplied `fields` change; omitted fields retain their existing content and arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup and the side content of its GrowSurf page (`referredExperience.offerPageDescription` HTML, up to 5 `offerPageSteps` of `{ text, iconKey }`, and up to 3 `offerPageLinks` of `{ text, url }` where an empty `url` links to the Share URL), the website widget under `widget` (button or card, placement, timing, and visible pages), the participant Traffic report under `trafficInsights`, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and the participant Settings panel under `participantSettings`, such as the language picker's `languageSectionTitle` and `languageSectionInstructionsText` (up to 500 characters each). `trafficInsights.isPublicDisplayed` controls visibility; its labels cannot be blank. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. `visualStyle` accepts `GLOW`, `CLEAN`, `FLAT`, `ROUND`, `TINT`, or `GLASS`; it sets corners, shadows, button shape and background on program pages and the GrowSurf Window. Changing it also fills `theme.buttons.borderRadius` and the `theme.globalBoxShadow` fields unless the same request sets them. Text fields use the same character limits as the dashboard Program Editor. Text the Program Editor requires, such as Window labels, button text, and status names, cannot be set to `null`, empty, or only spaces. Only supplied `fields` change; omitted fields retain their existing content and arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1921,13 +1934,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_emails",
           description:
-            "Fetch the Emails tab configuration for your GrowSurf program, including participant and admin email templates, settings, and read-only fields. `settings.sender.fromEmail` is read-only and can be changed in the dashboard after domain verification. Sender fields can be `null` before configuration. When updating, omit unchanged sender fields; `fromName` and `replyToEmail` cannot be cleared with `null`. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Fetch the Emails tab configuration for your GrowSurf program, including participant and admin email templates, settings, and read-only fields. `settings.sender.fromEmail` is read-only and can be changed in the dashboard after domain verification. When updating, omit unchanged sender fields; `fromName` and `replyToEmail` cannot be cleared with `null`. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_emails",
           description:
-            "Update writable Emails tab fields for your GrowSurf program under `fields`, in their existing nested shape. `settings.sender.fromEmail` is read-only; sender address changes require domain verification in the dashboard. `settings.sender.fromName` and `settings.sender.replyToEmail` accept non-empty strings, not `null`. Omit either field to keep its current value, including an unset value returned by a read. The `invite` and transactional email `isEnabled` toggles are read-only. Email bodies require their template links and footer tokens. When `settings.design.layoutMode` is `INLINE`, each body must include `{{emailFooter}}`; `{{emailHeader}}` is optional. `layoutMode` is read-only. Omitted fields retain their existing content; arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update writable Emails tab fields for your GrowSurf program under `fields`, in their existing nested shape. `settings.sender.fromEmail` is read-only; sender address changes require domain verification in the dashboard. `settings.sender.fromName` and `settings.sender.replyToEmail` accept non-empty strings, not `null`. Omit either field to keep its current value, including an unset value returned by a read. The `invite` and transactional email `isEnabled` toggles are read-only. An email `subject` cannot be empty. Email bodies require their template links and footer tokens. When `settings.design.layoutMode` is `INLINE`, each body must include `{{emailFooter}}`; `{{emailHeader}}` is optional. `layoutMode` is read-only. Omitted fields retain their existing content; arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1969,7 +1982,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_options",
           description:
-            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. `languages.showFlags` shows or hides the flag next to each language name. Turning on `languages.additionalLanguages` returns `403` if your account does not include additional languages. While any are on, every `languages` change, including turning them off, returns the same `403`. Translations are managed in the GrowSurf dashboard, not through this tool. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. `languages.showFlags` shows or hides the flag next to each language name. Turning on `languages.additionalLanguages` returns `403` if your account does not include additional languages. While any are on, every `languages` change, including turning them off, returns the same `403`. Translations are managed in the GrowSurf dashboard, not through this tool. `notificationEmails.recipients` needs at least one valid email address. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2006,7 +2019,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                     type: "array",
                     items: { type: "string" },
                     description:
-                      "Every browser origin allowed to use the program, including local and staging origins. Send the full array because arrays replace wholesale. Known shared-platform root domains, such as `github.io`, do not grant access. Add your site's hostname, such as `https://piedpiper.github.io`, or a domain you own. Path-based shared hosts, such as `unbouncepages.com`, require a domain you own.",
+                      "Every browser origin allowed to use the program, including local and staging origins. Send the full array because arrays replace wholesale. Known shared-platform root domains, such as `github.io`, do not grant access. Add your site's hostname, such as `https://piedpiper.github.io`, or a domain you own. Path-based shared hosts, such as `unbouncepages.com`, require a domain you own. Each new entry must be a full URL that includes its scheme, such as `https://`.",
                   },
                   signup: {
                     type: "object",
@@ -2021,6 +2034,19 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                       },
                       redirectUrl: { type: ["string", "null"] },
                       trackInputFields: { type: "boolean" },
+                      additionalSignupUrls: {
+                        type: "array",
+                        items: { type: "string", maxLength: 500 },
+                        description:
+                          "Extra pages where GrowSurf watches signup form fields when `trackInputFields` is on. Each URL must include an `http(s)://` scheme. Sending this array replaces the entire list.",
+                      },
+                      forms: {
+                        type: "array",
+                        maxItems: 500,
+                        items: { type: "object", additionalProperties: true },
+                        description:
+                          "Forms GrowSurf listens to when `signupEvent` is `FORM_DETECTION`, in the shape `growsurf_get_campaign_installation` returns. A selected form (`isSelected: true`) must have exactly one field whose `key` is `email`. A form sent back unchanged is not checked again. Sending this array replaces the entire list.",
+                      },
                     },
                     additionalProperties: true,
                   },
@@ -2042,9 +2068,17 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                         properties: {
                           step2Signup: { type: "string", enum: ["restApi", "javascript"] },
                           step2Affiliate: { type: "string", enum: ["stripe", "chargebee", "recurly", "restApi"] },
-                          step2Referral: { type: "string", enum: ["restApi", "zapier", "stripe", "chargebee", "recurly", "paypal", "hubspot", "salesforce"] },
+                          step2Referral: {
+                            type: "string",
+                            enum: ["restApi", "zapier", "stripe", "chargebee", "recurly", "paypal", "hubspot", "salesforce", "klaviyo", "customerio", "baskHealth", "telegra", "mdIntegrations", "lithos", "carevalidate"],
+                            description: "`baskHealth`, `telegra`, `mdIntegrations`, `lithos`, and `carevalidate` are available only for programs with the `TELEHEALTH` goal.",
+                          },
                           step3Affiliate: { type: "string", enum: ["paypal", "wise"] },
-                          step3Referral: { type: "string", enum: ["webhooks", "zapier", "paypal", "tangocard", "stripe", "chargebee", "recurly"] },
+                          step3Referral: {
+                            type: "string",
+                            enum: ["webhooks", "zapier", "paypal", "tangocard", "tremendous", "stripe", "chargebee", "recurly", "baskHealth"],
+                            description: "`baskHealth` is available only for programs with the `TELEHEALTH` goal.",
+                          },
                         },
                         additionalProperties: true,
                       },
@@ -2065,6 +2099,42 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           },
         },
         {
+          name: "growsurf_get_campaign_custom_domain",
+          description:
+            "Fetch the custom domain that serves your GrowSurf program's landing pages, such as `https://refer.example.com`. Returns `domain` (`null` when none is set), `isVerified`, `verifiedAt`, and `dnsRecord`, the `CNAME` record to add at the DNS provider. This read does not check DNS; use `growsurf_verify_campaign_custom_domain` for a live check. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_set_campaign_custom_domain",
+          description:
+            "Set or replace the custom domain for your GrowSurf program's landing pages. Pass a hostname such as `refer.example.com` in `domain`; `https://` is added if you leave it out. Paths, ports, queries, and `http://` return `400`. Replacing a domain removes the old one right away, and its pages stop loading there, so confirm with the customer before replacing a domain that is already set. Sending the current domain again changes nothing. A domain used by another program returns `409`, and `403` means the account cannot use custom domains yet: a higher plan is needed, or for an affiliate program, a payment method on file. A new domain starts unverified: add the `CNAME` record from the returned `dnsRecord` at the DNS provider (`dnsRecord.name` pointing to `dnsRecord.value`), then call `growsurf_verify_campaign_custom_domain`. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              domain: {
+                type: "string",
+                minLength: 1,
+                maxLength: 255,
+                description: "The hostname to serve the program's landing pages from, with or without `https://`, such as `refer.example.com`.",
+              },
+            },
+            required: ["domain"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_verify_campaign_custom_domain",
+          description:
+            "Check the program's custom domain DNS now and return the result in `isVerified`. Call it after the `CNAME` record from `dnsRecord` is in place. If the record is wrong or has not propagated yet, `isVerified` stays `false`; try again later. The first time the check passes, GrowSurf sets up the domain's SSL certificate, and pages can take a few minutes to load over `https://` after that. More than one `CNAME` record on the hostname returns `400`. Returns `404` when no custom domain is set. A domain that is already verified is returned as is, without a new check. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_remove_campaign_custom_domain",
+          description:
+            "Remove the custom domain from your GrowSurf program. Its landing pages stop loading on that domain and go back to their GrowSurf URL. Returns `{ domain, success }`. Returns `404` when no custom domain is set. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
           name: "growsurf_capture_referral_flow_screenshots",
           description:
             "Capture temporary GrowSurf preview screenshots after a draft program is saved. Returns short-lived URLs for the controlled referrer Window and referred-friend experience, with an `expiresAt` timestamp in UTC. The screenshots reflect the saved program at capture time and do not verify installation on the customer's site. A failed inline image alone does not establish that the URL expired. This tool does not accept arbitrary URLs, HTML, JavaScript, or external screenshot targets. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
@@ -2078,8 +2148,8 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             type: "object",
             properties: {
               email: { type: "string" },
-              firstName: { type: "string" },
-              lastName: { type: "string" },
+              firstName: { type: "string", maxLength: 255 },
+              lastName: { type: "string", maxLength: 255 },
               company: { type: "string" },
             },
             required: ["email"],
@@ -2210,7 +2280,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_campaign_webhook",
           description:
-            "Add a webhook to your GrowSurf program. `payloadUrl` is required. `events` is the list of events this webhook is subscribed to (omit to subscribe it to no events). `secret` is write-only — GrowSurf uses it to sign deliveries (the GrowSurf-Signature HMAC header) and never returns it. A program can have only one saved Bask Health webhook across all `bask.ninja` hosts and paths, including disabled webhooks. A second Bask Health webhook returns `400`. A concurrent change to webhook settings can return `409`; reload the webhooks before retrying. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Add a webhook to your GrowSurf program. `payloadUrl` is required. `events` is the list of events this webhook is subscribed to. Omit it to subscribe the webhook to every event its program type offers, or send `[]` for none. An event the program type does not offer returns `400`. A program can have up to 5 webhooks, counting the primary webhook, so you can create up to 4. Creating another returns `400`. `secret` is write-only — GrowSurf uses it to sign deliveries (the GrowSurf-Signature HMAC header) and never returns it. A program can have only one saved Bask Health webhook across all `bask.ninja` hosts and paths, including disabled webhooks. A second Bask Health webhook returns `400`. A concurrent change to webhook settings can return `409`; reload the webhooks before retrying. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2232,7 +2302,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             properties: {
               webhookId: { type: "string" },
               payloadUrl: { type: "string" },
-              events: { type: "array", items: { type: "string", enum: WEBHOOK_EVENTS } },
+              events: {
+                type: "array",
+                items: { type: "string", enum: WEBHOOK_EVENTS },
+                description:
+                  "Replacement event list. Events must be ones the program type offers; an event this webhook already has on is also accepted.",
+              },
               secret: { type: "string", description: "Write-only." },
               isEnabled: { type: "boolean" },
             },
@@ -2325,13 +2400,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 description:
                   "Affiliate programs only. Controls affiliate enrollment for a new participant. `true` enrolls the participant with `affiliateStatus: APPROVED`; `false` creates a non-affiliate without `affiliateStatus`. Existing participants are returned unchanged.",
               },
-              firstName: { type: "string" },
-              lastName: { type: "string" },
-              referredBy: { type: "string" },
+              firstName: { type: "string", maxLength: 255 },
+              lastName: { type: "string", maxLength: 255 },
+              referredBy: { type: "string", maxLength: 100 },
               referralStatus: { type: "string", enum: ["CREDIT_PENDING", "CREDIT_AWARDED"] },
               referredAt: CREATE_PARTICIPANT_REFERRED_AT_INPUT,
-              ipAddress: { type: "string" },
-              fingerprint: { type: "string" },
+              ipAddress: { type: "string", maxLength: 255 },
+              fingerprint: { type: "string", maxLength: 255 },
               mobileInstanceId: CREATE_PARTICIPANT_MOBILE_INSTANCE_ID_INPUT,
               metadata: { type: "object", additionalProperties: true },
               language: CREATE_PARTICIPANT_LANGUAGE_INPUT,
@@ -2355,10 +2430,10 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 description:
                   "Affiliate programs only. Sets the affiliate status. `APPROVED` also enrolls a participant who is not yet an affiliate. `SUSPENDED` and `BANNED` are rejected for non-affiliates.",
               },
-              referredBy: { type: "string" },
+              referredBy: { type: "string", maxLength: 100 },
               email: { type: "string", description: "Change the participant's email address." },
-              firstName: { type: "string" },
-              lastName: { type: "string" },
+              firstName: { type: "string", maxLength: 255 },
+              lastName: { type: "string", maxLength: 255 },
               metadata: { type: "object", additionalProperties: true },
               referralStatus: { type: "string", enum: ["CREDIT_PENDING", "CREDIT_AWARDED", "CREDIT_EXPIRED"] },
               vanityKeys: {
@@ -2418,7 +2493,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 type: "string",
                 description: "The program email template to trigger. Send the camelCase key; the available types depend on the program type. The template's `isEnabled` setting controls automatic sends only, so this tool can trigger any sendable template. System and transactional types (login link, payout destination confirmation, tax notifications), the invite email, and the follow-up reminder cannot be sent. `welcomeNonReferred` can only be sent to advocates or approved, enrolled affiliates in a program that has not ended. Referral programs: `welcomeNonReferred`, `referralLinkViewedFirstTime`, `referralLinkUsed`, `referredSignup`, `welcomeReferred`, `offerClaimed`, `goalAchieved`, `campaignEndedWinners`, `campaignEndedNonWinners`, `progressUpdateMonthly`. Affiliate programs: `welcomeNonReferred`, `referralLinkViewedFirstTime`, `referredSignup`, `offerClaimed`, `commissionGenerated`, `commissionAdjusted`, `payoutPending`, `payoutSentSuccess`, `progressUpdateMonthly`.",
               },
-              subject: { type: "string", description: "Free-form subject. Supports dynamic text (`{{...}}` tokens), the same as the body." },
+              subject: { type: "string", maxLength: 255, description: "Free-form subject. Supports dynamic text (`{{...}}` tokens), the same as the body." },
               body: { type: "string", description: "Free-form HTML body. You can personalize it with dynamic text, inserting `{{...}}` tokens like `{{firstName}}` or `{{shareUrl}}`. See [Guide to using dynamic text in GrowSurf emails](https://support.growsurf.com/article/213-guide-to-using-dynamic-text-in-growsurf-emails)." },
               preheader: { type: "string" },
             },
@@ -2533,7 +2608,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_participant_payout_destination",
           description:
-            "Get a participant's payout-destination status (by GrowSurf participant ID or email) across every payout provider enabled for the program (PayPal and/or Wise). For each provider it reports the current `status`, the confirmed payout email, the legal recipient type, and — when a delivery bounced or a recipient was invalidated — the repair reason. `activeProvider` is the provider that currently gets paid, or null until the participant confirms one. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Get a participant's payout-destination status (by GrowSurf participant ID or email) across every payout provider enabled for the program (PayPal, Venmo, or Wise). For each provider it reports the current `status`, the confirmed payout email, the legal recipient type, and — when a delivery bounced or a recipient was invalidated — the repair reason. `activeProvider` is the provider that currently gets paid, or null until the participant confirms one. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2556,7 +2631,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               provider: {
                 type: "string",
                 enum: [...PAYOUT_DESTINATION_PROVIDER_INPUTS],
-                description: "The payout provider the participant should confirm a destination for.",
+                description: "The payout provider the participant should confirm a destination for: `PAYPAL`, `VENMO`, or `WISECOM`. Venmo recipients must be in the United States.",
               },
             },
             required: ["provider"],
@@ -2578,15 +2653,15 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               paymentProvider: { type: "string", enum: ["stripe", "chargebee", "recurly"],
                 description: "Connected provider for this payment. Requires `transactionId` and `testMode`. Supply matching `grossAmount` and `currency`; other payment IDs and tax or net-amount overrides are not accepted. GrowSurf reads payment details from the provider and detects duplicate webhook/API/manual submissions." },
               testMode: { type: "boolean", description: "Required with `paymentProvider`: `true` for test or `false` for live. Otherwise omit." },
-              invoiceId: { type: "string" },
-              chargeId: { type: "string" },
-              paymentIntentId: { type: "string" },
-              transactionId: { type: "string" },
-              externalId: { type: "string" },
-              orderId: { type: "string" },
-              paymentId: { type: "string" },
-              customerId: { type: "string" },
-              subscriptionId: { type: "string" },
+              invoiceId: { type: "string", maxLength: 500 },
+              chargeId: { type: "string", maxLength: 500 },
+              paymentIntentId: { type: "string", maxLength: 500 },
+              transactionId: { type: "string", maxLength: 500 },
+              externalId: { type: "string", maxLength: 500 },
+              orderId: { type: "string", maxLength: 500 },
+              paymentId: { type: "string", maxLength: 500 },
+              customerId: { type: "string", maxLength: 500 },
+              subscriptionId: { type: "string", maxLength: 500 },
               netAmount: { type: "integer", minimum: 0 },
               taxAmount: { type: "integer", minimum: 0 },
               amountCashNet: { type: "integer", minimum: 0 },
@@ -2632,13 +2707,14 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               paymentProvider: { type: "string", enum: ["stripe", "chargebee", "recurly"],
                 description: "Connected provider for the original payment. Requires its `transactionId` and `testMode`. This amends GrowSurf records without sending a refund through the provider." },
               testMode: { type: "boolean", description: "Original payment mode: `true` for test or `false` for live. Requires `paymentProvider`." },
-              amountRefunded: { type: "integer" },
-              amount: { type: "integer" },
+              amountRefunded: { type: "integer", minimum: 0 },
+              amount: { type: "integer", minimum: 1 },
               refundId: {
                 type: "string",
+                maxLength: 500,
                 description: "Stable per-refund identifier. Required when canceling a refund or changing the refunded total after a cancellation. Reuse the original refund's identifier for its cancellation. An amendment without enough refund identity returns `409` without applying the cancellation. Newly observed higher cumulative refunds and incomplete coverage are retained for reconciliation.",
               },
-              refundStatus: { type: "string" },
+              refundStatus: { type: "string", maxLength: 500 },
               refundAmount: {
                 type: "integer",
                 description: "Positive amount for this individual refund, no greater than the sale amount, in the sale currency's minor unit. Send it with `refundId` on each original refund to support cancellations and out-of-order amendments. The amount for a given `refundId` cannot change. A cancellation can omit it when the original amount is already recorded. Incomplete refund history returns `409` without applying the cancellation. Newly observed higher cumulative refunds and incomplete coverage are retained for reconciliation.",
@@ -2647,15 +2723,15 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 type: "boolean",
                 description: "Set true only after reconciling and recording every original refundId and refundAmount, including refunds later canceled. This confirmation resolves previously incomplete history. Omit during ordinary delivery. Replaying an old confirmation cannot resolve a later gap; confirm a newly reconciled refund or complete provider list.",
               },
-              currency: { type: "string" },
-              invoiceId: { type: "string" },
-              chargeId: { type: "string" },
-              paymentIntentId: { type: "string" },
-              transactionId: { type: "string" },
-              externalId: { type: "string" },
-              orderId: { type: "string" },
-              paymentId: { type: "string" },
-              description: { type: "string" },
+              currency: { type: "string", minLength: 3, maxLength: 3, pattern: "^[A-Za-z]{3}$" },
+              invoiceId: { type: "string", maxLength: 500 },
+              chargeId: { type: "string", maxLength: 500 },
+              paymentIntentId: { type: "string", maxLength: 500 },
+              transactionId: { type: "string", maxLength: 500 },
+              externalId: { type: "string", maxLength: 500 },
+              orderId: { type: "string", maxLength: 500 },
+              paymentId: { type: "string", maxLength: 500 },
+              description: { type: "string", maxLength: 500 },
             },
             allOf: [PARTICIPANT_IDENTIFIER_JSON_REQUIREMENT, TRANSACTION_IDENTIFIER_JSON_REQUIREMENT, ...PROVIDER_PAYMENT_JSON_REQUIREMENTS],
             additionalProperties: false,
@@ -2674,13 +2750,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 description:
                   "Sets whether the participant is an affiliate. Use `true` only for trusted direct enrollment. Public applicants should follow the program's configured application flow.",
               },
-              firstName: { type: "string" },
-              lastName: { type: "string" },
-              referredBy: { type: "string" },
+              firstName: { type: "string", maxLength: 255 },
+              lastName: { type: "string", maxLength: 255 },
+              referredBy: { type: "string", maxLength: 100 },
               referralStatus: { type: "string", enum: ["CREDIT_PENDING", "CREDIT_AWARDED"] },
               referredAt: CREATE_PARTICIPANT_REFERRED_AT_INPUT,
-              ipAddress: { type: "string" },
-              fingerprint: { type: "string" },
+              ipAddress: { type: "string", maxLength: 255 },
+              fingerprint: { type: "string", maxLength: 255 },
               mobileInstanceId: CREATE_PARTICIPANT_MOBILE_INSTANCE_ID_INPUT,
               metadata: { type: "object", additionalProperties: true },
               language: CREATE_PARTICIPANT_LANGUAGE_INPUT,
@@ -3125,6 +3201,27 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             };
           }
           const result = await growsurf.updateCampaignInstallation(input.fields);
+          return jsonToolResult(result);
+        }
+        case "growsurf_get_campaign_custom_domain": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const result = await growsurf.getCampaignCustomDomain();
+          return jsonToolResult(result);
+        }
+        case "growsurf_set_campaign_custom_domain": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = setCampaignCustomDomainSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.setCampaignCustomDomain(input.domain);
+          return jsonToolResult(result);
+        }
+        case "growsurf_verify_campaign_custom_domain": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const result = await growsurf.verifyCampaignCustomDomain();
+          return jsonToolResult(result);
+        }
+        case "growsurf_remove_campaign_custom_domain": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const result = await growsurf.deleteCampaignCustomDomain();
           return jsonToolResult(result);
         }
         case "growsurf_capture_referral_flow_screenshots": {

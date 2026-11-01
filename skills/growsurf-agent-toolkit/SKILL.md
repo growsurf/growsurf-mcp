@@ -107,6 +107,10 @@ happens in the GrowSurf dashboard, never through the API, and you cannot do it f
 
 Use `growsurf_list_campaign_webhooks`, then create or update with the exact event list the user requested. Use `growsurf_test_campaign_webhook` after saving. Never expose or echo webhook secrets.
 
+### Use A Custom Domain
+
+Call `growsurf_get_campaign_custom_domain` first. If a different domain is already set, confirm before replacing it: `growsurf_set_campaign_custom_domain` removes the old domain right away. After you set the hostname, give the user the `CNAME` record from `dnsRecord` (`name` pointing to `value`) to add at their DNS provider. Then call `growsurf_verify_campaign_custom_domain`. If `isVerified` is still `false`, the record is wrong or has not propagated yet; check again later. Use `growsurf_remove_campaign_custom_domain` only when the user wants landing pages back on their GrowSurf URL.
+
 ### Manage Program Resources
 
 Use `growsurf_list_program_resources` first. Create LINK resources with an HTTPS URL and TEXT

@@ -50,7 +50,7 @@ const RETAINED_TOOLS = new Set([
 
 export const COMPACT_TOOL_NAMES: readonly string[] = [...RETAINED_TOOLS, ...GROUPS.map(group => group.name)];
 
-export const COMPACT_CONNECTION_INSTRUCTIONS = "This is the compact connection. For guidance and settings tools, put the original arguments, including `campaignId` and `fields` when needed, under `input`. Other tools keep their existing argument shapes. For team administration, account creation, program cloning, participant resources, webhook changes or tests, participant emails, payout destinations, or webhook normalization, switch to the full connection: omit `--compact` for stdio or use `/mcp` on the hosted server. Do not call full-only tools here. Tool availability also depends on your granted permissions.";
+export const COMPACT_CONNECTION_INSTRUCTIONS = "This is the compact connection. For guidance and settings tools, put the original arguments, including `campaignId` and `fields` when needed, under `input`. Other tools keep their existing argument shapes. For team administration, account creation, program cloning, participant resources, custom domains, webhook changes or tests, participant emails, payout destinations, or webhook normalization, switch to the full connection: omit `--compact` for stdio or use `/mcp` on the hosted server. Do not call full-only tools here. Tool availability also depends on your granted permissions.";
 
 type PlannedCall = { tool: string; arguments: Record<string, unknown> };
 

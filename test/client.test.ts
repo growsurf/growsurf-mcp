@@ -354,6 +354,29 @@ describe("GrowSurfClient", () => {
     });
   }
 
+  it("sends the custom-domain calls to the custom-domain paths", async () => {
+    const calls = [
+      ["getCampaignCustomDomain", "GET", "/custom-domain", undefined],
+      ["setCampaignCustomDomain", "PUT", "/custom-domain", JSON.stringify({ domain: "refer.example.com" })],
+      ["verifyCampaignCustomDomain", "POST", "/custom-domain/verify", undefined],
+      ["deleteCampaignCustomDomain", "DELETE", "/custom-domain", undefined],
+    ] as const;
+    for (const [method, httpMethod, path, body] of calls) {
+      const fetchMock = mockJson({ domain: null, isVerified: false });
+      globalThis.fetch = fetchMock as typeof fetch;
+
+      const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+      if (method === "setCampaignCustomDomain") await client.setCampaignCustomDomain("refer.example.com");
+      else await client[method]();
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `https://api.growsurf.com/v2/campaign/abc123${path}`,
+        expect.objectContaining({ method: httpMethod }),
+      );
+      expect((fetchMock.mock.calls[0][1] as RequestInit).body).toBe(body);
+    }
+  });
+
   it("captures referral-flow screenshots with a POST to the MCP API path and no body", async () => {
     const fetchMock = mockJson({
       generatedAt: "2026-07-09T00:00:00.000Z",

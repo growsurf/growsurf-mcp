@@ -195,6 +195,13 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_update_campaign_options: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_get_campaign_installation: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_update_campaign_installation: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_get_campaign_custom_domain: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
+  // Replacing a domain stops the old one serving live landing pages; resending the same domain is a no-op.
+  growsurf_set_campaign_custom_domain: requiresScopes(TOOL_BEHAVIOR.CONTENT_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
+  // Runs a live DNS lookup and can enable HTTPS on the domain, but never removes or changes the domain.
+  growsurf_verify_campaign_custom_domain: requiresScopes(TOOL_BEHAVIOR.CONTENT_REQUEST, MACHINE_SCOPES.PROGRAM_WRITE),
+  // Removal stops the domain serving landing pages that participants may already use.
+  growsurf_remove_campaign_custom_domain: requiresScopes(TOOL_BEHAVIOR.DESTRUCTIVE_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_capture_referral_flow_screenshots: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_create_account: unrestricted(TOOL_BEHAVIOR.CONTENT_EXTERNAL),
   growsurf_get_team: requiresSingleTeamScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.TEAM_READ),
@@ -283,6 +290,10 @@ export const TOOL_TITLES = {
   growsurf_update_campaign_options: "Update Program Options",
   growsurf_get_campaign_installation: "Get Program Installation",
   growsurf_update_campaign_installation: "Update Program Installation",
+  growsurf_get_campaign_custom_domain: "Get Program Custom Domain",
+  growsurf_set_campaign_custom_domain: "Set Program Custom Domain",
+  growsurf_verify_campaign_custom_domain: "Verify Program Custom Domain",
+  growsurf_remove_campaign_custom_domain: "Remove Program Custom Domain",
   growsurf_capture_referral_flow_screenshots: "Capture Referral Flow Screenshots",
   growsurf_create_account: "Create GrowSurf Account",
   growsurf_get_team: "Get Team",

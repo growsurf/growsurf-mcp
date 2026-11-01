@@ -85,6 +85,15 @@ const PARTICIPANT_REWARD = {
     isFulfilled: { type: "boolean", description: "`true` once the reward is marked fulfilled. Confirm actual delivery through fulfillment records." },
     referredId: { type: "string", description: "Id of the friend that was referred." },
     referrerId: { type: "string", description: "Id of the participant that made the referral." },
+    amount: {
+      type: ["number", "null"],
+      description:
+        "What this reward delivered, in major units, when the reward records a delivered amount (such as a gift card). Read from this reward, not from the Campaign Reward's configured amount. `null` for every other reward.",
+    },
+    currencyISO: {
+      type: ["string", "null"],
+      description: "The ISO 4217 currency code for `amount`. `null` whenever `amount` is `null`.",
+    },
     commissionStructure: {
       type: ["object", "null"],
       description: "Commission configuration attached to this reward. Present only for affiliate programs.",
@@ -180,7 +189,7 @@ const PARTICIPANT: ToolOutputSchema = {
     referrer: {
       type: ["object", "null"],
       description:
-        "Summary of the participant's referrer (same core fields as a participant). Present only when the participant was referred.",
+        "The participant's referrer. It has the same fields as a participant, and its own `referrer` is always `null`. Present only when the participant was referred.",
     },
     ipAddress: { type: ["string", "null"], description: "IP address recorded for the participant, or `null`." },
     fingerprint: { type: ["string", "null"], description: "Browser identifier recorded for the participant, or `null`." },
@@ -275,10 +284,10 @@ const REWARD: ToolOutputSchema = {
     },
     description: { type: ["string", "null"], description: "The reward description shown to the referrer." },
     event: {
-      type: ["string", "null"],
-      enum: ["LEAD", "CONVERSION", null],
+      type: "string",
+      enum: ["LEAD", "CONVERSION"],
       description:
-        "The referral event that earns this Campaign Reward. `LEAD` means a referred signup; `CONVERSION` means a qualifying action.",
+        "The referral event that earns this Campaign Reward. `LEAD` means a referred signup; `CONVERSION` means a qualifying action. Present for `SINGLE_SIDED`, `DOUBLE_SIDED`, and `MILESTONE` rewards.",
     },
     referralDescription: {
       type: ["string", "null"],
@@ -496,7 +505,11 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         "The program Style. It sets corners, shadows, button shape and background on program pages and the GrowSurf Window. New referral and affiliate programs start with `CLEAN`. Omitted when the program has no saved Style; those programs keep their original look.",
     },
     window: { type: "object", description: "Layout of the GrowSurf window (`navigationMode`: `TABS` or `LIST`)." },
-    header: { type: "object", description: "Header content for participants (`postText`) and non-participants (`preText`)." },
+    header: {
+      type: "object",
+      description:
+        "Header content for participants (`postText`) and non-participants (`preText`), and the progress labels beside a participant's numbers: `referralsMadeText` (up to 100 characters, shown for single-sided, double-sided, and milestone rewards) and `yourRankText` (up to 100 characters, shown for leaderboard rewards). Both labels are required.",
+    },
     stats: { type: "object", description: "The participant's referral-progress stats panel. Only `title` is editable." },
     share: { type: "object", description: "Share channels, invite settings, and share-button styling." },
     signup: { type: "object", description: "Signup form fields, GDPR consent, and button and login text." },
@@ -606,6 +619,21 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         offerPopupSecondaryLinkText: { type: ["string", "null"], maxLength: 100, description: "Optional post-claim link text." },
         offerPopupSecondaryLinkUrl: { type: ["string", "null"], maxLength: 255, description: "Optional post-claim link destination. When saving, use `http://` or `https://`. Send `null` or an empty string to clear it." },
         isOfferPopupOverlayDimmed: { type: "boolean", description: "Whether a centered popup dims the page behind it." },
+        offerPopupEmailPlaceholder: {
+          type: ["string", "null"],
+          maxLength: 100,
+          description: "Hint text inside the popup's email field. Leave it empty to reuse the email field label from your signup form.",
+        },
+        offerPopupPromoCodeCopyLabel: {
+          type: ["string", "null"],
+          maxLength: 100,
+          description: "Text on the copy action beside the promo code, shown after the offer is claimed when an upfront-discount coupon is enabled.",
+        },
+        offerPopupSubmitError: {
+          type: ["string", "null"],
+          maxLength: 255,
+          description: "Message shown inside the popup when the offer cannot be saved.",
+        },
         offerPageDescription: { type: "string", maxLength: 150000, description: "HTML shown beside the popup on its GrowSurf page." },
         offerPageSteps: {
           type: "array",
@@ -631,10 +659,67 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
             },
           },
         },
+        isBannerEnabled: {
+          type: "boolean",
+          description: "Whether referred visitors see the welcome banner, a sticky banner that follows them as they scroll your Share URL.",
+        },
+        bannerText: {
+          type: ["string", "null"],
+          maxLength: 255,
+          description: "Welcome banner copy. Accepts HTML and the same dynamic-text variables as the dashboard editor.",
+        },
+        bannerPlacement: { type: "string", enum: ["TOP", "BOTTOM"], description: "Where the welcome banner sits on the page." },
+        isBannerClickableToSignupUrl: {
+          type: "boolean",
+          description: "Whether clicking the welcome banner opens the program's signup URL. It has no effect until a signup URL is configured.",
+        },
+        isHeadingEnabled: {
+          type: "boolean",
+          description: "Whether referred visitors see the inline welcome message added to the main heading on your Share URL.",
+        },
+        headingText: {
+          type: ["string", "null"],
+          maxLength: 255,
+          description: "Inline welcome message copy. Accepts HTML and the same dynamic-text variables as the dashboard editor.",
+        },
+        headingTarget: {
+          type: "string",
+          enum: ["H1", "H2", "H3", "H4", "H5"],
+          description: "Which heading element the inline welcome message attaches to. GrowSurf uses the first match.",
+        },
+        headingPlacement: {
+          type: "string",
+          enum: ["PREPEND", "APPEND", "REPLACE"],
+          description: "Whether the inline welcome message goes before the target heading, after it, or replaces it.",
+        },
+        isHeadingStyled: {
+          type: "boolean",
+          description: "Whether the inline welcome message keeps its own styling. When `false` it renders as plain text.",
+        },
+        isHeadingClickableToSignupUrl: {
+          type: "boolean",
+          description: "Whether clicking the inline welcome message opens the program's signup URL. It has no effect until a signup URL is configured.",
+        },
         isPageTitleReplacementActive: {
           type: "boolean",
           description:
             "Whether referred visitors see `pageTitleReplacement` as the browser tab title. New referral programs start with `true` and new affiliate programs with `false`. Older programs without this setting read back `false`.",
+        },
+        pageTitleReplacement: {
+          type: ["string", "null"],
+          maxLength: 255,
+          description: "Browser tab title shown to referred visitors on your Share URL, in place of the page's own title.",
+        },
+        referrerNameFormat: {
+          type: "string",
+          enum: ["FIRST", "FIRST_LAST_INITIAL", "FIRST_LAST"],
+          description:
+            "How the referrer's name appears in referred-visitor copy: `FIRST` (`Gavin`), `FIRST_LAST_INITIAL` (`Gavin B`), or `FIRST_LAST` (`Gavin Belson`).",
+        },
+        referrerNameFallback: {
+          type: ["string", "null"],
+          maxLength: 100,
+          description: "Name used in referred-visitor copy when the referrer has no first or last name on file.",
         },
       },
     },
@@ -765,7 +850,7 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
     },
     landingPages: {
       type: "object",
-      description: "Portal and landing pages: company info, `content`, `styles`, third-party script ids, and SEO meta tags. `content.howItWorksTitle` is the plain-text heading above the How it works steps (up to 255 characters). The Program Page shows it, and the GrowSurf window shows it while `content.howItWorks` is still the starter heading `<h5>How It Works</h5>`. Programs that never set it read back `How it works`; send `null` or blank text to show `How it works` again. `content.howItWorksSteps` replaces the full ordered step array. Each step supports `text`, an optional bold `title`, `imageUrl`, and `iconKey`; `NUMBER` shows the current step number, while keys such as `SHARE` and `REWARD` show starter icons. `isProgramPageEnabled` turns on the Program Page for a referral program. After you turn it on, you cannot turn it off. `programPage` holds the Program Page content: `hero`, `blocks`, `sectionOrder`, `sectionVisibility` (`false` hides a section), `headerLinks` (referral programs only, up to 3), `applicationForm.fields` (affiliate programs only, 1 to 30 fields), `requirements`, and `messages`. Updates get the same checks as a dashboard save. An array replaces the stored array. Blank `messages` text reads back as the default text.",
+      description: "Portal and landing pages: company info, `content`, `styles`, third-party script ids, and SEO meta tags. `content.howItWorksTitle` is the plain-text heading above the How it works steps (up to 255 characters). The Program Page shows it, and the GrowSurf window shows it while `content.howItWorks` is still the starter heading `<h5>How It Works</h5>`. Programs that never set it read back `How it works`; send `null` or blank text to show `How it works` again. `content.howItWorksSteps` replaces the full ordered step array. Each step supports `text`, an optional bold `title`, `imageUrl`, and `iconKey`; `NUMBER` shows the current step number, while keys such as `SHARE` and `REWARD` show starter icons. `isProgramPageEnabled` turns on the Program Page for a referral program. After you turn it on, you cannot turn it off. `programPage` holds the Program Page content: `hero` (including `headlineAccent`, a phrase in the headline to highlight; `headlineAccentStyle`, `SOLID` or `GRADIENT`; and `headlineAccentColor`, a six-digit hex color used by `SOLID`), `blocks`, `sectionOrder`, `sectionVisibility` (`false` hides a section), `headerLinks` (referral programs only, up to 3), `applicationForm.fields` (affiliate programs only, 1 to 30 fields), `requirements`, and `messages`. Updates get the same checks as a dashboard save. An array replaces the stored array. Blank `messages` text reads back as the default text.",
     },
     theme: {
       type: "object",
@@ -927,16 +1012,34 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
       properties: {
         design: {
           type: "object",
-          properties: { layoutMode: { type: "string", enum: ["INLINE"], readOnly: true,
-            description: "Read-only email layout. `INLINE` requires `{{emailFooter}}` in each body; `{{emailHeader}}` is optional." } },
+          properties: {
+            layoutMode: { type: "string", enum: ["INLINE"], readOnly: true,
+              description: "Read-only email layout. `INLINE` requires `{{emailFooter}}` in each body; `{{emailHeader}}` is optional." },
+            header: { type: ["string", "null"], maxLength: 150000, description: "Email header HTML." },
+            footer: { type: ["string", "null"], maxLength: 150000, description: "Email footer HTML." },
+          },
+        },
+        contact: {
+          type: "object",
+          description:
+            "The physical mailing address shown in your email footers (required by anti-spam laws such as the US CAN-SPAM Act).",
+          properties: {
+            companyName: { type: "string", maxLength: 255, description: "Company name. Required." },
+            addressLine1: { type: "string", maxLength: 255, description: "First address line. Required." },
+            addressLine2: { type: ["string", "null"], maxLength: 255, description: "Second address line shown in email footers." },
+            city: { type: "string", maxLength: 255, description: "City. Required." },
+            state: { type: ["string", "null"], maxLength: 255, description: "State, province, or region shown in email footers." },
+            postalCode: { type: ["string", "null"], maxLength: 100, description: "Postal or ZIP code shown in email footers." },
+            country: { type: ["string", "null"], maxLength: 100, description: "Free-text country (not validated as an ISO code)." },
+          },
         },
         sender: {
           type: "object",
           properties: {
-            fromName: { type: ["string", "null"], description: "Sender name, or `null` before one is configured. When updating, omit to keep the current value or supply a non-empty name that is not an email address. `null` is not accepted on update." },
-            replyToEmail: { type: ["string", "null"], description: "Email address that receives replies, or `null` before one is configured. When updating, omit to keep the current value or supply a valid email address. `null` is not accepted on update." },
+            fromName: { type: "string", maxLength: 100, description: "Sender name. When updating, omit to keep the current value or supply a non-empty name that is not an email address. `null` is not accepted on update." },
+            replyToEmail: { type: "string", maxLength: 100, description: "Email address that receives replies. When updating, omit to keep the current value or supply a valid email address. `null` is not accepted on update." },
             fromEmail: {
-              type: ["string", "null"],
+              type: "string",
               readOnly: true,
               description: "Read-only sender email address. Change it in the dashboard after domain verification; omit it from an email configuration update.",
             },
@@ -1066,7 +1169,7 @@ const CAMPAIGN_INSTALLATION: ToolOutputSchema = {
       type: "string",
       enum: ["CUSTOM", "ON_SIGNUP"],
       description:
-        "Referral programs only. `ON_SIGNUP` counts a referral as soon as the friend signs up; `CUSTOM` also requires a qualifying action.",
+        "Referral programs only. `ON_SIGNUP` counts a referral as soon as the friend signs up; `CUSTOM` also requires a qualifying action. `CUSTOM` is available for programs installed on a website or a GrowSurf landing page.",
     },
     signupEvent: {
       type: "string",
@@ -1093,7 +1196,7 @@ const CAMPAIGN_INSTALLATION: ToolOutputSchema = {
       type: "array",
       items: { type: "string" },
       description:
-        "Every additional browser origin where the GrowSurf Window or SDK may run, including development origins such as `http://localhost:3000`. Preserve the full array when patching it. An origin absent from both `shareUrl` and this list can return `403`. Known shared-platform root domains, such as `github.io`, do not grant access. Add your site's hostname, such as `https://piedpiper.github.io`, or a domain you own. Path-based shared hosts, such as `unbouncepages.com`, require a domain you own.",
+        "Every additional browser origin where the GrowSurf Window or SDK may run, including development origins such as `http://localhost:3000`. Preserve the full array when patching it. An origin absent from both `shareUrl` and this list can return `403`. Known shared-platform root domains, such as `github.io`, do not grant access. Add your site's hostname, such as `https://piedpiper.github.io`, or a domain you own. Path-based shared hosts, such as `unbouncepages.com`, require a domain you own. Each new entry must be a full URL that includes its scheme, such as `https://`.",
     },
     signup: {
       type: "object",
@@ -1104,6 +1207,50 @@ const CAMPAIGN_INSTALLATION: ToolOutputSchema = {
         redirectAfterSignup: { type: "boolean", description: "Whether the form redirects after submission." },
         redirectUrl: { type: ["string", "null"], description: "URL the signup form redirects to." },
         trackInputFields: { type: "boolean", description: "Whether signup form fields are watched for referral attribution." },
+        additionalSignupUrls: {
+          type: "array",
+          items: { type: "string", maxLength: 500 },
+          description:
+            "Extra pages where GrowSurf watches signup form fields when `trackInputFields` is on. Each URL must include an `http(s)://` scheme and contain no `#!` or `??`. Duplicates are removed. Sending this array replaces the entire list.",
+        },
+        forms: {
+          type: "array",
+          maxItems: 500,
+          description:
+            "Forms GrowSurf listens to when `signupEvent` is `FORM_DETECTION`, as found by the dashboard form scan. A form counts only when `isSelected` is `true`; a selected form must have exactly one field whose `key` is `email`. A form sent back unchanged is not checked again. Sending this array replaces the entire list.",
+          items: {
+            type: "object",
+            properties: {
+              selector: { type: "string", maxLength: 500, description: "CSS selector for the form on the signup page." },
+              isSelected: { type: "boolean", description: "Whether GrowSurf adds participants when this form is submitted." },
+              id: { type: ["string", "null"], maxLength: 500, description: "The form's `id` attribute, if any." },
+              name: { type: ["string", "null"], maxLength: 500, description: "The form's `name` attribute, if any." },
+              className: { type: ["string", "null"], maxLength: 500, description: "The form's `class` attribute, if any." },
+              fields: {
+                type: "array",
+                maxItems: 500,
+                description: "The form's input fields and the participant value each one fills.",
+                items: {
+                  type: "object",
+                  properties: {
+                    selector: { type: "string", maxLength: 500, description: "CSS selector for the input inside the form." },
+                    key: {
+                      type: "string",
+                      maxLength: 100,
+                      description:
+                        "The participant value this input fills: `email`, `firstName`, `lastName`, `ignore`, or a metadata key. An empty string means no value is chosen yet.",
+                    },
+                    include: { type: "boolean", description: "Whether GrowSurf reads this input when the form is submitted." },
+                    id: { type: ["string", "null"], maxLength: 500, description: "The input's `id` attribute, if any." },
+                    name: { type: ["string", "null"], maxLength: 500, description: "The input's `name` attribute, if any." },
+                    className: { type: ["string", "null"], maxLength: 500, description: "The input's `class` attribute, if any." },
+                    type: { type: ["string", "null"], maxLength: 500, description: "The input's `type` attribute, if any." },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     },
     mobile: {
@@ -1134,9 +1281,18 @@ const CAMPAIGN_INSTALLATION: ToolOutputSchema = {
           properties: {
             step2Signup: { type: "string", enum: ["restApi", "javascript"], description: "Signup method shown in step 2." },
             step2Affiliate: { type: "string", enum: ["stripe", "chargebee", "recurly", "restApi"], description: "Affiliate step 2 method." },
-            step2Referral: { type: "string", enum: ["restApi", "zapier", "stripe", "chargebee", "recurly", "paypal", "hubspot", "salesforce"], description: "Referral step 2 method." },
+            step2Referral: {
+              type: "string",
+              enum: ["restApi", "zapier", "stripe", "chargebee", "recurly", "paypal", "hubspot", "salesforce", "klaviyo", "customerio", "baskHealth", "telegra", "mdIntegrations", "lithos", "carevalidate"],
+              description:
+                "Referral step 2 method. `baskHealth`, `telegra`, `mdIntegrations`, `lithos`, and `carevalidate` are available only for programs with the `TELEHEALTH` goal.",
+            },
             step3Affiliate: { type: "string", enum: ["paypal", "wise"], description: "Affiliate payout method shown in step 3." },
-            step3Referral: { type: "string", enum: ["webhooks", "zapier", "paypal", "tangocard", "stripe", "chargebee", "recurly"], description: "Referral reward method shown in step 3." },
+            step3Referral: {
+              type: "string",
+              enum: ["webhooks", "zapier", "paypal", "tangocard", "tremendous", "stripe", "chargebee", "recurly", "baskHealth"],
+              description: "Referral reward method shown in step 3. `baskHealth` is available only for programs with the `TELEHEALTH` goal.",
+            },
           },
         },
       },
@@ -1708,8 +1864,8 @@ const ACTIVATION_COHORT_RESULT = {
       type: ["object", "null"],
       description: "Highest percentage loss between consecutive stages, or `null` without a valid denominator.",
       properties: {
-        fromStage: { type: "string", enum: ACTIVATION_STAGE_KEYS.slice(0, -1) },
-        toStage: { type: "string", enum: ACTIVATION_STAGE_KEYS.slice(1) },
+        fromStage: { type: "string", description: "Strict stage before the largest drop." },
+        toStage: { type: "string", description: "Strict stage after the largest drop." },
         count: { type: "integer", description: "Participants lost between the stages." },
         rate: { type: "number", description: "Lost participants divided by the prior-stage count." },
         stalledSegmentKey: { type: "string", enum: ACTIVATION_STALLED_SEGMENT_KEYS },
@@ -2160,6 +2316,38 @@ const DELETE_WEBHOOK_RESPONSE: ToolOutputSchema = {
   },
 };
 
+const CAMPAIGN_CUSTOM_DOMAIN: ToolOutputSchema = {
+  type: "object",
+  description: "The custom domain that serves the program's landing pages.",
+  properties: {
+    domain: { type: ["string", "null"], description: "The custom domain, such as `https://refer.example.com`, or `null` when none is set." },
+    isVerified: {
+      type: "boolean",
+      description: "Whether the domain's `CNAME` record pointed to `dnsRecord.value` at the last check. Landing pages load on the domain only when this is `true`.",
+    },
+    verifiedAt: { type: ["integer", "null"], description: "When the DNS check passed, in epoch milliseconds. `null` while unverified." },
+    dnsRecord: {
+      type: ["object", "null"],
+      description: "The DNS record to add at the DNS provider. `null` when no domain is set.",
+      properties: {
+        type: { type: "string", enum: ["CNAME"], description: "The record type. Always `CNAME`." },
+        name: { type: "string", description: "The hostname the record is for." },
+        value: { type: "string", description: "The record's target." },
+      },
+    },
+    createdAt: { type: ["integer", "null"], description: "When the domain was set, in epoch milliseconds. `null` when no domain is set." },
+    updatedAt: { type: ["integer", "null"], description: "When the domain record last changed, in epoch milliseconds. `null` when no domain is set." },
+  },
+};
+
+const DELETE_CAMPAIGN_CUSTOM_DOMAIN_RESPONSE: ToolOutputSchema = {
+  type: "object",
+  properties: {
+    domain: { type: "string", description: "The custom domain that was removed." },
+    success: { type: "boolean", description: "Whether the custom domain was removed." },
+  },
+};
+
 const WEBHOOK_TEST_RESPONSE: ToolOutputSchema = {
   type: "object",
   properties: {
@@ -2450,6 +2638,14 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
   growsurf_update_campaign_installation: sameShapeAs(
     "The full updated installation configuration. Same shape as the `growsurf_get_campaign_installation` result.",
   ),
+  growsurf_get_campaign_custom_domain: CAMPAIGN_CUSTOM_DOMAIN,
+  growsurf_set_campaign_custom_domain: sameShapeAs(
+    "The custom domain after the change. Same shape as the `growsurf_get_campaign_custom_domain` result.",
+  ),
+  growsurf_verify_campaign_custom_domain: sameShapeAs(
+    "The custom domain after the live DNS check. Same shape as the `growsurf_get_campaign_custom_domain` result.",
+  ),
+  growsurf_remove_campaign_custom_domain: DELETE_CAMPAIGN_CUSTOM_DOMAIN_RESPONSE,
   growsurf_create_account: CREATE_ACCOUNT_RESPONSE,
   growsurf_get_team: TEAM,
   growsurf_update_team: TEAM,

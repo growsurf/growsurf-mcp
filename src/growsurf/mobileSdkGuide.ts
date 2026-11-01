@@ -2,12 +2,12 @@ import { z } from "zod";
 import { DOCS_SITE_URL } from "./insights.js";
 import { kotlinString } from "./snippetLiterals.js";
 
-const MOBILE_SDK_GUIDANCE_VERSION = "0.10.1";
+const MOBILE_SDK_GUIDANCE_VERSION = "0.10.2";
 const IOS_DISTRIBUTION_REPO = "growsurf/growsurf-ios-sdk-distribution";
 const IOS_DISTRIBUTION_URL = `https://github.com/${IOS_DISTRIBUTION_REPO}.git`;
 const IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_REPO}/v${MOBILE_SDK_GUIDANCE_VERSION}/GrowSurfSDK.podspec`;
 // The React Native package has its own version and pins its native SDK versions itself.
-const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.2.1";
+const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.3.0";
 const REACT_NATIVE_PACKAGE_NAME = "growsurf-react-native-sdk";
 const REACT_NATIVE_SDK_DOCS_URL = `${DOCS_SITE_URL}/developer-tools/react-native-sdk`;
 // Device-specific SDK preferences that must not move to another installation through Android backup.
@@ -555,7 +555,7 @@ const renderReactNative = (input: MobileSdkGuideInput, campaignId: string, mobil
 
   if (input.participantState === "new_participant" || input.participantState === "both") {
     sections.push(
-      "For referral-only signup tracking, add the participant only after GrowSurf validates a referrer. `addReferredParticipant()` returns the API's JSON, or `null` when no participant-create request succeeds. A response can ask for a participant token (`requiresParticipantToken`) instead of returning participant data:",
+      "For referral-only signup tracking, add the participant only after GrowSurf validates a referrer. `addReferredParticipant()` returns `added`, `validReferral`, `referredBy`, and `notAddedReason`, like the native SDKs, plus the API's participant fields when signup succeeds. A response can ask for a participant token (`requiresParticipantToken`) instead of returning participant data:",
       codeBlock(
         "ts",
         [
@@ -565,9 +565,12 @@ const renderReactNative = (input: MobileSdkGuideInput, campaignId: string, mobil
           `  lastName: ${JSON.stringify(FIXTURE_LAST_NAME)},`,
           "});",
           "",
-          "if (response && \"participant\" in response) {",
+          "if (response.added && response.participant) {",
           "  const participant = response.participant;",
           "  // Use participant",
+          "} else if (!response.added) {",
+          "  // 'no_referrer', 'invalid_referrer', or 'participant_already_exists'",
+          "  console.log(response.notAddedReason);",
           "}",
         ].join("\n"),
       ),
@@ -641,7 +644,7 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
     "- GrowSurf keeps server-signed first-visit and last-visit receipts and sends them during participant creation. The server applies the program's first-click or last-click setting.",
     "- Use `validateReferrer()` when you only need to check referral identity without creating a participant.",
     reactNative
-      ? "- Use `addReferredParticipant()` for referral-only signup tracking. GrowSurf uses captured attribution with the program’s first-click or last-click setting, with a validated referral code as fallback. A missing or invalid later code does not discard a valid earlier referral. For a newly added participant, `participant.referredBy` in the returned API JSON identifies the credited referrer. Existing-participant responses do not disclose that participant’s stored referral credit. If no valid referral remains, GrowSurf does not create a direct participant and the method returns `null`."
+      ? "- Use `addReferredParticipant()` for referral-only signup tracking. GrowSurf uses captured attribution with the program’s first-click or last-click setting, with a validated referral code as fallback. A missing or invalid later code does not discard a valid earlier referral. The result has `added`, `validReferral`, `referredBy`, and `notAddedReason`, like the native SDKs. For a newly added participant, `referredBy` identifies the credited referrer. Existing-participant responses do not disclose that participant’s stored referral credit. If no valid referral remains, GrowSurf does not create a direct participant and `added` is `false`."
       : "- Use `addReferredParticipant()` for referral-only signup tracking. GrowSurf applies stored signed receipts using the program’s first-click or last-click setting, with a validated referral code as fallback. A missing or invalid later code does not discard a valid receipt. For a newly added participant, the result’s `referredBy` identifies the referrer the server credited. `validReferral` can be true even when `referredBy` is absent. Existing-participant responses do not disclose that participant’s stored referral credit. If no valid referral remains, GrowSurf does not create a direct participant.",
     "- Use `addParticipant()` only when the app intentionally creates every signup. Check `affiliateApplicationMode` first so reviewed affiliate applicants use the configured GrowSurf Program Page.",
     "- When `addReferredParticipant()` or `addParticipant()` returns a `participantToken`, the SDK stores it automatically.",

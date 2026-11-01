@@ -405,6 +405,24 @@ export class GrowSurfClient {
     return this.requestJson("PATCH", `/campaign/${encodeURIComponent(this.campaignId)}/installation`, fields);
   }
 
+  // Custom domain for a program's landing pages. Set the domain, add the CNAME record from the
+  // returned `dnsRecord`, then verify. Setting a different domain replaces (removes) the old one.
+  async getCampaignCustomDomain(): Promise<unknown> {
+    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/custom-domain`);
+  }
+
+  async setCampaignCustomDomain(domain: string): Promise<unknown> {
+    return this.requestJson("PUT", `/campaign/${encodeURIComponent(this.campaignId)}/custom-domain`, { domain });
+  }
+
+  async verifyCampaignCustomDomain(): Promise<unknown> {
+    return this.requestJson("POST", `/campaign/${encodeURIComponent(this.campaignId)}/custom-domain/verify`);
+  }
+
+  async deleteCampaignCustomDomain(): Promise<unknown> {
+    return this.requestJson("DELETE", `/campaign/${encodeURIComponent(this.campaignId)}/custom-domain`);
+  }
+
   async captureReferralFlowScreenshots(): Promise<unknown> {
     return this.requestJson(
       "POST",
@@ -581,7 +599,7 @@ export class GrowSurfClient {
     return this.requestJson("POST", this.participantPath(participantEmail), fields);
   }
 
-  // Payout-destination status across every provider enabled for the program (PayPal and/or Wise).
+  // Payout-destination status across every provider enabled for the program (PayPal, Venmo, or Wise).
   async getPayoutDestinationById(participantId: string): Promise<unknown> {
     return this.requestJson("GET", this.participantPath(participantId, "/payout-destination"));
   }
@@ -634,7 +652,7 @@ export class GrowSurfClient {
   }
 
   private async requestJson(
-    method: "GET" | "POST" | "PATCH" | "DELETE",
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
     path: string,
     body?: unknown,
     options?: GrowSurfRequestOptions,
@@ -644,7 +662,7 @@ export class GrowSurfClient {
   }
 
   private async requestUrlJson(
-    method: "GET" | "POST" | "PATCH" | "DELETE",
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
     url: string,
     body?: unknown,
     options?: GrowSurfRequestOptions,

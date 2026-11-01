@@ -265,6 +265,8 @@ describe("MCP tool authorization", () => {
       "growsurf_update_campaign_emails",
       "growsurf_update_campaign_options",
       "growsurf_update_campaign_installation",
+      "growsurf_set_campaign_custom_domain",
+      "growsurf_remove_campaign_custom_domain",
       "growsurf_update_campaign_webhook",
       "growsurf_delete_campaign_webhook",
     ]) {
@@ -287,6 +289,13 @@ describe("MCP tool authorization", () => {
         openWorldHint: true,
       });
     }
+    // A live DNS check never removes or changes the domain, so retries are safe.
+    expect(byName.get("growsurf_verify_campaign_custom_domain")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
     expect(byName.get("growsurf_request_team_verification")?.annotations).toMatchObject({
       readOnlyHint: false,
       destructiveHint: false,

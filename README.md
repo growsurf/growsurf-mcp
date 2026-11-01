@@ -55,11 +55,13 @@ This MCP server is NOT for:
   - Get/update Design, Emails, Options, and Installation config
   - Capture temporary GrowSurf preview screenshots so the user can see a draft program
   - List, create, update, delete, and test program webhooks
-  - List, get, and add participants
+  - List the program's integrations and get a dashboard link to connect one
+  - List, get, add, and bulk delete participants
   - Update a participant, email a participant, and get a participant's analytics and activity logs
+  - Get a participant's payout-destination status and ask them to confirm a payout destination
   - Trigger referral credit (for referral programs), with optional delayed award (1-90 days)
   - Cancel a pending delayed referral trigger (for referral programs)
-  - Record affiliate sale/transaction (for affiliate programs)
+  - Record affiliate sales/transactions and their refunds or chargebacks (for affiliate programs)
   - Create mobile participant tokens for signed-in native app users
 - **Official API Library Snippets**:
   - TypeScript
@@ -94,7 +96,7 @@ To delete one participant, pass one ID or email in `participants` to `growsurf_b
 
 ## Optional compact connection
 
-The default connection lists all 63 tools. Add `--compact` to select 32 tools for program setup, installation, participant management, referral tracking, rewards, and analytics. Your credential permissions can reduce the visible set further.
+The default connection lists all 67 tools. Add `--compact` to select 32 tools for program setup, installation, participant management, referral tracking, rewards, and analytics. Your credential permissions can reduce the visible set further.
 
 ```bash
 npx -y @growsurfteam/growsurf-mcp --compact
@@ -121,7 +123,7 @@ For example, read a program's installation settings:
 
 Program recommendations and troubleshooting keep their own tools. Participant reads, updates, deletion, referral actions, and sale or refund actions remain separate. Compact prompts, resources, guidance, and proposed configuration calls use the compact tool names and arguments.
 
-Use the full connection for account creation, team administration, program cloning, participant resources, webhook creation/updates/deletion/tests, participant emails, payout destinations, and webhook normalization. Remove `--compact` and reconnect. These operations remain available with their existing contracts on the full connection; compact rejects calls to tools outside its catalog. The tool-selection table above describes the full connection.
+Use the full connection for account creation, team administration, program cloning, participant resources, custom domains, webhook creation/updates/deletion/tests, participant emails, payout destinations, and webhook normalization. Remove `--compact` and reconnect. These operations remain available with their existing contracts on the full connection; compact rejects calls to tools outside its catalog. The tool-selection table above describes the full connection.
 
 ## Requirements
 
@@ -436,6 +438,9 @@ Program, reward-configuration, options, and participant reads also include a `re
 - `growsurf_get_campaign_installation` / `growsurf_update_campaign_installation`
   Read or patch the Program Editor Installation tab config.
 
+- `growsurf_get_campaign_custom_domain` / `growsurf_set_campaign_custom_domain` / `growsurf_verify_campaign_custom_domain` / `growsurf_remove_campaign_custom_domain`
+  Serve the program's landing pages from your own domain. Set a hostname such as `refer.example.com`, add the `CNAME` record from the returned `dnsRecord` at your DNS provider, then verify to run a live DNS check. Setting a different domain replaces the current one, and the old domain stops loading right away. Removing the domain sends landing pages back to their GrowSurf URL.
+
 - `growsurf_capture_referral_flow_screenshots`
   Capture temporary GrowSurf preview screenshots for the current program, after a draft is saved or when the user asks to see it. This returns the controlled referrer Window and referred-friend experience; use browser automation instead to prove the user's installed site.
 
@@ -485,7 +490,7 @@ Program, reward-configuration, options, and participant reads also include a `re
   Cancel a pending delayed referral trigger before the delay elapses (e.g. on refund/cancellation).
 
 - `growsurf_get_participant_payout_destination`
-  Get a participant's payout-destination status across every provider enabled for the program (PayPal and/or Wise): per-provider status, confirmed payout email, legal recipient type, and repair reason.
+  Get a participant's payout-destination status across every provider enabled for the program (PayPal, Venmo, or Wise): per-provider status, confirmed payout email, legal recipient type, and repair reason.
 
 - `growsurf_request_participant_payout_destination_confirmation`
   Ask a participant to confirm their payout destination for a provider — sends them a one-time confirmation link (only the participant can confirm).
