@@ -127,10 +127,10 @@ describe("MCP tool authorization", () => {
       .not.toContain(CREDENTIAL_TYPES.LEGACY_API_KEY);
   });
 
-  it("removes authenticated personal Account tools while keeping keyless account creation", async () => {
+  it("removes authenticated personal Account tools", async () => {
     const listedToolNames = await listToolNames();
 
-    expect(listedToolNames).toContain("growsurf_create_account");
+    expect(listedToolNames).not.toContain("growsurf_create_account");
     expect(listedToolNames).toEqual(expect.arrayContaining([
       "growsurf_get_team",
       "growsurf_update_team",
@@ -236,12 +236,13 @@ describe("MCP tool authorization", () => {
       readOnlyHint: false,
       destructiveHint: false,
     });
-    expect(byName.get("growsurf_create_account")?.annotations).toMatchObject({
-      readOnlyHint: false,
-      destructiveHint: true,
-      idempotentHint: false,
-      openWorldHint: true,
-    });
+    // Keyless signup disabled 2026-11-03; kept for a possible return.
+    // expect(byName.get("growsurf_create_account")?.annotations).toMatchObject({
+    //   readOnlyHint: false,
+    //   destructiveHint: true,
+    //   idempotentHint: false,
+    //   openWorldHint: true,
+    // });
     expect(byName.get("growsurf_capture_referral_flow_screenshots")?.annotations).toMatchObject({
       readOnlyHint: false,
       destructiveHint: false,
@@ -392,7 +393,8 @@ describe("MCP tool authorization", () => {
   it("filters tools by scopes and credential type while retaining unrestricted tools", () => {
     const tools = [
       { name: "growsurf_integration_guide" },
-      { name: "growsurf_create_account" },
+      // Keyless signup disabled 2026-11-03; kept for a possible return.
+      // { name: "growsurf_create_account" },
       { name: "growsurf_get_campaign" },
       { name: "growsurf_update_campaign" },
       { name: "growsurf_rotate_api_key" },
@@ -404,7 +406,7 @@ describe("MCP tool authorization", () => {
         credentialType: CREDENTIAL_TYPES.MCP_OAUTH,
         scopes: ["program:read", "api_key:rotate"],
       }).map((tool) => tool.name),
-    ).toEqual(["growsurf_integration_guide", "growsurf_create_account", "growsurf_get_campaign"]);
+    ).toEqual(["growsurf_integration_guide", "growsurf_get_campaign"]);
 
     for (const credentialType of [CREDENTIAL_TYPES.TEAM_API_KEY, CREDENTIAL_TYPES.LEGACY_API_KEY]) {
       expect(
@@ -412,12 +414,11 @@ describe("MCP tool authorization", () => {
           credentialType,
           scopes: ["api_key:rotate"],
         }).map((tool) => tool.name),
-      ).toEqual(["growsurf_integration_guide", "growsurf_create_account"]);
+      ).toEqual(["growsurf_integration_guide"]);
     }
 
     expect(filterToolsForCredential(tools, null).map((tool) => tool.name)).toEqual([
       "growsurf_integration_guide",
-      "growsurf_create_account",
     ]);
   });
 
@@ -434,7 +435,7 @@ describe("MCP tool authorization", () => {
     expect(unfiltered).not.toContain("growsurf_rotate_api_key");
     expect(unfiltered).toContain("growsurf_update_campaign");
     expect(filtered).toContain("growsurf_integration_guide");
-    expect(filtered).toContain("growsurf_create_account");
+    expect(filtered).not.toContain("growsurf_create_account");
     expect(filtered).toContain("growsurf_get_campaign");
     expect(filtered).not.toContain("growsurf_update_campaign");
     expect(filtered).not.toContain("growsurf_rotate_api_key");

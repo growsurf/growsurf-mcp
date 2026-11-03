@@ -26,7 +26,7 @@ describe("compact connection public contract", () => {
     const { tools: implicit } = await connect({ toolSurface: undefined });
     const { tools: compact } = await connect();
     expect(implicit).toEqual(full);
-    expect(full).toHaveLength(67);
+    expect(full).toHaveLength(66);
     expect(compact).toHaveLength(32);
     expect(new Set(compact.map(tool => tool.name)).size).toBe(compact.length);
     for (const tool of compact) {

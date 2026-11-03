@@ -1330,22 +1330,23 @@ const TEAM: ToolOutputSchema = {
   },
 };
 
-const CREATE_ACCOUNT_RESPONSE: ToolOutputSchema = {
-  type: "object",
-  properties: {
-    email: { type: "string", description: "Email address for the new account." },
-    apiKey: {
-      type: "string",
-      description:
-        "An API key for the new account. Shown once, locked (`403` `EMAIL_NOT_VERIFIED_ERROR`) until the account's email is verified, and rotated when the owner first signs in to the dashboard.",
-    },
-    verificationStatus: {
-      type: "string",
-      enum: ["NOT_REQUESTED", "REQUESTED", "VERIFIED"],
-      description: "Team verification state for the new account.",
-    },
-  },
-};
+// Keyless signup disabled 2026-11-03; kept for a possible return.
+// const CREATE_ACCOUNT_RESPONSE: ToolOutputSchema = {
+//   type: "object",
+//   properties: {
+//     email: { type: "string", description: "Email address for the new account." },
+//     apiKey: {
+//       type: "string",
+//       description:
+//         "An API key for the new account. Shown once, locked (`403` `EMAIL_NOT_VERIFIED_ERROR`) until the account's email is verified, and rotated when the owner first signs in to the dashboard.",
+//     },
+//     verificationStatus: {
+//       type: "string",
+//       enum: ["NOT_REQUESTED", "REQUESTED", "VERIFIED"],
+//       description: "Team verification state for the new account.",
+//     },
+//   },
+// };
 
 const VERIFICATION_EMAIL_RESPONSE: ToolOutputSchema = {
   type: "object",
@@ -2659,7 +2660,8 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
     "The custom domain after the live DNS check. Same shape as the `growsurf_get_campaign_custom_domain` result.",
   ),
   growsurf_remove_campaign_custom_domain: DELETE_CAMPAIGN_CUSTOM_DOMAIN_RESPONSE,
-  growsurf_create_account: CREATE_ACCOUNT_RESPONSE,
+  // Keyless signup disabled 2026-11-03; kept for a possible return.
+  // growsurf_create_account: CREATE_ACCOUNT_RESPONSE,
   growsurf_get_team: TEAM,
   growsurf_update_team: TEAM,
   growsurf_request_team_verification: TEAM,

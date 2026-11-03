@@ -167,22 +167,21 @@ const requireGrowSurfApiKey = (env: Env): GrowSurfClient => {
   });
 };
 
-// Creating an account (POST /accounts) is the one unauthenticated endpoint — it RETURNS a new API
-// key, so it must work even when no GROWSURF_API_KEY is configured (the keyless exception).
-const getKeylessGrowSurfClient = (env: Env): GrowSurfClient =>
-  new GrowSurfClient({
-    apiKey: env.GROWSURF_API_KEY,
-    campaignId: env.GROWSURF_CAMPAIGN_ID ?? "",
-    ...(env.GROWSURF_API_BASE_URL ? { baseUrl: env.GROWSURF_API_BASE_URL } : {}),
-    uploadAllowedOrigins: env.GROWSURF_UPLOAD_ALLOWED_ORIGINS,
-  });
+// Keyless signup disabled 2026-11-03; kept for a possible return.
+// const getKeylessGrowSurfClient = (env: Env): GrowSurfClient =>
+//   new GrowSurfClient({
+//     apiKey: env.GROWSURF_API_KEY,
+//     campaignId: env.GROWSURF_CAMPAIGN_ID ?? "",
+//     ...(env.GROWSURF_API_BASE_URL ? { baseUrl: env.GROWSURF_API_BASE_URL } : {}),
+//     uploadAllowedOrigins: env.GROWSURF_UPLOAD_ALLOWED_ORIGINS,
+//   });
 
 // The campaign-scoped tools: every tool that operates on a single program (campaign). Each accepts
 // a `campaignId` argument that overrides GROWSURF_CAMPAIGN_ID (resolved per call via
 // resolveCampaignClient), so an agent can create a program and immediately operate on the returned
 // id. The tool-catalog builder below injects the shared campaignId input-schema property into exactly
 // these tools, and each handler resolves its client with resolveCampaignClient(env, toolArgs).
-// Team-level, keyless, and static guidance tools are intentionally excluded, as are the tools
+// Team-level and static guidance tools are intentionally excluded, as are the tools
 // that already declare their own campaignId (create_campaign has none; the guide/snippet and
 // integration-connect-link tools carry their own bespoke campaignId param).
 const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
@@ -962,14 +961,15 @@ const integrationConnectLinkSchema = z.object({
   campaignId: z.string().min(1).optional(),
 });
 
-// ---- Account onboarding and Team tools ----
+// ---- Team tools ----
 
-const createAccountSchema = z.object({
-  email: z.string().min(3),
-  firstName: z.string().min(1).max(255).optional(),
-  lastName: z.string().min(1).max(255).optional(),
-  company: z.string().min(1).max(255).optional(),
-});
+// Keyless signup disabled 2026-11-03; kept for a possible return.
+// const createAccountSchema = z.object({
+//   email: z.string().min(3),
+//   firstName: z.string().min(1).max(255).optional(),
+//   lastName: z.string().min(1).max(255).optional(),
+//   company: z.string().min(1).max(255).optional(),
+// });
 
 const updateTeamSchema = z.object({
   name: z.string().min(1).max(255),
@@ -2140,22 +2140,23 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             "Capture temporary GrowSurf preview screenshots after a draft program is saved. Returns short-lived URLs for the controlled referrer Window and referred-friend experience, with an `expiresAt` timestamp in UTC. The screenshots reflect the saved program at capture time and do not verify installation on the customer's site. A failed inline image alone does not establish that the URL expired. This tool does not accept arbitrary URLs, HTML, JavaScript, or external screenshot targets. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
-        {
-          name: "growsurf_create_account",
-          description:
-            "Create a brand-new GrowSurf account and return an API key. Requires the authorized owner's explicit approval of account creation and acceptance of GrowSurf's Terms of Service (https://growsurf.com/terms) and Privacy Policy (https://growsurf.com/privacy). This is the only tool that does not require `GROWSURF_API_KEY`. The account starts a 14-day Business trial without a credit card. The new key is returned once in `apiKey`, cannot be recovered through this API, and requires durable secret storage. The hosted OAuth connector is an alternative that retains credentials with the connection. The key stays locked until the owner verifies their email; program and resource endpoints return `403` with `EMAIL_NOT_VERIFIED_ERROR` before verification. Verification unlocks the same key. The welcome email includes verification and set-password links. Unverified accounts are deleted after 7 days. The owner's first dashboard sign-in replaces the API key; the old key then returns `403` with `NOT_AUTHORIZED_ERROR`. Participant emails also require team verification. Personal and disposable email addresses are not accepted.",
-          inputSchema: {
-            type: "object",
-            properties: {
-              email: { type: "string" },
-              firstName: { type: "string", maxLength: 255 },
-              lastName: { type: "string", maxLength: 255 },
-              company: { type: "string" },
-            },
-            required: ["email"],
-            additionalProperties: false,
-          },
-        },
+        // Keyless signup disabled 2026-11-03; kept for a possible return.
+        // {
+        //   name: "growsurf_create_account",
+        //   description:
+        //     "Create a brand-new GrowSurf account and return an API key. Requires the authorized owner's explicit approval of account creation and acceptance of GrowSurf's Terms of Service (https://growsurf.com/terms) and Privacy Policy (https://growsurf.com/privacy). This is the only tool that does not require `GROWSURF_API_KEY`. The account starts a 14-day Business trial without a credit card. The new key is returned once in `apiKey`, cannot be recovered through this API, and requires durable secret storage. The hosted OAuth connector is an alternative that retains credentials with the connection. The key stays locked until the owner verifies their email; program and resource endpoints return `403` with `EMAIL_NOT_VERIFIED_ERROR` before verification. Verification unlocks the same key. The welcome email includes verification and set-password links. Unverified accounts are deleted after 7 days. The owner's first dashboard sign-in replaces the API key; the old key then returns `403` with `NOT_AUTHORIZED_ERROR`. Participant emails also require team verification. Personal and disposable email addresses are not accepted.",
+        //   inputSchema: {
+        //     type: "object",
+        //     properties: {
+        //       email: { type: "string" },
+        //       firstName: { type: "string", maxLength: 255 },
+        //       lastName: { type: "string", maxLength: 255 },
+        //       company: { type: "string" },
+        //     },
+        //     required: ["email"],
+        //     additionalProperties: false,
+        //   },
+        // },
         {
           name: "growsurf_get_team",
           description:
@@ -2887,7 +2888,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
     ];
     // Inject the campaignId argument into every campaign-scoped tool so an agent can target
     // a program by id (for example one just returned by growsurf_create_campaign) without a server
-    // restart. Keyless, Team-level, and static tools are left untouched.
+    // restart. Team-level and static tools are left untouched.
     for (const tool of tools) {
       if (!CAMPAIGN_SCOPED_TOOL_NAMES.has(tool.name)) continue;
       const inputSchema = tool.inputSchema as { properties?: Record<string, unknown>; required?: string[] };
@@ -3229,20 +3230,19 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const result = await growsurf.captureReferralFlowScreenshots();
           return jsonToolResult(result);
         }
-        case "growsurf_create_account": {
-          // Keyless exception: works without GROWSURF_API_KEY and returns a new key (locked
-          // until the account's email is verified).
-          const growsurf = getKeylessGrowSurfClient(env);
-          const input = createAccountSchema.parse(request.params.arguments ?? {});
-          const body = omitUndefined({
-            email: input.email,
-            firstName: input.firstName,
-            lastName: input.lastName,
-            company: input.company,
-          }) as Record<string, unknown>;
-          const result = await growsurf.createAccount(body);
-          return jsonToolResult(result);
-        }
+        // Keyless signup disabled 2026-11-03; kept for a possible return.
+        // case "growsurf_create_account": {
+        //   const growsurf = getKeylessGrowSurfClient(env);
+        //   const input = createAccountSchema.parse(request.params.arguments ?? {});
+        //   const body = omitUndefined({
+        //     email: input.email,
+        //     firstName: input.firstName,
+        //     lastName: input.lastName,
+        //     company: input.company,
+        //   }) as Record<string, unknown>;
+        //   const result = await growsurf.createAccount(body);
+        //   return jsonToolResult(result);
+        // }
         case "growsurf_get_team": {
           const growsurf = requireGrowSurfApiKey(env);
           const result = await growsurf.getTeam();

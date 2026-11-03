@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 
 export type GrowSurfClientOptions = {
-  // Optional: the unauthenticated createAccount endpoint runs without a key, so the client can be
-  // constructed keyless. All other methods require a key (enforced by the caller before use).
+  // Optional: the client can be constructed without a key. Every method requires one (enforced by
+  // the caller before use).
   apiKey?: string | undefined;
   campaignId?: string | undefined;
   baseUrl?: string; // defaults to https://api.growsurf.com/v2
@@ -430,16 +430,13 @@ export class GrowSurfClient {
     );
   }
 
-  // Account onboarding and Team operations are not campaign-scoped. See the GrowSurf REST API
-  // reference for the full field-level schemas. Every method except createAccount authenticates.
+  // Team operations are not campaign-scoped. See the GrowSurf REST API
+  // reference for the full field-level schemas. Every method authenticates.
 
-  // createAccount is the ONLY unauthenticated endpoint. It creates a new account and returns a
-  // one-time API key (locked with 403 EMAIL_NOT_VERIFIED_ERROR until the account's email is
-  // verified; verification unlocks that same key, and it is replaced only on the owner's first
-  // dashboard sign-in), so it is sent WITHOUT an Authorization header even when one is configured.
-  async createAccount(body: Record<string, unknown>): Promise<unknown> {
-    return this.requestJson("POST", `/accounts`, body, { auth: false });
-  }
+  // Keyless signup disabled 2026-11-03; kept for a possible return.
+  // async createAccount(body: Record<string, unknown>): Promise<unknown> {
+  //   return this.requestJson("POST", `/accounts`, body, { auth: false });
+  // }
 
   async getTeam(): Promise<unknown> {
     return this.requestJson("GET", `/team`);
@@ -670,8 +667,8 @@ export class GrowSurfClient {
     const headers: Record<string, string> = {
       Accept: "application/json",
     };
-    // Attach the bearer token unless the endpoint is explicitly unauthenticated (createAccount).
-    // Guarding on this.apiKey lets a keyless client hit /accounts without sending an empty token.
+    // Attach the bearer token unless the caller passes `auth: false`.
+    // Guarding on this.apiKey keeps a keyless client from sending an empty token.
     if (options?.auth !== false && this.apiKey) {
       headers.Authorization = `Bearer ${this.apiKey}`;
     }

@@ -424,60 +424,60 @@ describe("GrowSurfClient", () => {
     );
   });
 
-  // ---- Account onboarding and Team ----
+  // ---- Team ----
 
-  it("creates an account with a POST to /accounts and NO Authorization header (keyless)", async () => {
-    const fetchMock = mockJson({
-      email: "richard@piedpiper.com",
-      apiKey: "new_key",
-      verificationStatus: "NOT_REQUESTED",
-    });
-    globalThis.fetch = fetchMock as typeof fetch;
-
-    // Keyless client: no apiKey configured — createAccount must still work.
-    const client = new GrowSurfClient({ campaignId: "" });
-    const result = await client.createAccount({
-      email: "richard@piedpiper.com",
-      firstName: "Richard",
-      lastName: "Hendricks",
-      company: "Pied Piper",
-    });
-
-    expect(result).toEqual({
-      email: "richard@piedpiper.com",
-      apiKey: "new_key",
-      verificationStatus: "NOT_REQUESTED",
-    });
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.growsurf.com/v2/accounts",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          email: "richard@piedpiper.com",
-          firstName: "Richard",
-          lastName: "Hendricks",
-          company: "Pied Piper",
-        }),
-      }),
-    );
-    const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
-    expect(headers.Authorization).toBeUndefined();
-  });
-
-  it("never sends Authorization for createAccount even when an API key is configured", async () => {
-    const fetchMock = mockJson({
-      email: "richard@piedpiper.com",
-      apiKey: "new_key",
-      verificationStatus: "NOT_REQUESTED",
-    });
-    globalThis.fetch = fetchMock as typeof fetch;
-
-    const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
-    await client.createAccount({ email: "richard@piedpiper.com" });
-
-    const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
-    expect(headers.Authorization).toBeUndefined();
-  });
+  // Keyless signup disabled 2026-11-03; kept for a possible return.
+  // it("creates an account with a POST to /accounts and NO Authorization header (keyless)", async () => {
+  //   const fetchMock = mockJson({
+  //     email: "richard@piedpiper.com",
+  //     apiKey: "new_key",
+  //     verificationStatus: "NOT_REQUESTED",
+  //   });
+  //   globalThis.fetch = fetchMock as typeof fetch;
+  //
+  //   const client = new GrowSurfClient({ campaignId: "" });
+  //   const result = await client.createAccount({
+  //     email: "richard@piedpiper.com",
+  //     firstName: "Richard",
+  //     lastName: "Hendricks",
+  //     company: "Pied Piper",
+  //   });
+  //
+  //   expect(result).toEqual({
+  //     email: "richard@piedpiper.com",
+  //     apiKey: "new_key",
+  //     verificationStatus: "NOT_REQUESTED",
+  //   });
+  //   expect(fetchMock).toHaveBeenCalledWith(
+  //     "https://api.growsurf.com/v2/accounts",
+  //     expect.objectContaining({
+  //       method: "POST",
+  //       body: JSON.stringify({
+  //         email: "richard@piedpiper.com",
+  //         firstName: "Richard",
+  //         lastName: "Hendricks",
+  //         company: "Pied Piper",
+  //       }),
+  //     }),
+  //   );
+  //   const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+  //   expect(headers.Authorization).toBeUndefined();
+  // });
+  //
+  // it("never sends Authorization for createAccount even when an API key is configured", async () => {
+  //   const fetchMock = mockJson({
+  //     email: "richard@piedpiper.com",
+  //     apiKey: "new_key",
+  //     verificationStatus: "NOT_REQUESTED",
+  //   });
+  //   globalThis.fetch = fetchMock as typeof fetch;
+  //
+  //   const client = new GrowSurfClient({ apiKey: "api_key", campaignId: "abc123" });
+  //   await client.createAccount({ email: "richard@piedpiper.com" });
+  //
+  //   const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+  //   expect(headers.Authorization).toBeUndefined();
+  // });
 
   it("gets the bound team with a GET on /team and the bearer token", async () => {
     const fetchMock = mockJson({

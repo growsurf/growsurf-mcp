@@ -15,7 +15,7 @@ MCP is optional. Any action-capable agent that can send HTTPS requests can start
 - Start with direct REST at https://growsurf.com/agent-start.md
 - Read the OpenAPI contract at https://growsurf.com/openapi.json
 - Read the Arazzo workflow at https://growsurf.com/arazzo.yaml
-- Learn about optional MCP setup at https://docs.growsurf.com/build-with-ai#optional-connect-mcp
+- Learn about optional MCP setup at https://docs.growsurf.com/build-with-ai#connect-the-mcp-server
 
 ## Who is this for
 
@@ -26,7 +26,7 @@ This MCP server is for:
 
 This MCP server is NOT for:
 
-- Browser-only users who want a local stdio install. ChatGPT web and Claude.ai use the hosted remote connector at `https://mcp.growsurf.com`. Claude Desktop can use either the local stdio server or the hosted connector. See the full client list and setup at https://docs.growsurf.com/build-with-ai#optional-connect-mcp.
+- Browser-only users who want a local stdio install. ChatGPT web and Claude.ai use the hosted remote connector at `https://mcp.growsurf.com`. Claude Desktop can use either the local stdio server or the hosted connector. See the full client list and setup at https://docs.growsurf.com/build-with-ai#connect-the-mcp-server.
 
 ## What you get
 
@@ -45,7 +45,6 @@ This MCP server is NOT for:
   - Steering to review starter Design, Emails, Options, Installation, rewards, and GrowSurf Window content before patching
   - One-shot program-creation eval prompts and acceptance checks for starter content and configuration review
 - **Happy‑Path REST API Wrappers**:
-  - Create an account and get an API key with no existing credentials
   - Read and rename the bound team, request team verification, and resend the team owner's verification email
   - List and get campaigns
   - Get campaign analytics (totals, time series, email metrics, participant engagement activity, and activation cohorts)
@@ -96,7 +95,7 @@ To delete one participant, pass one ID or email in `participants` to `growsurf_b
 
 ## Optional compact connection
 
-The default connection lists all 67 tools. Add `--compact` to select 32 tools for program setup, installation, participant management, referral tracking, rewards, and analytics. Your credential permissions can reduce the visible set further.
+The default connection lists all 66 tools. Add `--compact` to select 32 tools for program setup, installation, participant management, referral tracking, rewards, and analytics. Your credential permissions can reduce the visible set further.
 
 ```bash
 npx -y @growsurfteam/growsurf-mcp --compact
@@ -123,16 +122,16 @@ For example, read a program's installation settings:
 
 Program recommendations and troubleshooting keep their own tools. Participant reads, updates, deletion, referral actions, and sale or refund actions remain separate. Compact prompts, resources, guidance, and proposed configuration calls use the compact tool names and arguments.
 
-Use the full connection for account creation, team administration, program cloning, participant resources, custom domains, webhook creation/updates/deletion/tests, participant emails, payout destinations, and webhook normalization. Remove `--compact` and reconnect. These operations remain available with their existing contracts on the full connection; compact rejects calls to tools outside its catalog. The tool-selection table above describes the full connection.
+Use the full connection for team administration, program cloning, participant resources, custom domains, webhook creation/updates/deletion/tests, participant emails, payout destinations, and webhook normalization. Remove `--compact` and reconnect. These operations remain available with their existing contracts on the full connection; compact rejects calls to tools outside its catalog. The tool-selection table above describes the full connection.
 
 ## Requirements
 
 - Node.js 22+
-- A GrowSurf account for hosted OAuth
-- A GrowSurf **API key** for local stdio setup or manual API-key remote setup. A scoped key works as long as it has access to the tools and programs you want the agent to use.
+- A GrowSurf account for hosted OAuth. Sign up at https://app.growsurf.com.
+- A GrowSurf **API key** for local stdio setup or manual API-key remote setup. Create one in the GrowSurf dashboard after you sign up. A scoped key works as long as it has access to the tools and programs you want the agent to use.
 - A **campaign (program) ID** for campaign-scoped tools. Set `GROWSURF_CAMPAIGN_ID` as the default, pass a `campaignId` argument to target a specific program, or call `growsurf_list_campaigns` to find available programs. For a newly created program, pass the `id` returned by `growsurf_create_campaign` to the other tools.
 - Static guidance/snippet tools can run without credentials
-- Exception: `growsurf_create_account` needs **no** API key. Call it only after the authorized owner approves account creation and accepts GrowSurf's Terms of Service and Privacy Policy. The account starts a 14-day Business trial without a credit card and returns its API key once. A lost key cannot be recovered through the API, so use this only if you can store a secret past the current conversation; otherwise have the owner connect `https://mcp.growsurf.com` and sign in. Pause for owner email verification before protected calls. Unverified accounts are deleted after 7 days. Team-level tools do not need a campaign ID.
+- Team-level tools do not need a campaign ID.
 - Every listed tool publishes standard MCP read-only, destructive, idempotent, and open-world safety hints. Scoped business actions stay available; API-key rotation is intentionally not an MCP tool. Rotate keys in GrowSurf Settings or through a direct REST/SDK client.
 
 ## Official CLI
@@ -154,9 +153,9 @@ npx -y @growsurfteam/growsurf-mcp --version
 
 ## Supported MCP Hosts
 
-For an MCP-compatible host, use GrowSurf's hosted OAuth endpoint at `https://mcp.growsurf.com` when the host supports remote Streamable HTTP with OAuth. Use the local `npx` server when the host needs a stdio process or manual API-key setup. No GrowSurf account yet? After owner approval, an agent can connect to `https://mcp.growsurf.com/onboard` with no credentials and call `growsurf_create_account`.
+For an MCP-compatible host, use GrowSurf's hosted OAuth endpoint at `https://mcp.growsurf.com` when the host supports remote Streamable HTTP with OAuth. Use the local `npx` server when the host needs a stdio process or manual API-key setup. No GrowSurf account yet? Sign up at https://app.growsurf.com and create an API key in the dashboard, or connect to `https://mcp.growsurf.com` and sign in with OAuth.
 
-The GrowSurf MCP server works with any MCP-compatible host. The examples below cover a few config-based and CLI hosts. For the complete, current list of supported clients (including ChatGPT web, Claude.ai, Claude Desktop, GitHub Copilot, Gemini CLI, Devin Desktop, and Cline) with step-by-step setup, see https://docs.growsurf.com/build-with-ai#optional-connect-mcp.
+The GrowSurf MCP server works with any MCP-compatible host. The examples below cover a few config-based and CLI hosts. For the complete, current list of supported clients (including ChatGPT web, Claude.ai, Claude Desktop, GitHub Copilot, Gemini CLI, Devin Desktop, and Cline) with step-by-step setup, see https://docs.growsurf.com/build-with-ai#connect-the-mcp-server.
 
 - Cursor
 - Claude Code (CLI-based)
@@ -362,11 +361,6 @@ Program, reward-configuration, options, and participant reads also include a `re
 
 - `growsurf_grsf_config_snippet`
   `<head>` snippet for configuring `window.grsfConfig` and participant auto-auth.
-
-### Account onboarding
-
-- `growsurf_create_account`
-  Create a GrowSurf account and get an API key. This is the only tool that does not require `GROWSURF_API_KEY`. The returned key is shown once and locked (`403` `EMAIL_NOT_VERIFIED_ERROR`) until the owner verifies their email; verification unlocks that same key, so keep it and retry. It is replaced only on the owner's first dashboard sign-in. Creating an account agrees, on the account holder's behalf, to GrowSurf's [Terms of Service](https://growsurf.com/terms) and [Privacy Policy](https://growsurf.com/privacy).
 
 ### Team
 

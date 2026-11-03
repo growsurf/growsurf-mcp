@@ -203,7 +203,8 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   // Removal stops the domain serving landing pages that participants may already use.
   growsurf_remove_campaign_custom_domain: requiresScopes(TOOL_BEHAVIOR.DESTRUCTIVE_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_capture_referral_flow_screenshots: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PROGRAM_READ),
-  growsurf_create_account: unrestricted(TOOL_BEHAVIOR.CONTENT_EXTERNAL),
+  // Keyless signup disabled 2026-11-03; kept for a possible return.
+  // growsurf_create_account: unrestricted(TOOL_BEHAVIOR.CONTENT_EXTERNAL),
   growsurf_get_team: requiresSingleTeamScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.TEAM_READ),
   growsurf_update_team: requiresSingleTeamScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.TEAM_WRITE),
   growsurf_request_team_verification: requiresSingleTeamScopes(
@@ -295,7 +296,8 @@ export const TOOL_TITLES = {
   growsurf_verify_campaign_custom_domain: "Verify Program Custom Domain",
   growsurf_remove_campaign_custom_domain: "Remove Program Custom Domain",
   growsurf_capture_referral_flow_screenshots: "Capture Referral Flow Screenshots",
-  growsurf_create_account: "Create GrowSurf Account",
+  // Keyless signup disabled 2026-11-03; kept for a possible return.
+  // growsurf_create_account: "Create GrowSurf Account",
   growsurf_get_team: "Get Team",
   growsurf_update_team: "Update Team",
   growsurf_request_team_verification: "Request Team Verification",

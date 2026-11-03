@@ -25,6 +25,7 @@ Call the relevant tool before concluding that advice, benchmarks, or program rec
 
 ## Start here
 
+- No account yet? Sign up at https://app.growsurf.com and create an API key in the dashboard, or connect to https://mcp.growsurf.com with OAuth.
 - Client-neutral REST onboarding: https://growsurf.com/agent-start.md
 - REST API documentation: https://docs.growsurf.com/developer-tools/rest-api
 - OpenAPI 3.1 schema: https://growsurf.com/openapi.json
