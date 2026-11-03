@@ -15,7 +15,7 @@ import {
 } from "./compactTools.js";
 export { COMPACT_TOOL_NAMES, SUPPORTED_TOOL_SURFACES, type ToolSurface } from "./compactTools.js";
 
-export const GROWSURF_MCP_VERSION = "0.19.26";
+export const GROWSURF_MCP_VERSION = "0.19.27";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -1728,7 +1728,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_program_resource",
           description:
-            "Create a `FILE`, `LINK`, or `TEXT` resource for participants. `LINK` requires an HTTPS `url`. `TEXT` requires plain `text`. A `FILE` up to 10 MB requires a one-time `uploadTicket` and the unmodified `uploadResult` from GrowSurf's secure upload flow. New resources default to draft unless `isPublished` is set. API reference: https://docs.growsurf.com/developer-tools/rest-api/api-reference. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Create a `FILE`, `LINK`, or `TEXT` resource for participants. `LINK` requires an HTTPS `url`. `TEXT` requires plain `text`. A `FILE` up to 10 MB requires a one-time `uploadTicket` and the unmodified `uploadResult` from GrowSurf's secure upload flow. New resources default to draft unless `isPublished` is set. API reference: https://growsurf.com/openapi.json. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1804,7 +1804,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_program_resource",
           description:
-            "Update at least one participant resource field, or move it to a zero-based `position`. Only supplied fields change. A replacement `FILE` requires a one-time `uploadTicket` and the unmodified `uploadResult` from GrowSurf's secure upload flow. API reference: https://docs.growsurf.com/developer-tools/rest-api/api-reference. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update at least one participant resource field, or move it to a zero-based `position`. Only supplied fields change. A replacement `FILE` requires a one-time `uploadTicket` and the unmodified `uploadResult` from GrowSurf's secure upload flow. API reference: https://growsurf.com/openapi.json. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             minProperties: 2,

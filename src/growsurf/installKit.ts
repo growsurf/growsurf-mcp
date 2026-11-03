@@ -276,7 +276,7 @@ export const renderIntegrationGuide = (
       formatToolReferences("- It **advises on program design** with `growsurf_program_design_advisor` and **diagnoses tracking, reward, and email problems** symptom-first with `growsurf_troubleshoot_referral_tracking`."),
       formatToolReferences("- For native or React Native mobile apps, use `growsurf_mobile_sdk_guide` for Mobile SDK, attribution, `trackShare`, and native GrowSurf Window examples."),
       "- It **helps compute participant-auth hashes** and create participant-scoped mobile SDK tokens.",
-      formatToolReferences("- For broader production REST API coverage, use `growsurf_api_library_snippets` and the official GrowSurf API Libraries: https://docs.growsurf.com/developer-tools/rest-api/api-libraries"),
+      formatToolReferences("- For broader production REST API coverage, use `growsurf_api_library_snippets` and the official GrowSurf API Libraries: https://growsurf.com/developers/"),
       formatToolReferences("- It **links to the dashboard** to connect integrations (Stripe, PayPal, Mailchimp, and more) via `growsurf_get_integration_connect_link`; the connection itself is set up in the dashboard, not via API."),
       "- It **does not** embed the Universal Code for you (you copy that snippet from GrowSurf).",
       "- It **does not** host a webhook endpoint (you run that in your app), but it can normalize/validate payloads.",
