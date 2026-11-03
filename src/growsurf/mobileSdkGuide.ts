@@ -10,6 +10,9 @@ const IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_RE
 const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.3.0";
 const REACT_NATIVE_PACKAGE_NAME = "growsurf-react-native-sdk";
 const REACT_NATIVE_SDK_DOCS_URL = `${DOCS_SITE_URL}/developer-tools/react-native-sdk`;
+// The native iOS version that REACT_NATIVE_SDK_GUIDANCE_VERSION pins; it can differ from MOBILE_SDK_GUIDANCE_VERSION.
+const REACT_NATIVE_PINNED_IOS_SDK_VERSION = "0.10.2";
+const REACT_NATIVE_IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_REPO}/v${REACT_NATIVE_PINNED_IOS_SDK_VERSION}/GrowSurfSDK.podspec`;
 // Device-specific SDK preferences that must not move to another installation through Android backup.
 const ANDROID_BACKUP_EXCLUDED_PREFERENCES = [
   "growsurf_tokens.xml",
@@ -416,7 +419,7 @@ const reactNativeAttributionText = (provider: AttributionProvider) => {
   if (provider === "none") return "Skip attribution handling only if this app never accepts referred installs.";
   const parts: string[] = [];
   if (provider === "all" || provider === "direct_link") {
-    parts.push("Pass the cold-start URL from `Linking.getInitialURL()` and every warm `Linking` `url` event to `handleDeepLink(url)`. Links can contain referral identity, supported UTM values, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`. Call `links.remove()` when the component that added the listener unmounts.");
+    parts.push("Pass the cold-start URL from `Linking.getInitialURL()` and every warm `Linking` `url` event to `handleDeepLink(url)`. Links can contain referral identity, supported UTM values, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`. Call `links.remove()` when the component that added the listener unmounts. GrowSurf-hosted share links live on `grow.surf`, not your domain, so they cannot open your app as iOS Universal Links or Android App Links. To open the app, use a custom URL scheme, your own domain with `grsf` appended, or an attribution provider.");
   }
   if (provider === "all" || provider === "google_play") {
     parts.push("On Android, `handleDeferredDeepLink()` reads the Google Play Install Referrer, which arrives only for genuine Google Play Store installs. `addReferredParticipant()` also checks it once when no pending attribution exists. iOS rejects `handleDeferredDeepLink()` with `UNSUPPORTED_PLATFORM`, so call it only when `Platform.OS` is `\"android\"`.");
@@ -519,14 +522,27 @@ const renderReactNative = (input: MobileSdkGuideInput, campaignId: string, mobil
     sections.push(
       "Install from npm:",
       codeBlock("sh", `npm install ${REACT_NATIVE_PACKAGE_NAME}`),
-      "In a bare app, first add `GrowSurfSDK` to the app target in `ios/Podfile` using the tag-pinned GitHub `:podspec` URL in the SDK reference install steps. Match the podspec version to the native iOS version pinned by the installed React Native package, then run `pod install` in the `ios` directory. This avoids CocoaPods Trunk. iOS requires iOS 15 or newer. Android requires `minSdk` 24, `compileSdk` 36, and Kotlin 2.1.21 or newer.",
-      "For Expo, run `npx expo install expo-build-properties`. Add the GrowSurf plugin below and merge `expo-build-properties` with `ios.extraPods` for the same GitHub podspec, following the SDK reference install steps. Keep any existing build-properties configuration and match the native iOS pin. Then rebuild the development client. The GrowSurf plugin merges the Android backup exclusions below into your app's rules. If the manifest refers to another library's backup XML, copy that XML into your app's `res/xml` directory first so the plugin can merge it.",
+      `In a bare app, first add \`GrowSurfSDK\` to the app target in \`ios/Podfile\` with the tag-pinned GitHub podspec below, then run \`pod install\` in the \`ios\` directory. React Native SDK ${REACT_NATIVE_SDK_GUIDANCE_VERSION} pins GrowSurf iOS SDK ${REACT_NATIVE_PINNED_IOS_SDK_VERSION}; the podspec version must match the native iOS version pinned by the installed package. This avoids CocoaPods Trunk. iOS requires iOS 15 or newer. Android requires \`minSdk\` 24, \`compileSdk\` 36, and Kotlin 2.1.21 or newer.`,
+      codeBlock("ruby", `pod 'GrowSurfSDK', :podspec => '${REACT_NATIVE_IOS_PODSPEC_URL}'`),
+      "For Expo, run `npx expo install expo-build-properties`. Add both plugins below. If you already use `expo-build-properties`, merge `extraPods` into its existing configuration. Then rebuild the development client. The GrowSurf plugin merges the Android backup exclusions below into your app's rules. If the manifest refers to another library's backup XML, copy that XML into your app's `res/xml` directory first so the plugin can merge it.",
       codeBlock(
         "json",
         [
           "{",
           '  "expo": {',
-          `    "plugins": ["${REACT_NATIVE_PACKAGE_NAME}"]`,
+          '    "plugins": [',
+          `      "${REACT_NATIVE_PACKAGE_NAME}",`,
+          "      [",
+          '        "expo-build-properties",',
+          "        {",
+          '          "ios": {',
+          '            "extraPods": [',
+          `              { "name": "GrowSurfSDK", "podspec": "${REACT_NATIVE_IOS_PODSPEC_URL}" }`,
+          "            ]",
+          "          }",
+          "        }",
+          "      ]",
+          "    ]",
           "  }",
           "}",
         ].join("\n"),
@@ -568,12 +584,15 @@ const renderReactNative = (input: MobileSdkGuideInput, campaignId: string, mobil
           "if (response.added && response.participant) {",
           "  const participant = response.participant;",
           "  // Use participant",
+          "} else if (response.requiresParticipantToken) {",
+          "  // Existing participant: create a mobile participant token on your backend.",
           "} else if (!response.added) {",
-          "  // 'no_referrer', 'invalid_referrer', or 'participant_already_exists'",
+          "  // 'no_referrer' or 'invalid_referrer'",
           "  console.log(response.notAddedReason);",
           "}",
         ].join("\n"),
       ),
+      "When the email already belongs to a participant, `notAddedReason` is `participant_already_exists`, `requiresParticipantToken` is `true`, and no participant token is returned. Create a mobile participant token on your backend, then pass it to `setParticipantToken(token)` or the `existingParticipantToken` Window identity.",
       "For a public signup flow that intentionally creates every user, call `addParticipant()`. For direct signup to an `OPEN_ENROLLMENT` affiliate program with configured Terms, show those Terms and set `termsAccepted: true` only after consent. If `affiliateApplicationMode` is `MANUAL_REVIEW` or `AUTO_APPROVE`, send applicants through the configured GrowSurf Program Page instead of direct signup:",
       codeBlock(
         "ts",
