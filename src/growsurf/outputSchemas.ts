@@ -88,11 +88,21 @@ const PARTICIPANT_REWARD = {
     amount: {
       type: ["number", "null"],
       description:
-        "What this reward delivered, in major units, when the reward records a delivered amount (such as a gift card). Read from this reward, not from the Campaign Reward's configured amount. `null` for every other reward.",
+        "What this reward is worth, in major units of `currencyISO`: the coupon, account credit, payout, or gift card the provider confirmed, or else the amount saved on the reward when it was earned. Later Campaign Reward or integration changes do not change it. `null` for a percent-off coupon (see `percentOff`) or when no amount is available.",
     },
     currencyISO: {
       type: ["string", "null"],
       description: "The ISO 4217 currency code for `amount`. `null` whenever `amount` is `null`.",
+    },
+    percentOff: {
+      type: ["number", "null"],
+      description: "Discount of a percent-off coupon (`20` = 20% off). `null` for every other reward. Never add it to money amounts.",
+    },
+    amountSource: {
+      type: ["string", "null"],
+      enum: ["STRIPE", "CHARGEBEE", "RECURLY", "CHARGIFY", "PAYPAL", "VENMO", "TANGO_CARD", "TREMENDOUS", "XTRM", "METADATA", null],
+      description:
+        "Where `amount` or `percentOff` comes from. `METADATA` means the amount saved on the reward when it was earned; any other value names the provider. `null` when both are `null`.",
     },
     commissionStructure: {
       type: ["object", "null"],

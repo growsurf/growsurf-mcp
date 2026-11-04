@@ -15,7 +15,7 @@ import {
 } from "./compactTools.js";
 export { COMPACT_TOOL_NAMES, SUPPORTED_TOOL_SURFACES, type ToolSurface } from "./compactTools.js";
 
-export const GROWSURF_MCP_VERSION = "0.19.27";
+export const GROWSURF_MCP_VERSION = "0.19.28";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -393,7 +393,7 @@ const addParticipantSchema = z.object({
 // send the public create-participant request body.
 const CREATE_PARTICIPANT_LANGUAGE_INPUT = {
   type: "string",
-  description: `The language of the participant's portal and program emails. Stored when it is one of the program's languages (\`languages\` in \`growsurf_get_campaign_options\`). A regional tag maps to its language (for example, \`es-MX\` is stored as \`es\`). Any other value is ignored and the program's base language applies. Applies only when this call creates the participant. Omit it to use the program's base language. ${PROGRAM_LANGUAGE_CODES_TEXT}`,
+  description: `The language of the participant's portal and program emails. Stored when it is one of the program's languages (\`languages\` in \`growsurf_get_campaign_options\`). A regional tag maps to its language (for example, \`fr-BE\` is stored as \`fr\`). Any other value is ignored and the program's base language applies. Applies only when this call creates the participant. Omit it to use the program's base language. ${PROGRAM_LANGUAGE_CODES_TEXT}`,
 } as const;
 
 const CREATE_PARTICIPANT_REFERRED_AT_INPUT = {

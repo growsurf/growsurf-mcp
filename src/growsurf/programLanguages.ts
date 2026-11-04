@@ -43,6 +43,8 @@ export const PROGRAM_LANGUAGE_CODES = Object.freeze([
   "fil",
   "af",
   "sw",
+  "zh-TW",
+  "es-419",
 ] as const);
 
 export const PROGRAM_LANGUAGE_CODES_TEXT = `Supported codes: ${PROGRAM_LANGUAGE_CODES.map((code) => `\`${code}\``).join(", ")}.`;
