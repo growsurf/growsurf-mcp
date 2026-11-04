@@ -238,7 +238,8 @@ export const renderIntegrationGuide = (
       "### 5) Webhooks (recommended)",
       "",
       "- Configure a webhook URL in GrowSurf (Program Editor → Options → Webhooks).",
-      "- For referral reward delivery, handle only approved rewards and use the program ID plus earned reward ID as an atomic delivery key. The normalization key identifies event deliveries; it is not a reward-delivery key. Follow https://docs.growsurf.com/developer-tools/webhooks#using-reward-metadata for recipient amounts, saved currency, and safe retries.",
+      "- For `PARTICIPANT_REACHED_A_GOAL`, deliver only when `data.reward.approved` is `true`. `data.participant` is the recipient. Read `data.reward.metadata`: use `rewardAmount` when `data.reward.isReferrer` is `true`; for the friend, use `referredRewardAmount` when present, otherwise `rewardAmount`. A present but invalid friend amount requires review. Use `data.reward.currencyISO`, the currency saved with the earned reward; missing saved currency requires review. Do not use current program settings.",
+      "- Claim `data.campaign.id` plus `data.reward.id` atomically before delivery. Pass that key to the provider when supported, save the successful result, and check the provider before retrying an uncertain delivery. Do not mark an unapproved event as delivered. The normalization key identifies event deliveries; it is not a reward-delivery key. `data.reward.rewardId` identifies the shared reward configuration, not an earned reward.",
       "",
       "#### Webhook security",
       "",
@@ -249,7 +250,7 @@ export const renderIntegrationGuide = (
       "- Keep secrets out of webhook URLs. URLs can appear in logs and support captures.",
       "- After verification, validate the payload and deduplicate events before changing your data.",
       "",
-      "Follow [GrowSurf webhook verification](https://docs.growsurf.com/developer-tools/webhooks/securing-your-webhooks) for the signature format.",
+      "Optional reference for the account owner: [GrowSurf webhook verification](https://docs.growsurf.com/developer-tools/webhooks/securing-your-webhooks) requires sign-in. The verification instructions above are complete; an agent does not need a docs session.",
       "",
       formatToolReferences("`growsurf_webhook_normalize` validates the payload shape and suggests an idempotency key. It does not verify signatures or authenticate requests."),
       "",
@@ -548,7 +549,7 @@ export const renderGrsfConfigSnippet = (input: z.infer<typeof grsfConfigSnippetS
   lines.push("<script type=\"text/javascript\">");
   if (input.includeAutoAuthCommentHeader) {
     lines.push(
-      "  /* To enable Participant Auto Authentication for your logged-in users, uncomment this code below (https://docs.growsurf.com/getting-started/participant-auto-authentication) */",
+      "  /* To enable Participant Auto Authentication for your logged-in users, uncomment this code below. Optional account-owner reference (sign-in required): https://docs.growsurf.com/getting-started/participant-auto-authentication */",
     );
   }
   if (input.enableParticipantAutoAuth) {

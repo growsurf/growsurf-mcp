@@ -79,7 +79,7 @@ export const docLink = (reference: string, links?: Readonly<Record<string, strin
     return url ? `[support article ${support[1]}](${url})` : `support.growsurf.com article ${support[1]}`;
   }
   const docs = /^docs (\S+)$/.exec(reference);
-  if (docs) return `[docs.growsurf.com/${docs[1]}](${DOCS_SITE_URL}/${docs[1]})`;
+  if (docs) return `[docs.growsurf.com/${docs[1]}](${DOCS_SITE_URL}/${docs[1]}) (optional reference for the account owner; sign-in required)`;
   return reference;
 };
 

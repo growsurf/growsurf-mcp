@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { DOCS_SITE_URL } from "./insights.js";
 import { kotlinString } from "./snippetLiterals.js";
 
 const MOBILE_SDK_GUIDANCE_VERSION = "0.10.2";
@@ -9,7 +8,7 @@ const IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_RE
 // The React Native package has its own version and pins its native SDK versions itself.
 const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.3.0";
 const REACT_NATIVE_PACKAGE_NAME = "growsurf-react-native-sdk";
-const REACT_NATIVE_SDK_DOCS_URL = `${DOCS_SITE_URL}/developer-tools/react-native-sdk`;
+const REACT_NATIVE_SDK_DOCS_URL = "https://raw.githubusercontent.com/growsurf/growsurf-react-native-sdk-distribution/main/README.md";
 // The native iOS version that REACT_NATIVE_SDK_GUIDANCE_VERSION pins; it can differ from MOBILE_SDK_GUIDANCE_VERSION.
 const REACT_NATIVE_PINNED_IOS_SDK_VERSION = "0.10.2";
 const REACT_NATIVE_IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_REPO}/v${REACT_NATIVE_PINNED_IOS_SDK_VERSION}/GrowSurfSDK.podspec`;
