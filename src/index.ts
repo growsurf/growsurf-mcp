@@ -2060,6 +2060,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                     type: "object",
                     description: "Guide choices. Send only the choices to change.",
                     properties: {
+                      webTracking: { type: "string", enum: ["hosted", "website"], description: "Web referral tracking guide shown in step 1. Referral programs only; does not change the referral setup." },
                       platform: { type: "string", enum: ["web", "ios", "android"] },
                       mobileAttributionProvider: { type: "string", enum: ["branch", "appsflyer", "adjust", "singular", "other"] },
                       stepProviders: {

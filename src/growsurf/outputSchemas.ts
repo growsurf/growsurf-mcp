@@ -1292,6 +1292,7 @@ const CAMPAIGN_INSTALLATION: ToolOutputSchema = {
       type: "object",
       description: "Saved choices shown in the Program Editor installation guide.",
       properties: {
+        webTracking: { type: "string", enum: ["hosted", "website"], description: "Web referral tracking guide shown in step 1. Referral programs only; does not change the referral setup." },
         platform: { type: "string", enum: ["web", "ios", "android"], description: "Platform shown in step 1." },
         mobileAttributionProvider: {
           type: "string",
