@@ -85,6 +85,7 @@
     "vitest": "^5.0.1"
   },
   "overrides": {
+    "minimatch@>=7 <11.0.1": "11.0.1",
     "proxy-addr": "^2.0.8"
   }
 }
