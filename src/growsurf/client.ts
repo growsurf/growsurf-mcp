@@ -65,6 +65,7 @@ export type PreparedProgramResourceFile = {
 };
 
 const DEFAULT_BASE_URL = "https://api.growsurf.com/v2";
+const MAX_AUTOMATIC_RETRY_DELAY_MS = 5000;
 const PROGRAM_RESOURCE_UPLOAD_RESPONSE_MAX_BYTES = 256 * 1024;
 
 const normalizeBaseUrl = (baseUrl: string) => baseUrl.replace(/\/+$/, "");
@@ -712,6 +713,25 @@ export class GrowSurfClient {
       }
 
       if ((response.status === 429 || response.status === 503) && attempt < maxAttempts) {
+        const retryDelays = [
+          "GrowSurf-Retry-After-Second-Milliseconds",
+          "GrowSurf-Retry-After-Minute-Milliseconds",
+        ].map((header) => Number(response.headers.get(header) ?? NaN))
+          .filter((value) => Number.isFinite(value) && value >= 0);
+        const retryAfter = response.headers.get("Retry-After")?.trim();
+        if (retryAfter) {
+          // A server-relative date also preserves the wait when the caller's clock is ahead.
+          const responseDate = Date.parse(response.headers.get("Date") ?? "");
+          const retryAfterMs = /^\d+$/.test(retryAfter)
+            ? Number(retryAfter) * 1000
+            : Math.max(0, Date.parse(retryAfter) - (Number.isFinite(responseDate) ? responseDate : Date.now()));
+          if (!Number.isNaN(retryAfterMs)) retryDelays.push(retryAfterMs);
+        }
+        const retryAfterMs = retryDelays.length ? Math.max(...retryDelays) : 250 * attempt;
+        // Never shorten the server's minimum wait. Return long waits to the caller rather than
+        // holding an automatic retry open or sending another request before the limit expires.
+        if (retryAfterMs > MAX_AUTOMATIC_RETRY_DELAY_MS) throw await toError(response);
+
         // Release the discarded body before retrying; cleanup failures must not change retry behavior.
         try {
           const cancellation = response.body?.cancel();
@@ -719,12 +739,7 @@ export class GrowSurfClient {
         } catch {
           // Best-effort cleanup only.
         }
-        const retryAfterMs =
-          Number(response.headers.get("GrowSurf-Retry-After-Second-Milliseconds")) ||
-          Number(response.headers.get("GrowSurf-Retry-After-Minute-Milliseconds")) ||
-          Number(response.headers.get("Retry-After")) * 1000 ||
-          250 * attempt;
-        await delay(Math.min(Math.max(retryAfterMs, 250), 5000));
+        await delay(Math.max(retryAfterMs, 250));
         continue;
       }
 
