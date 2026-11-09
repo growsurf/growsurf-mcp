@@ -722,14 +722,14 @@ const CAMPAIGN_DESIGN: ToolOutputSchema = {
         },
         referrerNameFormat: {
           type: "string",
-          enum: ["FIRST", "FIRST_LAST_INITIAL", "FIRST_LAST"],
+          enum: ["NONE", "FIRST", "FIRST_LAST_INITIAL", "FIRST_LAST"],
           description:
-            "How the referrer's name appears in referred-visitor copy: `FIRST` (`Gavin`), `FIRST_LAST_INITIAL` (`Gavin B`), or `FIRST_LAST` (`Gavin Belson`).",
+            "How the referrer's name appears in referred-visitor copy: `NONE` uses the fallback name; `FIRST` shows `Gavin`, `FIRST_LAST_INITIAL` shows `Gavin B`, and `FIRST_LAST` shows `Gavin Belson`.",
         },
         referrerNameFallback: {
           type: ["string", "null"],
           maxLength: 100,
-          description: "Name used in referred-visitor copy when the referrer has no first or last name on file.",
+          description: "Name used in referred-visitor copy when the referrer has no name on file or `referrerNameFormat` is `NONE`.",
         },
       },
     },
