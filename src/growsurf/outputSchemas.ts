@@ -61,6 +61,11 @@ const PARTICIPANT_REWARD = {
   properties: {
     id: { type: "string", description: "The participant reward id." },
     rewardId: { type: "string", description: "ID of the Campaign Reward (`CampaignReward`) that was earned." },
+    groupId: {
+      type: ["string", "null"],
+      description:
+        "The group whose reward this is (`grp_…`), saved when it was earned. `null` for Default and for rewards earned before groups existed.",
+    },
     status: {
       type: "string",
       enum: ["PENDING", "FULFILLED", "CANCELLED"],
@@ -176,6 +181,16 @@ const PARTICIPANT: ToolOutputSchema = {
     fraudReasonCode: {
       type: "string",
       description: "Reason code behind `fraudRiskLevel` (e.g. `UNIQUE_IDENTITY`, `DUPLICATE_EMAIL`, `MANUAL_UPDATE`).",
+    },
+    groupId: {
+      type: ["string", "null"],
+      description: "The participant's group (`grp_…`), or `null` for Default. Their new referrals earn this group's rewards.",
+    },
+    groupSource: {
+      type: ["string", "null"],
+      enum: ["MANUAL", "LINK", "EMAIL", "DOMAIN", null],
+      description:
+        "How the participant got into their group: `MANUAL` (a move, including a move to Default), `LINK` (the group's signup link), `EMAIL`, or `DOMAIN` (a group rule). `null` when no group placement was ever made.",
     },
     isWinner: { type: "boolean", description: "`true` once the participant has earned at least one reward." },
     shareCount: {
@@ -331,6 +346,10 @@ const REWARD: ToolOutputSchema = {
       enum: [...REWARD_IMAGE_ICON_KEYS, null],
       description: "The starter icon shown for the reward, or `null` when `imageUrl` is your own image.",
     },
+    groupId: {
+      type: ["string", "null"],
+      description: "The group this reward belongs to (`grp_…`), or `null` for Default. A participant earns only their own group's rewards.",
+    },
     couponCode: {
       type: ["string", "null"],
       description:
@@ -417,6 +436,49 @@ const DELETE_REWARD_RESPONSE: ToolOutputSchema = {
   properties: {
     id: { type: "string", description: "The deleted campaign reward id." },
     success: { type: "boolean", description: "Whether the campaign reward was deleted." },
+  },
+};
+
+const CAMPAIGN_GROUP: ToolOutputSchema = {
+  type: "object",
+  description: "A group of participants who earn their own rewards: the Campaign Rewards whose `groupId` is this group's `id`.",
+  properties: {
+    id: { type: "string", description: "The group ID (`grp_…`)." },
+    name: { type: "string", description: "The group name (internal only, never shown to participants)." },
+    order: { type: "integer", description: "The group's position in the program's group list." },
+    rules: {
+      type: "array",
+      description: "The rules that place participants in this group.",
+      items: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: ["PARTICIPANT", "EMAIL", "DOMAIN"], description: "The kind of rule." },
+          value: { type: "string", description: "The participant ID, email address, or domain." },
+        },
+      },
+    },
+    signupCode: {
+      type: "string",
+      description: "The code for this group's signup link. A participant who signs up through the link joins this group.",
+    },
+    createdAt: { type: "integer", description: "When the group was created, in Unix milliseconds." },
+    updatedAt: { type: "integer", description: "When the group was last changed, in Unix milliseconds." },
+  },
+};
+
+const CAMPAIGN_GROUP_LIST_RESPONSE: ToolOutputSchema = {
+  type: "object",
+  properties: {
+    groups: { type: "array", items: CAMPAIGN_GROUP, description: "The program's groups in display order. Default is not listed." },
+  },
+};
+
+const DELETE_CAMPAIGN_GROUP_RESPONSE: ToolOutputSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string", description: "The deleted group ID." },
+    success: { type: "boolean", description: "Whether the group was deleted." },
+    movedToDefault: { type: "integer", description: "The number of members moved to Default." },
   },
 };
 
@@ -2151,6 +2213,40 @@ const BULK_DELETE_PARTICIPANTS_RESPONSE: ToolOutputSchema = {
   },
 };
 
+const BULK_MOVE_PARTICIPANTS_RESPONSE: ToolOutputSchema = {
+  type: "object",
+  description: "Bulk move outcome. A `200` can include `NOT_FOUND`, `DUPLICATE`, or `ERROR` rows, so check the summary.",
+  properties: {
+    summary: {
+      type: "object",
+      description: "Counts across all submitted entries.",
+      properties: {
+        total: { type: "integer", description: "Entries submitted in this request." },
+        groupId: { type: ["string", "null"], description: "The target group, or `null` for Default." },
+        movedCount: { type: "integer", description: "Entries that resolved to a participant and were moved." },
+        notFoundCount: { type: "integer", description: "Entries that did not match any participant." },
+        duplicateCount: { type: "integer", description: "Entries that resolved to the same participant as an earlier entry." },
+        errorCount: { type: "integer", description: "Entries that failed to look up." },
+      },
+    },
+    results: {
+      type: "array",
+      description: "One entry per submitted identifier, in request order.",
+      items: {
+        type: "object",
+        properties: {
+          index: { type: "integer", description: "Zero-based position of this entry in the submitted list." },
+          identifier: { type: "string", description: "The submitted participant id or email, echoed back." },
+          status: { type: "string", enum: ["MOVED", "NOT_FOUND", "DUPLICATE", "ERROR"], description: "Per-row outcome." },
+          participantId: { type: "string", description: "The resolved participant id. Present when the entry resolved." },
+          email: { type: ["string", "null"], description: "The resolved participant's email. Present on `MOVED` rows." },
+          message: { type: "string", description: "Detail for `NOT_FOUND`, `DUPLICATE`, and `ERROR` rows." },
+        },
+      },
+    },
+  },
+};
+
 const EMAIL_PARTICIPANT_RESPONSE: ToolOutputSchema = {
   type: "object",
   properties: {
@@ -2638,6 +2734,10 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
     "The updated campaign reward. Same shape as the items in the `growsurf_list_campaign_rewards` result.",
   ),
   growsurf_delete_campaign_reward: DELETE_REWARD_RESPONSE,
+  growsurf_list_campaign_groups: CAMPAIGN_GROUP_LIST_RESPONSE,
+  growsurf_create_campaign_group: CAMPAIGN_GROUP,
+  growsurf_update_campaign_group: CAMPAIGN_GROUP,
+  growsurf_delete_campaign_group: DELETE_CAMPAIGN_GROUP_RESPONSE,
   growsurf_list_program_resources: PROGRAM_RESOURCE_LIST_RESPONSE,
   growsurf_prepare_program_resource_file: PREPARED_PROGRAM_RESOURCE_FILE,
   growsurf_create_program_resource: sameShapeAs(
@@ -2698,6 +2798,7 @@ export const TOOL_OUTPUT_SCHEMAS: Readonly<Record<string, ToolOutputSchema>> = {
     "The updated participant. Same shape as the `growsurf_get_participant` result.",
   ),
   growsurf_bulk_delete_participants: BULK_DELETE_PARTICIPANTS_RESPONSE,
+  growsurf_bulk_move_participants: BULK_MOVE_PARTICIPANTS_RESPONSE,
   growsurf_email_participant: EMAIL_PARTICIPANT_RESPONSE,
   growsurf_get_participant_analytics: PARTICIPANT_ANALYTICS_RESPONSE,
   growsurf_get_participant_activity_logs: PARTICIPANT_ACTIVITY_LOGS_RESPONSE,

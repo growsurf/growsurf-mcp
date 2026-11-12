@@ -15,7 +15,7 @@ import {
 } from "./compactTools.js";
 export { COMPACT_TOOL_NAMES, SUPPORTED_TOOL_SURFACES, type ToolSurface } from "./compactTools.js";
 
-export const GROWSURF_MCP_VERSION = "0.19.31";
+export const GROWSURF_MCP_VERSION = "0.19.32";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -192,6 +192,10 @@ const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
   "growsurf_create_campaign_reward",
   "growsurf_update_campaign_reward",
   "growsurf_delete_campaign_reward",
+  "growsurf_list_campaign_groups",
+  "growsurf_create_campaign_group",
+  "growsurf_update_campaign_group",
+  "growsurf_delete_campaign_group",
   "growsurf_list_program_resources",
   "growsurf_prepare_program_resource_file",
   "growsurf_create_program_resource",
@@ -223,6 +227,7 @@ const CAMPAIGN_SCOPED_TOOL_NAMES = new Set<string>([
   "growsurf_add_participant",
   "growsurf_update_participant",
   "growsurf_bulk_delete_participants",
+  "growsurf_bulk_move_participants",
   "growsurf_email_participant",
   "growsurf_get_participant_analytics",
   "growsurf_get_participant_activity_logs",
@@ -387,6 +392,8 @@ const addParticipantSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
   // Omit to use the program's base language. A value that is not one of the program's languages is ignored.
   language: z.string().optional(),
+  // `null` is a real value: it places the new participant in Default as a manual placement.
+  groupId: z.string().min(1).nullable().optional(),
 });
 
 // Shared by `growsurf_add_participant` and `growsurf_create_mobile_participant_token`, which both
@@ -750,6 +757,8 @@ const rewardWritableFields = {
   referralDescription: z.string().max(255).nullable().optional(),
   imageUrl: z.string().nullable().optional(),
   imageIconKey: z.enum(REWARD_IMAGE_ICON_KEYS).nullable().optional(),
+  // `null` is a real value: it puts the reward in Default.
+  groupId: z.string().min(1).nullable().optional(),
   isVisible: z.boolean().optional(),
   isUnlimited: z.boolean().optional(),
   referredRewardUpfront: z.boolean().optional(),
@@ -780,6 +789,35 @@ const updateCampaignRewardSchema = z.object({
 
 const deleteCampaignRewardSchema = z.object({
   campaignRewardId: z.string().min(1),
+});
+
+const listCampaignRewardsSchema = z.object({
+  groupId: z.string().min(1).optional(),
+});
+
+const campaignGroupRuleSchema = z.object({
+  type: z.enum(["PARTICIPANT", "EMAIL", "DOMAIN"]),
+  value: z.string().min(1).max(254),
+});
+
+const createCampaignGroupSchema = z.object({
+  name: z.string().min(1).max(100),
+  rules: z.array(campaignGroupRuleSchema).max(500).optional(),
+});
+
+const updateCampaignGroupSchema = z
+  .object({
+    groupId: z.string().min(1),
+    name: z.string().min(1).max(100).optional(),
+    order: z.number().int().min(0).optional(),
+    rules: z.array(campaignGroupRuleSchema).max(500).optional(),
+  })
+  .refine((v) => [v.name, v.order, v.rules].some((x) => x !== undefined), {
+    message: "Provide at least one group field to update.",
+  });
+
+const deleteCampaignGroupSchema = z.object({
+  groupId: z.string().min(1),
 });
 
 const programResourceCommonFields = {
@@ -1072,6 +1110,7 @@ const listParticipantsSchema = z.object({
       message: "metadata accepts 1 to 3 keys.",
     })
     .optional(),
+  groupId: z.string().min(1).optional(),
 });
 
 // The participant is addressed by GrowSurf participant ID OR email (identical path parameter),
@@ -1154,6 +1193,8 @@ const updateParticipantSchema = z
     notes: z.string().max(500).optional(),
     // `null` is a real value here: it clears the participant's language back to the program's base.
     language: z.string().nullable().optional(),
+    // `null` is a real value here: it moves the participant to Default.
+    groupId: z.string().min(1).nullable().optional(),
   })
   .refine(hasParticipantIdentity, { message: PARTICIPANT_IDENTITY_HINT })
   .refine(
@@ -1170,6 +1211,7 @@ const updateParticipantSchema = z
         v.unsubscribed,
         v.notes,
         v.language,
+        v.groupId,
       ].some((x) => x !== undefined),
     { message: "Provide at least one participant field to update." },
   );
@@ -1187,6 +1229,12 @@ const bulkDeleteParticipantsSchema = z.object({
     .min(1)
     .max(200)
     .describe("GrowSurf participant IDs and/or email addresses to delete (1-200 entries; mixed lists allowed)."),
+});
+
+const bulkMoveParticipantsSchema = z.object({
+  participants: z.array(z.string().min(1)).min(1).max(200),
+  // Required by REST; `null` moves the participants to Default.
+  groupId: z.string().min(1).nullable(),
 });
 
 export type CreateGrowSurfMcpServerOptions = {
@@ -1508,8 +1556,18 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         },
         {
           name: "growsurf_list_campaign_rewards",
-          description: "List your GrowSurf program's configured Campaign Rewards, including switched-off rewards and rewards whose group is not selected. Deleted rewards are excluded. A reward can be earned only when it also appears in the campaign response's embedded `rewards` array. These settings do not establish that a participant earned or received a reward; earned reward records belong to the individual participant. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
-          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+          description: "List your GrowSurf program's configured Campaign Rewards, including switched-off rewards and rewards whose reward type is not selected. Deleted rewards are excluded. A reward can be earned only when it also appears in the campaign response's embedded `rewards` array. The list includes every group's rewards; each reward's `groupId` names its group (`null` is Default). These settings do not establish that a participant earned or received a reward; earned reward records belong to the individual participant. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              groupId: {
+                type: "string",
+                description:
+                  "Return only this group's rewards (`grp_…`). To get Default's rewards, omit `groupId` and keep the rewards whose `groupId` is `null`. An ID that is not a group in this program returns `404`.",
+              },
+            },
+            additionalProperties: false,
+          },
         },
         {
           name: "growsurf_create_campaign_reward",
@@ -1534,6 +1592,11 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 enum: [...REWARD_IMAGE_ICON_KEYS, null],
                 description:
                   "The starter icon shown for the reward, or `null` when `imageUrl` is your own image. Participant pages draw this icon in your program's accent color. Also set `imageUrl` to the icon's image so the iOS and Android SDKs can show it. Sending `imageUrl` without `imageIconKey` clears it.",
+              },
+              groupId: {
+                type: ["string", "null"],
+                description:
+                  "The group this reward belongs to (`grp_…`), or `null` for Default. A participant earns only their own group's rewards. `LEADERBOARD` rewards apply to the whole program and cannot be in a group. An ID that is not a group in this program returns `400`.",
               },
               isVisible: { type: "boolean" },
               isUnlimited: { type: "boolean" },
@@ -1618,6 +1681,11 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 description:
                   "The starter icon shown for the reward, or `null` when `imageUrl` is your own image. Participant pages draw this icon in your program's accent color. Also set `imageUrl` to the icon's image so the iOS and Android SDKs can show it. Sending `imageUrl` without `imageIconKey` clears it.",
               },
+              groupId: {
+                type: ["string", "null"],
+                description:
+                  "The group this reward belongs to (`grp_…`), or `null` for Default. A participant earns only their own group's rewards. `LEADERBOARD` rewards apply to the whole program and cannot be in a group. An ID that is not a group in this program returns `400`.",
+              },
               isVisible: { type: "boolean" },
               isUnlimited: { type: "boolean" },
               referredRewardUpfront: { type: "boolean" },
@@ -1687,6 +1755,91 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               campaignRewardId: { type: "string" },
             },
             required: ["campaignRewardId"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_list_campaign_groups",
+          description:
+            "List your GrowSurf program's groups in display order. Groups give some participants a different reward list. Each participant is in one group, and `groupId: null` is Default, which holds the program's standard rewards and is not in this list. A group's rewards replace Default's whole reward list for its members' new referrals. Leaderboard rewards stay program-wide. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        },
+        {
+          name: "growsurf_create_campaign_group",
+          description:
+            "Create a group on your GrowSurf program. GrowSurf copies each active Default reward into it, except Leaderboard rewards; change the copies with `growsurf_update_campaign_reward`. `rules` place participants: `EMAIL` matches an exact email, `DOMAIN` matches a company domain (public email domains are refused), and `PARTICIPANT` moves an existing participant in now. Each email and domain can be in one group only. Email and domain rules place new signups and affiliate approvals only. Confirm reward amounts with the person before you change the copies. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              name: { type: "string", minLength: 1, maxLength: 100, description: "The group name (internal only, never shown to participants)." },
+              rules: {
+                type: "array",
+                maxItems: 500,
+                items: {
+                  type: "object",
+                  properties: {
+                    type: {
+                      type: "string",
+                      enum: ["PARTICIPANT", "EMAIL", "DOMAIN"],
+                      description:
+                        "`PARTICIPANT` — an existing participant ID; the participant moves in now. `EMAIL` — an exact email address. `DOMAIN` — a company domain such as `hooli.com`, which also matches its subdomains. Email and domain rules place new signups and affiliate approvals.",
+                    },
+                    value: { type: "string", minLength: 1, maxLength: 254, description: "The participant ID, email address, or domain." },
+                  },
+                  required: ["type", "value"],
+                  additionalProperties: false,
+                },
+                description: "The rules that place participants in this group. Up to 500.",
+              },
+            },
+            required: ["name"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_update_campaign_group",
+          description:
+            "Rename, reorder, or change the rules of a group on your GrowSurf program. Sending `rules` replaces the whole list. An added `PARTICIPANT` rule moves that participant in now; a removed one moves them back to Default if they are still in this group. Email and domain rule changes move no one. To change the group's rewards, use `growsurf_update_campaign_reward`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              groupId: { type: "string", description: "The group ID (`grp_…`)." },
+              name: { type: "string", minLength: 1, maxLength: 100, description: "The group name (internal only, never shown to participants)." },
+              order: { type: "integer", minimum: 0, description: "The group's position in the program's group list." },
+              rules: {
+                type: "array",
+                maxItems: 500,
+                items: {
+                  type: "object",
+                  properties: {
+                    type: {
+                      type: "string",
+                      enum: ["PARTICIPANT", "EMAIL", "DOMAIN"],
+                      description:
+                        "`PARTICIPANT` — an existing participant ID; the participant moves in now. `EMAIL` — an exact email address. `DOMAIN` — a company domain such as `hooli.com`, which also matches its subdomains. Email and domain rules place new signups and affiliate approvals.",
+                    },
+                    value: { type: "string", minLength: 1, maxLength: 254, description: "The participant ID, email address, or domain." },
+                  },
+                  required: ["type", "value"],
+                  additionalProperties: false,
+                },
+                description: "Replaces the group's whole rule list. Up to 500.",
+              },
+            },
+            required: ["groupId"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_delete_campaign_group",
+          description:
+            "Delete a group from your GrowSurf program. Its members move to Default, and its Campaign Rewards are removed from the program. Rewards already earned keep their amounts and can still be sent. Returns { id, success, movedToDefault }. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              groupId: { type: "string", description: "The group ID (`grp_…`)." },
+            },
+            required: ["groupId"],
             additionalProperties: false,
           },
         },
@@ -2371,6 +2524,11 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 minProperties: 1,
                 maxProperties: 3,
               },
+              groupId: {
+                type: "string",
+                description:
+                  "Return only this group's members (`grp_…`). Works alone or with `metadata`. Default has no ID, so it cannot be named here. An ID that is not a group in this program returns `404`.",
+              },
             },
             additionalProperties: false,
           },
@@ -2412,6 +2570,11 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               mobileInstanceId: CREATE_PARTICIPANT_MOBILE_INSTANCE_ID_INPUT,
               metadata: { type: "object", additionalProperties: true },
               language: CREATE_PARTICIPANT_LANGUAGE_INPUT,
+              groupId: {
+                type: ["string", "null"],
+                description:
+                  "Places the new participant in this group (`grp_…`), or in Default with `null`. This is a manual placement, so the groups' email and domain rules do not apply to them. Applies only when this call creates the participant; to move an existing participant, use `growsurf_update_participant`. An ID that is not a group in this program returns `400` and adds no one.",
+              },
             },
             required: ["email"],
             additionalProperties: false,
@@ -2453,6 +2616,11 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 type: ["string", "null"],
                 description: `The language of the participant's portal and program emails. Must be one of the program's languages (\`languages\` in \`growsurf_get_campaign_options\`); any other code returns a \`400\`. Send \`null\` or the program's base language to clear it, so the participant follows the base language. ${PROGRAM_LANGUAGE_CODES_TEXT}`,
               },
+              groupId: {
+                type: ["string", "null"],
+                description:
+                  "Moves the participant to this group (`grp_…`), or to Default with `null`. This is a manual placement, so the groups' email and domain rules do not override it later. The move applies to new referrals only; rewards already earned keep their amounts. An ID that is not a group in this program returns `400`.",
+              },
             },
             anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
             additionalProperties: false,
@@ -2479,6 +2647,29 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               },
             },
             required: ["participants"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "growsurf_bulk_move_participants",
+          description:
+            "Move participants in your GrowSurf program to a group, or to Default with `groupId: null`. Each entry in `participants` is a GrowSurf participant ID or an email address (mixed lists are allowed), up to 200 entries per request. All found participants move together: if the move fails, no one moves. A move is a manual placement, so the groups' email and domain rules do not override it later. A move applies to new referrals only; rewards already earned keep their amounts. Returns a `summary` (total, groupId, movedCount, notFoundCount, duplicateCount, errorCount) plus per-row `results` in request order, each with `status` MOVED, NOT_FOUND, DUPLICATE, or ERROR. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participants: {
+                type: "array",
+                minItems: 1,
+                maxItems: 200,
+                items: { type: "string", minLength: 1, description: "A GrowSurf participant ID or an email address." },
+                description: "GrowSurf participant IDs and/or email addresses to move (1-200 entries; mixed lists allowed).",
+              },
+              groupId: {
+                type: ["string", "null"],
+                description: "The group to move them to (`grp_…`), or `null` for Default. Required.",
+              },
+            },
+            required: ["participants", "groupId"],
             additionalProperties: false,
           },
         },
@@ -3050,7 +3241,8 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         }
         case "growsurf_list_campaign_rewards": {
           const growsurf = resolveCampaignClient(env, toolArgs);
-          const result = await growsurf.listCampaignRewards();
+          const input = listCampaignRewardsSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.listCampaignRewards(input.groupId === undefined ? {} : { groupId: input.groupId });
           return rewardReadToolResult(result, "configuration");
         }
         case "growsurf_create_campaign_reward": {
@@ -3064,6 +3256,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             referralDescription: input.referralDescription,
             imageUrl: input.imageUrl,
             imageIconKey: input.imageIconKey,
+            groupId: input.groupId,
             isVisible: input.isVisible,
             isUnlimited: input.isUnlimited,
             referredRewardUpfront: input.referredRewardUpfront,
@@ -3096,6 +3289,30 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = deleteCampaignRewardSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.deleteCampaignReward(input.campaignRewardId);
+          return jsonToolResult(result);
+        }
+        case "growsurf_list_campaign_groups": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const result = await growsurf.listRewardGroups();
+          return jsonToolResult(result);
+        }
+        case "growsurf_create_campaign_group": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = createCampaignGroupSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.createRewardGroup(omitUndefined(input) as Record<string, unknown>);
+          return jsonToolResult(result);
+        }
+        case "growsurf_update_campaign_group": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = updateCampaignGroupSchema.parse(request.params.arguments ?? {});
+          const { groupId, ...rest } = input;
+          const result = await growsurf.updateRewardGroup(groupId, omitUndefined(rest) as Record<string, unknown>);
+          return jsonToolResult(result);
+        }
+        case "growsurf_delete_campaign_group": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = deleteCampaignGroupSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.deleteRewardGroup(input.groupId);
           return jsonToolResult(result);
         }
         case "growsurf_list_program_resources": {
@@ -3356,10 +3573,16 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         case "growsurf_list_participants": {
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = listParticipantsSchema.parse(request.params.arguments ?? {});
-          const query = omitUndefined({ limit: input.limit, nextId: input.nextId, metadata: input.metadata }) as {
+          const query = omitUndefined({
+            limit: input.limit,
+            nextId: input.nextId,
+            metadata: input.metadata,
+            groupId: input.groupId,
+          }) as {
             limit?: number;
             nextId?: string;
             metadata?: Record<string, string>;
+            groupId?: string;
           };
           const result = await growsurf.listParticipants(query);
           return rewardReadToolResult(result, "participant");
@@ -3416,6 +3639,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           const growsurf = resolveCampaignClient(env, toolArgs);
           const input = bulkDeleteParticipantsSchema.parse(request.params.arguments ?? {});
           const result = await growsurf.bulkDeleteParticipants(input.participants);
+          return jsonToolResult(result);
+        }
+        case "growsurf_bulk_move_participants": {
+          const growsurf = resolveCampaignClient(env, toolArgs);
+          const input = bulkMoveParticipantsSchema.parse(request.params.arguments ?? {});
+          const result = await growsurf.bulkMoveParticipants(input.participants, input.groupId);
           return jsonToolResult(result);
         }
         case "growsurf_email_participant": {

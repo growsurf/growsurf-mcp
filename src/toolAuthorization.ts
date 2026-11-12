@@ -176,6 +176,11 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_update_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   // Deletion can remove an incentive already shown to participants.
   growsurf_delete_campaign_reward: requiresScopes(TOOL_BEHAVIOR.MONEY_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_list_campaign_groups: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
+  // Groups decide which reward list a participant earns from, so writes use the money tiers.
+  growsurf_create_campaign_group: requiresScopes(TOOL_BEHAVIOR.MONEY_CREATE, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_update_campaign_group: requiresScopes(TOOL_BEHAVIOR.MONEY_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
+  growsurf_delete_campaign_group: requiresScopes(TOOL_BEHAVIOR.MONEY_PUBLISH, MACHINE_SCOPES.PROGRAM_WRITE),
   growsurf_list_program_resources: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PROGRAM_READ),
   growsurf_prepare_program_resource_file: requiresScopes(
     TOOL_BEHAVIOR.CONTENT_OPEN_WORLD,
@@ -230,6 +235,7 @@ export const TOOL_AUTHORIZATION_MANIFEST = {
   growsurf_add_participant: requiresScopes(TOOL_BEHAVIOR.CONTENT_ADD, MACHINE_SCOPES.PARTICIPANT_WRITE),
   growsurf_update_participant: requiresScopes(TOOL_BEHAVIOR.CONTENT_SET, MACHINE_SCOPES.PARTICIPANT_WRITE),
   growsurf_bulk_delete_participants: requiresScopes(TOOL_BEHAVIOR.DESTRUCTIVE, MACHINE_SCOPES.PARTICIPANT_DELETE),
+  growsurf_bulk_move_participants: requiresScopes(TOOL_BEHAVIOR.MONEY_PUBLISH, MACHINE_SCOPES.PARTICIPANT_WRITE),
   growsurf_email_participant: requiresScopes(TOOL_BEHAVIOR.CONTENT_EXTERNAL, MACHINE_SCOPES.PARTICIPANT_WRITE),
   growsurf_get_participant_analytics: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.ANALYTICS_READ),
   growsurf_get_participant_activity_logs: requiresScopes(TOOL_BEHAVIOR.READ, MACHINE_SCOPES.PARTICIPANT_READ),
@@ -278,6 +284,10 @@ export const TOOL_TITLES = {
   growsurf_create_campaign_reward: "Create Campaign Reward",
   growsurf_update_campaign_reward: "Update Campaign Reward",
   growsurf_delete_campaign_reward: "Delete Campaign Reward",
+  growsurf_list_campaign_groups: "List Campaign Groups",
+  growsurf_create_campaign_group: "Create Campaign Group",
+  growsurf_update_campaign_group: "Update Campaign Group",
+  growsurf_delete_campaign_group: "Delete Campaign Group",
   growsurf_list_program_resources: "List Program Resources",
   growsurf_prepare_program_resource_file: "Prepare Program Resource File",
   growsurf_create_program_resource: "Create Program Resource",
@@ -315,6 +325,7 @@ export const TOOL_TITLES = {
   growsurf_add_participant: "Add Participant",
   growsurf_update_participant: "Update Participant",
   growsurf_bulk_delete_participants: "Bulk Delete Participants",
+  growsurf_bulk_move_participants: "Bulk Move Participants",
   growsurf_email_participant: "Email Participant",
   growsurf_get_participant_analytics: "Get Participant Analytics",
   growsurf_get_participant_activity_logs: "Get Participant Activity Logs",

@@ -43,6 +43,7 @@ export type GrowSurfParticipantInput = {
   mobileInstanceId?: string;
   metadata?: Record<string, unknown>;
   language?: string | null;
+  groupId?: string | null;
 };
 
 export type PrepareProgramResourceFileInput = {
@@ -147,7 +148,7 @@ export class GrowSurfClient {
   }
 
   async listParticipants(
-    query: { limit?: number; nextId?: string; metadata?: Record<string, string> } = {},
+    query: { limit?: number; nextId?: string; metadata?: Record<string, string>; groupId?: string } = {},
   ): Promise<unknown> {
     const { metadata, ...rest } = query;
     // The REST filter is one `metadata[key]=value` pair per key.
@@ -257,8 +258,34 @@ export class GrowSurfClient {
     return this.requestJson("POST", `/campaign/${encodeURIComponent(this.campaignId)}/clone`);
   }
 
-  async listCampaignRewards(): Promise<unknown> {
-    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/reward-configs`);
+  async listCampaignRewards(query: { groupId?: string } = {}): Promise<unknown> {
+    return this.requestJson(
+      "GET",
+      `/campaign/${encodeURIComponent(this.campaignId)}/reward-configs${toQueryString(query)}`,
+    );
+  }
+
+  async listRewardGroups(): Promise<unknown> {
+    return this.requestJson("GET", `/campaign/${encodeURIComponent(this.campaignId)}/groups`);
+  }
+
+  async createRewardGroup(group: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson("POST", `/campaign/${encodeURIComponent(this.campaignId)}/groups`, group);
+  }
+
+  async updateRewardGroup(groupId: string, fields: Record<string, unknown>): Promise<unknown> {
+    return this.requestJson(
+      "PATCH",
+      `/campaign/${encodeURIComponent(this.campaignId)}/groups/${encodeURIComponent(groupId)}`,
+      fields,
+    );
+  }
+
+  async deleteRewardGroup(groupId: string): Promise<unknown> {
+    return this.requestJson(
+      "DELETE",
+      `/campaign/${encodeURIComponent(this.campaignId)}/groups/${encodeURIComponent(groupId)}`,
+    );
   }
 
   async createCampaignReward(reward: Record<string, unknown>): Promise<unknown> {
@@ -638,6 +665,17 @@ export class GrowSurfClient {
       "POST",
       `/campaign/${encodeURIComponent(this.campaignId)}/participants/bulk-delete`,
       { participants },
+    );
+  }
+
+  // Moves up to 200 participants to a group, or to Default with `groupId: null`. The API requires
+  // `groupId`, so null is sent explicitly. All found rows move together; the response reports a
+  // per-row status (MOVED/NOT_FOUND/DUPLICATE/ERROR) plus a summary.
+  async bulkMoveParticipants(participants: string[], groupId: string | null): Promise<unknown> {
+    return this.requestJson(
+      "POST",
+      `/campaign/${encodeURIComponent(this.campaignId)}/participants/bulk-move`,
+      { participants, groupId },
     );
   }
 

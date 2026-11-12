@@ -93,7 +93,7 @@ const WINDOW_FOLLOW_UP_TEXT =
 
 const iosAttributionText = (provider: AttributionProvider) => {
   if (provider === "none") return "Skip attribution handling only if this app never accepts referred installs.";
-  if (provider === "direct_link") return "Use `handleDeepLink(_:)` for installed-app links that contain referral identity, supported UTM values, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`." + VISIT_CAPTURE_TEXT;
+  if (provider === "direct_link") return "Use `handleDeepLink(_:)` for installed-app links that contain referral identity, a reward group's `grsf_group` signup code, supported UTM values, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`." + VISIT_CAPTURE_TEXT;
   if (provider === "google_play") {
     return "Google Play Install Referrer is Android-only. Skip iOS attribution handling unless you also support direct links or a provider callback on iOS.";
   }
@@ -122,7 +122,7 @@ const iosAttributionText = (provider: AttributionProvider) => {
 
 const androidAttributionText = (provider: AttributionProvider) => {
   if (provider === "none") return "Skip attribution handling only if this app never accepts referred installs.";
-  if (provider === "direct_link") return "Use `handleDeepLink(uri)` for installed-app links that contain referral identity, supported UTM values, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`." + VISIT_CAPTURE_TEXT;
+  if (provider === "direct_link") return "Use `handleDeepLink(uri)` for installed-app links that contain referral identity, a reward group's `grsf_group` signup code, supported UTM values, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`." + VISIT_CAPTURE_TEXT;
   if (provider === "google_play") return "Call `handleDeferredDeepLink()` before referral-only signup tracking, or let `addReferredParticipant()` check Google Play Install Referrer once when no pending attribution exists. This is Android's native, deterministic deferred channel — no clipboard workaround is needed (unlike iOS NativeLink/LinkMe). The referrer is delivered only for genuine Google Play Store installs; sideloaded/`adb`/non-Play installs return no referrer." + VISIT_CAPTURE_TEXT;
   if (provider === "all") {
     return "Use `handleDeepLink(uri)` for installed-app links, `handleDeferredDeepLink()` for Google Play installs, and provider callback payloads from Branch, AppsFlyer, Adjust, or Singular before calling `addReferredParticipant()`. Provider payloads may contain `grsf`, `ref`, `referredBy`, supported UTM values, or a GrowSurf-hosted share URL. On Android, deferred (no-app-installed) referrals are carried by the Google Play Install Referrer — a native, deterministic channel that the providers also use — so the iOS clipboard mechanisms (Branch NativeLink, Adjust LinkMe, Singular Clipboard-Based DDL) are NOT needed on Android; the referrer is delivered only for genuine Google Play Store installs." + VISIT_CAPTURE_TEXT;
@@ -418,7 +418,7 @@ const reactNativeAttributionText = (provider: AttributionProvider) => {
   if (provider === "none") return "Skip attribution handling only if this app never accepts referred installs.";
   const parts: string[] = [];
   if (provider === "all" || provider === "direct_link") {
-    parts.push("Pass the cold-start URL from `Linking.getInitialURL()` and every warm `Linking` `url` event to `handleDeepLink(url)`. Links can contain referral identity, supported UTM values, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`. Call `links.remove()` when the component that added the listener unmounts. GrowSurf-hosted share links live on `grow.surf`, not your domain, so they cannot open your app as iOS Universal Links or Android App Links. To open the app, use a custom URL scheme, your own domain with `grsf` appended, or an attribution provider.");
+    parts.push("Pass the cold-start URL from `Linking.getInitialURL()` and every warm `Linking` `url` event to `handleDeepLink(url)`. Links can contain referral identity, a reward group's `grsf_group` signup code, supported UTM values, or a GrowSurf-hosted share URL like `https://grow.surf/share/:campaignId/:participantId`. Call `links.remove()` when the component that added the listener unmounts. GrowSurf-hosted share links live on `grow.surf`, not your domain, so they cannot open your app as iOS Universal Links or Android App Links. To open the app, use a custom URL scheme, your own domain with `grsf` appended, or an attribution provider.");
   }
   if (provider === "all" || provider === "google_play") {
     parts.push("On Android, `handleDeferredDeepLink()` reads the Google Play Install Referrer, which arrives only for genuine Google Play Store installs. `addReferredParticipant()` also checks it once when no pending attribution exists. iOS rejects `handleDeferredDeepLink()` with `UNSUPPORTED_PLATFORM`, so call it only when `Platform.OS` is `\"android\"`.");

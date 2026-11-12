@@ -95,7 +95,7 @@ To delete one participant, pass one ID or email in `participants` to `growsurf_b
 
 ## Optional compact connection
 
-The default connection lists all 66 tools. Add `--compact` to select 32 tools for program setup, installation, participant management, referral tracking, rewards, and analytics. Your credential permissions can reduce the visible set further.
+The default connection lists all 71 tools. Add `--compact` to select 32 tools for program setup, installation, participant management, referral tracking, rewards, and analytics. Your credential permissions can reduce the visible set further.
 
 ```bash
 npx -y @growsurfteam/growsurf-mcp --compact
@@ -122,7 +122,7 @@ For example, read a program's installation settings:
 
 Program recommendations and troubleshooting keep their own tools. Participant reads, updates, deletion, referral actions, and sale or refund actions remain separate. Compact prompts, resources, guidance, and proposed configuration calls use the compact tool names and arguments.
 
-Use the full connection for team administration, program cloning, participant resources, custom domains, webhook creation/updates/deletion/tests, participant emails, payout destinations, and webhook normalization. Remove `--compact` and reconnect. These operations remain available with their existing contracts on the full connection; compact rejects calls to tools outside its catalog. The tool-selection table above describes the full connection.
+Use the full connection for team administration, program cloning, groups and bulk participant moves, participant resources, custom domains, webhook creation/updates/deletion/tests, participant emails, payout destinations, and webhook normalization. Remove `--compact` and reconnect. These operations remain available with their existing contracts on the full connection; compact rejects calls to tools outside its catalog. The tool-selection table above describes the full connection.
 
 ## Requirements
 
@@ -403,7 +403,7 @@ Program, reward-configuration, options, and participant reads also include a `re
   Clone the program into a new `DRAFT` program (integrations and credentials are not copied).
 
 - `growsurf_list_campaign_rewards`
-  List the program's configured rewards.
+  List the program's configured rewards. Each reward's `groupId` names its group (`null` is Default). Pass `groupId` to list one group's rewards.
 
 - `growsurf_create_campaign_reward`
   Create a campaign reward.
@@ -413,6 +413,9 @@ Program, reward-configuration, options, and participant reads also include a `re
 
 - `growsurf_delete_campaign_reward`
   Delete a campaign reward by its reward key.
+
+- `growsurf_list_campaign_groups` / `growsurf_create_campaign_group` / `growsurf_update_campaign_group` / `growsurf_delete_campaign_group`
+  Manage groups, which give some participants a different reward list. A new group gets a copy of each active Default reward except Leaderboard rewards; change the copies with `growsurf_update_campaign_reward`. `EMAIL` and `DOMAIN` rules place new signups, and `PARTICIPANT` rules move existing participants. Deleting a group moves its members to Default.
 
 - `growsurf_list_program_resources` / `growsurf_create_program_resource` / `growsurf_update_program_resource` / `growsurf_delete_program_resource`
   Manage ordered participant resources. LINK uses HTTPS and TEXT uses plain text.
@@ -463,10 +466,13 @@ Program, reward-configuration, options, and participant reads also include a `re
   Fetch one participant by GrowSurf participant ID or email address.
 
 - `growsurf_update_participant`
-  Update a participant by ID or email (including internal `notes` and the participant's `language`).
+  Update a participant by ID or email (including internal `notes`, the participant's `language`, and their group with `groupId`).
 
 - `growsurf_bulk_delete_participants` — Check each row outcome. `analyticsErasure.status: "pending"` means analytics erasure is still pending; do not repeat successful rows.
   Permanently delete up to 200 participants (by ID and/or email, mixed lists allowed) in one request, with per-row `DELETED`/`NOT_FOUND`/`DUPLICATE`/`ERROR` results. Irreversible. Successful rows lose participant access immediately; related record cleanup completes automatically, subject to required financial record retention.
+
+- `growsurf_bulk_move_participants`
+  Move up to 200 participants (by ID and/or email) to a group, or to Default with `groupId: null`, with per-row `MOVED`/`NOT_FOUND`/`DUPLICATE`/`ERROR` results. A move applies to new referrals only; rewards already earned keep their amounts.
 
 - `growsurf_email_participant`
   Email a participant using a configured template or a free-form subject/body.
