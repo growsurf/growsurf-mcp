@@ -720,11 +720,11 @@ const commissionStructureJsonSchema = {
     maxAmount: { type: ["integer", "null"], description: COMMISSION_MINOR_UNITS_DESCRIPTION },
     maxAmountISO: { type: ["string", "null"] },
     hasIntro: { type: ["boolean", "null"] },
-    introType: { type: ["string", "null"] },
+    introType: { type: ["string", "null"], enum: ["PERCENT", "FIXED", null] },
     introPercent: { type: ["number", "null"] },
     introAmount: { type: ["integer", "null"], description: COMMISSION_MINOR_UNITS_DESCRIPTION },
     introAmountISO: { type: ["string", "null"] },
-    introDuration: { type: ["string", "null"] },
+    introDuration: { type: ["string", "null"], enum: ["REPEATING", "ONCE", null] },
     introDurationInMonths: { type: ["integer", "null"] },
   },
   allOf: [
@@ -1583,7 +1583,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_campaign_reward",
           description:
-            "Create a new campaign reward (reward config) on your GrowSurf program. `type` must be compatible with the program type (affiliate programs support only AFFILIATE rewards; referral programs support the other types). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Create a new campaign reward (reward config) on your GrowSurf program. `type` must be compatible with the program type (affiliate programs support only AFFILIATE rewards; referral programs support the other types). An AFFILIATE reward also requires `commissionStructure`. A concurrent edit can return `409`; reload the program before retrying. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1671,7 +1671,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_reward",
           description:
-            "Update an existing campaign reward (reward config) on your GrowSurf program. `campaignRewardId` is the reward key (e.g. crew_...). The reward `type` is immutable. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Update an existing campaign reward (reward config) on your GrowSurf program. `campaignRewardId` is the reward key (e.g. crew_...). The reward `type` is immutable. A concurrent edit can return `409`; reload the program before retrying. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2104,7 +2104,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_emails",
           description:
-            "Fetch the Emails tab configuration for your GrowSurf program, including participant and admin email templates, settings, and read-only fields. `settings.sender.fromEmail` is read-only and can be changed in the dashboard after domain verification. When updating, omit unchanged sender fields; `fromName` and `replyToEmail` cannot be cleared with `null`. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Fetch the Emails tab configuration for your GrowSurf program, including participant email templates, settings, and read-only fields. `settings.sender.fromEmail` is read-only and can be changed in the dashboard after domain verification. When updating, omit unchanged sender fields; `fromName` and `replyToEmail` cannot be cleared with `null`. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
@@ -2178,7 +2178,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               fields: {
                 type: "object",
                 description:
-                  "Installation fields to patch. Common keys include `shareUrl`, `allowedUrls`, `signupEvent`, `referralTrigger`, `signup`, `offerPageRedirectSeconds`, and `instructionSelections`. Arrays replace wholesale.",
+                  "Installation fields to patch. Common keys include `shareUrl`, `allowedUrls`, `signupEvent`, `referralTrigger`, `signup`, `useGrowSurfHostedLinks`, `mobile`, `offerPageRedirectSeconds`, and `instructionSelections`. Arrays replace wholesale.",
                 properties: {
                   shareUrl: {
                     type: "string",
@@ -2749,7 +2749,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                 type: "integer",
                 minimum: 1,
                 maximum: 1825,
-                description: "Number of days for optional `series` and `email` analytics. Does not filter the all-time base response.",
+                description: "Number of days for optional `series` and `email` analytics. Defaults to 365. Does not filter the all-time base response.",
               },
               startDate: {
                 type: "integer",
@@ -2804,7 +2804,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_cancel_delayed_referral",
           description:
-            "Cancel a pending delayed referral trigger for a participant before the delay elapses (e.g. on refund/cancellation). Returns { success, message }. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Cancel a pending delayed referral trigger for a participant before the delay elapses (e.g. on refund/cancellation). Returns { success, message }; `success` is `false` when the participant has no pending delayed trigger. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2841,7 +2841,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               provider: {
                 type: "string",
                 enum: [...PAYOUT_DESTINATION_PROVIDER_INPUTS],
-                description: "The payout provider the participant should confirm a destination for: `PAYPAL`, `VENMO`, or `WISECOM`. Venmo recipients must be in the United States.",
+                description: "The payout provider the participant should confirm a destination for: `PAYPAL`, `VENMO`, or `WISECOM`. `VENMO` is available only when connected PayPal Payouts and payout-email confirmation are enabled in a USD program. Venmo recipients must be in the United States.",
               },
             },
             required: ["provider"],
@@ -2858,7 +2858,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             properties: {
               participantId: { type: "string" },
               participantEmail: { type: "string" },
-              currency: { type: "string", minLength: 3, maxLength: 3, pattern: "^[A-Za-z]{3}$" },
+              currency: { type: "string", minLength: 3, maxLength: 3, pattern: "^[A-Za-z]{3}$", description: "3-letter ISO 4217 currency code for the sale. Must match the program currency." },
               grossAmount: { type: "integer", minimum: 1 },
               paymentProvider: { type: "string", enum: ["stripe", "chargebee", "recurly"],
                 description: "Connected provider for this payment. Requires `transactionId` and `testMode`. Supply matching `grossAmount` and `currency`; other payment IDs and tax or net-amount overrides are not accepted. GrowSurf reads payment details from the provider and detects duplicate webhook/API/manual submissions." },
@@ -2866,7 +2866,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               invoiceId: { type: "string", maxLength: 500 },
               chargeId: { type: "string", maxLength: 500 },
               paymentIntentId: { type: "string", maxLength: 500 },
-              transactionId: { type: "string", maxLength: 500 },
+              transactionId: { type: "string", maxLength: 500, description: "Transaction identifier to store for this sale. Used to detect duplicate submissions." },
               externalId: { type: "string", maxLength: 500 },
               orderId: { type: "string", maxLength: 500 },
               paymentId: { type: "string", maxLength: 500 },
@@ -2896,7 +2896,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                   additionalProperties: true,
                 },
               },
-              paidAt: { type: "integer", minimum: 0 },
+              paidAt: { type: "integer", minimum: 0, description: "When the payment was captured or settled, as a Unix timestamp in milliseconds." },
               description: { type: "string", maxLength: 500 },
             },
             required: ["currency", "grossAmount"],
@@ -2962,7 +2962,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_mobile_participant_token",
           description:
-            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST. Participant creation is trusted direct enrollment and bypasses the public application review flow for affiliates. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST. Participant creation is trusted direct enrollment and bypasses the public application review flow for affiliates. The program must have mobile SDK access enabled. `isNew` is `false` when the participant already existed. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
