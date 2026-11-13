@@ -15,7 +15,7 @@ import {
 } from "./compactTools.js";
 export { COMPACT_TOOL_NAMES, SUPPORTED_TOOL_SURFACES, type ToolSurface } from "./compactTools.js";
 
-export const GROWSURF_MCP_VERSION = "0.19.32";
+export const GROWSURF_MCP_VERSION = "0.19.33";
 import { apiLibrarySnippetsInputSchema, renderApiLibrarySnippets } from "./growsurf/apiLibrarySnippets.js";
 import { resolveCampaignClient } from "./growsurf/campaignScope.js";
 import { GrowSurfClient } from "./growsurf/client.js";
@@ -1512,7 +1512,18 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               },
               rewards: {
                 type: "array",
-                items: { type: "object", additionalProperties: true },
+                items: {
+                  type: "object",
+                  required: ["type"],
+                  properties: {
+                    type: {
+                      type: "string",
+                      enum: ["SINGLE_SIDED", "DOUBLE_SIDED", "MILESTONE", "LEADERBOARD", "AFFILIATE"],
+                      description: "The reward type. Required on every reward. The other fields match `growsurf_create_campaign_reward`.",
+                    },
+                  },
+                  additionalProperties: true,
+                },
                 description:
                   "Rewards to create with the program. Include this only when the person told you the amount and who funds it. Omit it and the program is seeded with starter rewards that are switched off, awarding nothing until the customer enables one. Send `[]` to start with no rewards at all.",
               },
@@ -2902,18 +2913,30 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             properties: {
               participantId: { type: "string" },
               participantEmail: { type: "string" },
-              amendmentType: { type: "string", enum: ["REFUND", "CHARGEBACK"] },
+              amendmentType: {
+                type: "string",
+                enum: ["REFUND", "CHARGEBACK"],
+                description: "Defaults to `REFUND`, which covers full refunds, partial refunds, and refund cancellations. `CHARGEBACK` is always a full reversal.",
+              },
               paymentProvider: { type: "string", enum: ["stripe", "chargebee", "recurly"],
                 description: "Connected provider for the original payment. Requires its `transactionId` and `testMode`. This amends GrowSurf records without sending a refund through the provider." },
               testMode: { type: "boolean", description: "Original payment mode: `true` for test or `false` for live. Requires `paymentProvider`." },
-              amountRefunded: { type: "integer", minimum: 0 },
+              amountRefunded: {
+                type: "integer",
+                minimum: 0,
+                description: "Total refunded so far, in the currency's minor unit. Omit for a full refund. For a partial refund send the running total, not the amount of this one refund.",
+              },
               amount: { type: "integer", minimum: 1 },
               refundId: {
                 type: "string",
                 maxLength: 500,
                 description: "Stable per-refund identifier. Required when canceling a refund or changing the refunded total after a cancellation. Reuse the original refund's identifier for its cancellation. An amendment without enough refund identity returns `409` without applying the cancellation. Newly observed higher cumulative refunds and incomplete coverage are retained for reconciliation.",
               },
-              refundStatus: { type: "string", maxLength: 500 },
+              refundStatus: {
+                type: "string",
+                maxLength: 500,
+                description: "Refund status. Send `canceled` with the original `refundId` to cancel that refund.",
+              },
               refundAmount: {
                 type: "integer",
                 description: "Positive amount for this individual refund, no greater than the sale amount, in the sale currency's minor unit. Send it with `refundId` on each original refund to support cancellations and out-of-order amendments. The amount for a given `refundId` cannot change. A cancellation can omit it when the original amount is already recorded. Incomplete refund history returns `409` without applying the cancellation. Newly observed higher cumulative refunds and incomplete coverage are retained for reconciliation.",
