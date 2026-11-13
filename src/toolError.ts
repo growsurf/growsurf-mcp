@@ -1,6 +1,6 @@
 import { ZodError } from "zod";
 
-import type { GrowSurfRequestError } from "./growsurf/client.js";
+import { toRequestId, type GrowSurfRequestError } from "./growsurf/client.js";
 
 export type ToolInputValidationDetail = {
   field: string;
@@ -9,6 +9,18 @@ export type ToolInputValidationDetail = {
 };
 
 const MAX_MATCHED_PARTICIPANT_IDS = 20;
+
+const PLAN_REQUIRED_HINT =
+  "The account's current plan does not allow this API request for this program, for example after a free trial ends. The account owner can upgrade or add a payment method in GrowSurf billing settings. Retrying will not help until the account owner makes that change.";
+
+// Next steps for API error codes a caller can act on. The API's own code, message, and status still
+// pass through unchanged; `hint` is added beside them.
+const API_ERROR_HINTS = new Map<string, string>([
+  ["CAMPAIGN_NOT_FOUND", "Call `growsurf_list_campaigns` and pass one of the returned `id` values as `campaignId`."],
+  ["PARTICIPANT_NOT_FOUND", "No participant in this program matches that `participantId` or `participantEmail`. Check the value, or call `growsurf_list_participants` to find the right participant."],
+  ["PAID_PLAN_REQUIRED_ERROR", PLAN_REQUIRED_HINT],
+  ["PAYMENT_METHOD_REQUIRED_ERROR", PLAN_REQUIRED_HINT],
+]);
 
 const INTERNAL_SOURCE_LOCATION_PATTERN =
   /(?:file:\/\/\/|[A-Za-z]:[\\/]|\/)(?:[^/\\\s()'"]+[\\/])*[^/\\\s()'"]+\.(?:[cm]?[jt]sx?|map):\d+(?::\d+)?/g;
@@ -93,6 +105,11 @@ export const toToolErrorText = (err: unknown): string => {
     if (typeof maybe.status === "number" && Number.isFinite(maybe.status)) {
       publicError.status = maybe.status;
     }
+    // Passed through only in the bounded request-id shape, because the response body can carry any value.
+    const requestId = toRequestId(maybe.requestId);
+    if (requestId) publicError.requestId = requestId;
+    const hint = typeof publicError.code === "string" ? API_ERROR_HINTS.get(publicError.code) : undefined;
+    if (hint) publicError.hint = hint;
     // The API does not bound this list, so cap it to keep one blocked signup from flooding the
     // model context. The total says how many matched when the list is cut.
     const matchedParticipantIds: unknown = maybe.matchedParticipantIds;

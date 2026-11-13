@@ -1,16 +1,16 @@
 import { z } from "zod";
 import { kotlinString } from "./snippetLiterals.js";
 
-const MOBILE_SDK_GUIDANCE_VERSION = "0.10.3";
+const MOBILE_SDK_GUIDANCE_VERSION = "0.10.4";
 const IOS_DISTRIBUTION_REPO = "growsurf/growsurf-ios-sdk-distribution";
 const IOS_DISTRIBUTION_URL = `https://github.com/${IOS_DISTRIBUTION_REPO}.git`;
 const IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_REPO}/v${MOBILE_SDK_GUIDANCE_VERSION}/GrowSurfSDK.podspec`;
 // The React Native package has its own version and pins its native SDK versions itself.
-const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.3.1";
+const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.3.3";
 const REACT_NATIVE_PACKAGE_NAME = "growsurf-react-native-sdk";
 const REACT_NATIVE_SDK_DOCS_URL = "https://raw.githubusercontent.com/growsurf/growsurf-react-native-sdk-distribution/main/README.md";
 // The native iOS version that REACT_NATIVE_SDK_GUIDANCE_VERSION pins; it can differ from MOBILE_SDK_GUIDANCE_VERSION.
-const REACT_NATIVE_PINNED_IOS_SDK_VERSION = "0.10.3";
+const REACT_NATIVE_PINNED_IOS_SDK_VERSION = "0.10.4";
 const REACT_NATIVE_IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_REPO}/v${REACT_NATIVE_PINNED_IOS_SDK_VERSION}/GrowSurfSDK.podspec`;
 // Device-specific SDK preferences that must not move to another installation through Android backup.
 const ANDROID_BACKUP_EXCLUDED_PREFERENCES = [

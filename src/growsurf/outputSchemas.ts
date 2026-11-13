@@ -1105,9 +1105,10 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
             "The physical mailing address shown in your email footers (required by anti-spam laws such as the US CAN-SPAM Act).",
           properties: {
             companyName: { type: "string", maxLength: 255, description: "Company name. Required." },
-            addressLine1: { type: "string", maxLength: 255, description: "First address line. Required." },
+            // Null until the program sets its address and city; the API returns null for unset values.
+            addressLine1: { type: ["string", "null"], maxLength: 255, description: "First address line. Required." },
             addressLine2: { type: ["string", "null"], maxLength: 255, description: "Second address line shown in email footers." },
-            city: { type: "string", maxLength: 255, description: "City. Required." },
+            city: { type: ["string", "null"], maxLength: 255, description: "City. Required." },
             state: { type: ["string", "null"], maxLength: 255, description: "State, province, or region shown in email footers." },
             postalCode: { type: ["string", "null"], maxLength: 100, description: "Postal or ZIP code shown in email footers." },
             country: { type: ["string", "null"], maxLength: 100, description: "Free-text country (not validated as an ISO code)." },
@@ -1116,7 +1117,8 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
         sender: {
           type: "object",
           properties: {
-            fromName: { type: "string", maxLength: 100, description: "Sender name. When updating, omit to keep the current value or supply a non-empty name that is not an email address. `null` is not accepted on update." },
+            // Null until the program sets a sender name; the API returns null for unset values.
+            fromName: { type: ["string", "null"], maxLength: 100, description: "Sender name. When updating, omit to keep the current value or supply a non-empty name that is not an email address. `null` is not accepted on update." },
             replyToEmail: { type: "string", maxLength: 100, description: "Email address that receives replies. When updating, omit to keep the current value or supply a valid email address. `null` is not accepted on update." },
             fromEmail: {
               type: "string",

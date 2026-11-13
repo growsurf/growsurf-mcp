@@ -293,7 +293,7 @@ const CAMPAIGN_ID_JSON_PROP = {
   type: "string",
   minLength: 1,
   description:
-    "Target program (campaign) id for this call. Defaults to GROWSURF_CAMPAIGN_ID when omitted. Program IDs also identify newly created programs without restarting the server.",
+    "Target program id for this call: the `id` returned by `growsurf_list_campaigns`, not the program name or a share URL. Defaults to GROWSURF_CAMPAIGN_ID when omitted. Program IDs also identify newly created programs without restarting the server.",
 } as const;
 
 // Keep JSON text compact to reduce serialized MCP payload size while preserving valid JSON.
@@ -1419,7 +1419,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_mobile_sdk_guide",
           description:
-            "Get Markdown implementation guidance for native iOS/Android SDK 0.10.3 or React Native SDK 0.3.1, including attribution, `shareUrl` sharing, `trackShare`, and the native GrowSurf Window. Choose `platform` and `participantState` to tailor the guide; `includeInstallSnippets` controls installation examples. Does not install an SDK or create a participant token. Use `growsurf_client_snippets` for browser JavaScript or `growsurf_api_library_snippets` for backend token-creation code.",
+            "Get Markdown implementation guidance for native iOS/Android SDK 0.10.4 or React Native SDK 0.3.3, including attribution, `shareUrl` sharing, `trackShare`, and the native GrowSurf Window. Choose `platform` and `participantState` to tailor the guide; `includeInstallSnippets` controls installation examples. Does not install an SDK or create a participant token. Use `growsurf_client_snippets` for browser JavaScript or `growsurf_api_library_snippets` for backend token-creation code.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1767,7 +1767,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_campaign_group",
           description:
-            "Create a group on your GrowSurf program. GrowSurf copies each active Default reward into it, except Leaderboard rewards; change the copies with `growsurf_update_campaign_reward`. `rules` place participants: `EMAIL` matches an exact email, `DOMAIN` matches a company domain (public email domains are refused), and `PARTICIPANT` moves an existing participant in now. Each email and domain can be in one group only. Email and domain rules place new signups and affiliate approvals only. Confirm reward amounts with the person before you change the copies. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Create a group on your GrowSurf program. GrowSurf copies each active Default reward into it, except Leaderboard rewards; change the copies with `growsurf_update_campaign_reward`. `rules` place participants: `EMAIL` matches an exact email, `DOMAIN` matches a company domain (public email domains are refused), and `PARTICIPANT` moves an existing participant in now. Each email and domain can be in one group only. Email and domain rules place new signups and affiliate approvals only. Group names must be unique in the program (case is ignored), and \"Default\" is reserved. Confirm reward amounts with the person before you change the copies. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1799,7 +1799,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_group",
           description:
-            "Rename, reorder, or change the rules of a group on your GrowSurf program. Sending `rules` replaces the whole list. An added `PARTICIPANT` rule moves that participant in now; a removed one moves them back to Default if they are still in this group. Email and domain rule changes move no one. To change the group's rewards, use `growsurf_update_campaign_reward`. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Rename, reorder, or change the rules of a group on your GrowSurf program. Sending `rules` replaces the whole list. An added `PARTICIPANT` rule moves that participant in now; a removed one moves them back to Default if they are still in this group. Email and domain rule changes move no one. To change the group's rewards, use `growsurf_update_campaign_reward`. Group names must be unique in the program (case is ignored), and \"Default\" is reserved. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -1827,6 +1827,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               },
             },
             required: ["groupId"],
+            // `groupId` addresses the group; one real field has to change too.
+            anyOf: [
+              { required: ["name"] },
+              { required: ["order"] },
+              { required: ["rules"] },
+            ],
             additionalProperties: false,
           },
         },
@@ -2074,7 +2080,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_design",
           description:
-            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup and the side content of its GrowSurf page (`referredExperience.offerPageDescription` HTML, up to 5 `offerPageSteps` of `{ text, iconKey }`, and up to 3 `offerPageLinks` of `{ text, url }` where an empty `url` links to the Share URL), the website widget under `widget` (button or card, placement, timing, and visible pages), the participant Traffic report under `trafficInsights`, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and the participant Settings panel under `participantSettings`, such as the language picker's `languageSectionTitle` (up to 100 characters) and `languageSectionInstructionsText` (up to 255 characters). `trafficInsights.isPublicDisplayed` controls visibility; its labels cannot be blank. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. `visualStyle` accepts `GLOW`, `CLEAN`, `FLAT`, `ROUND`, `TINT`, or `GLASS`; it sets corners, shadows, button shape and background on program pages and the GrowSurf Window. Changing it also fills `theme.buttons.borderRadius` and the `theme.globalBoxShadow` fields unless the same request sets them. Text fields use the same character limits as the dashboard Program Editor. Text the Program Editor requires, such as Window labels, button text, and status names, cannot be set to `null`, empty, or only spaces. Only supplied `fields` change; omitted fields retain their existing content and arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update the design configuration for your GrowSurf program, including participant avatars under `participantAvatarStyle`, referred-visitor content such as the Claim Offer Popup and the side content of its GrowSurf page (`referredExperience.offerPageDescription` HTML, up to 5 `offerPageSteps` of `{ text, iconKey }`, and up to 3 `offerPageLinks` of `{ text, url }` where an empty `url` links to the Share URL), the website widget under `widget` (button or card, placement, timing, and visible pages), the participant Traffic report under `trafficInsights`, participant sign-in copy under `login`, payout-destination confirmation page copy under `payoutDestinationConfirmation`, and the participant Settings panel under `participantSettings`, such as the language picker's `languageSectionTitle` (up to 100 characters) and `languageSectionInstructionsText` (up to 255 characters). `trafficInsights.isPublicDisplayed` controls visibility; its labels cannot be blank. `participantAvatarStyle` accepts `CHARACTERS`, `INITIALS`, `ANIMALS`, or `GRADIENT`. `visualStyle` accepts `GLOW`, `CLEAN`, `FLAT`, `ROUND`, `TINT`, or `GLASS`; it sets corners, shadows, button shape and background on program pages and the GrowSurf Window. Changing it also fills `theme.buttons.borderRadius` and the `theme.globalBoxShadow` fields unless the same request sets them. Text fields use the same character limits as the dashboard Program Editor. Text the Program Editor requires, such as Window labels, button text, and status names, cannot be set to `null`, empty, or only spaces. Only supplied `fields` change; omitted fields retain their existing content and arrays replace wholesale. One call can change many fields, so send related changes together instead of one field per call. Read `growsurf_get_campaign_design` first and use its field names and allowed values exactly. An invalid field returns an error that names the field. After a design change is saved, call `growsurf_capture_referral_flow_screenshots` for short-lived preview screenshots of the referrer and referred-friend experiences. They show the saved program, not the customer's site. Image, icon, and link fields must be hosted `http(s)` URLs, not `data:` URIs. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2093,7 +2099,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_emails",
           description:
-            "Update writable Emails tab fields for your GrowSurf program under `fields`, in their existing nested shape. `settings.sender.fromEmail` is read-only; sender address changes require domain verification in the dashboard. `settings.sender.fromName` and `settings.sender.replyToEmail` accept non-empty strings, not `null`. Omit either field to keep its current value, including an unset value returned by a read. The `invite` and transactional email `isEnabled` toggles are read-only. An email `subject` cannot be empty. Email bodies require their template links and footer tokens. When `settings.design.layoutMode` is `INLINE`, each body must include `{{emailFooter}}`; `{{emailHeader}}` is optional. `layoutMode` is read-only. Omitted fields retain their existing content; arrays replace wholesale. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update writable Emails tab fields for your GrowSurf program under `fields`, in their existing nested shape. `settings.sender.fromEmail` is read-only; sender address changes require domain verification in the dashboard. `settings.sender.fromName` and `settings.sender.replyToEmail` accept non-empty strings, not `null`. Omit either field to keep its current value, including an unset value returned by a read. The `invite` and transactional email `isEnabled` toggles are read-only. An email `subject` cannot be empty. Email bodies require their template links and footer tokens. When `settings.design.layoutMode` is `INLINE`, each body must include `{{emailFooter}}`; `{{emailHeader}}` is optional. `layoutMode` is read-only. Omitted fields retain their existing content; arrays replace wholesale. One call can change many fields, so send related changes together instead of one field per call. Read `growsurf_get_campaign_emails` first and use its field names and allowed values exactly. An invalid field returns an error that names the field. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2135,7 +2141,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_options",
           description:
-            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. `languages.showFlags` shows or hides the flag next to each language name. `languages.flagCountries` picks the flag for a language that offers more than one, such as `{ \"en\": \"GB\" }`; `null` restores the default flag. Turning on `languages.additionalLanguages` returns `403` if your account does not include additional languages. While any are on, every `languages` change, including turning them off, returns the same `403`. Translations are managed in the GrowSurf dashboard, not through this tool. `notificationEmails.recipients` needs at least one valid email address. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. `languages.showFlags` shows or hides the flag next to each language name. `languages.flagCountries` picks the flag for a language that offers more than one, such as `{ \"en\": \"GB\" }`; `null` restores the default flag. Turning on `languages.additionalLanguages` returns `403` if your account does not include additional languages. While any are on, every `languages` change, including turning them off, returns the same `403`. Translations are managed in the GrowSurf dashboard, not through this tool. `notificationEmails.recipients` needs at least one valid email address. One call can change many fields, so send related changes together instead of one field per call. Read `growsurf_get_campaign_options` first and use its field names and allowed values exactly. An invalid field returns an error that names the field. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2154,7 +2160,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_update_campaign_installation",
           description:
-            "Update the Installation tab configuration for your GrowSurf program under `fields`. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `allowedUrls` includes permitted browser origins such as `http://localhost:3000`. An origin missing from both `shareUrl` and `allowedUrls` can return `403`. Referral links already shared point at the current `shareUrl`. Replacing an existing Share URL requires the customer's explicit approval and `replaceExistingShareUrl: true`; otherwise the patch is refused. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update the Installation tab configuration for your GrowSurf program under `fields`. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `allowedUrls` includes permitted browser origins such as `http://localhost:3000`. An origin missing from both `shareUrl` and `allowedUrls` can return `403`. Referral links already shared point at the current `shareUrl`. Replacing an existing Share URL requires the customer's explicit approval and `replaceExistingShareUrl: true`; otherwise the patch is refused. One call can change many fields, so send related changes together instead of one field per call. Read `growsurf_get_campaign_installation` first and use its field names and allowed values exactly. An invalid field returns an error that names the field. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2536,7 +2542,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_participant",
           description:
-            "Fetch a single participant by GrowSurf participant ID or email address. `referralStatus` describes credit to their referrer; `referralCount` counts referrals this participant generated, so zero is consistent with `CREDIT_AWARDED`. In `rewards`, `approved` records approval; `status`, `isFulfilled`, and `fulfilledAt` record fulfillment marking, not confirmation of delivery. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch a single participant by GrowSurf participant ID or email address. `referralStatus` describes credit to their referrer; `referralCount` counts referrals this participant generated, so zero is consistent with `CREDIT_AWARDED`. In `rewards`, `approved` records approval; `status`, `isFulfilled`, and `fulfilledAt` record fulfillment marking, not confirmation of delivery. When no participant matches, the tool returns an error result, not an empty result. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2550,7 +2556,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_add_participant",
           description:
-            "Add or fetch a participant by email. If the email already exists, the existing participant is returned unchanged. One exception: if that participant claimed an offer in the Claim Offer Popup and the signup is not complete yet, this call completes the signup with the original referrer and saves any non-blank `firstName`, `lastName`, and `metadata` you send. This is trusted direct enrollment and bypasses the public application review flow for affiliates. For affiliate programs, set `isAffiliate` to `true` to enroll a new participant as approved or `false` to create a non-affiliate. If you omit it, a valid `referredBy` creates a referred non-affiliate; without a valid referrer, the new participant is enrolled as approved. A valid `referredBy` can be combined with `isAffiliate: true`. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Add or fetch a participant by email. If the email already exists, the existing participant is returned unchanged. One exception: if that participant claimed an offer in the Claim Offer Popup and the signup is not complete yet, this call completes the signup with the original referrer and saves any non-blank `firstName`, `lastName`, and `metadata` you send. This is trusted direct enrollment and bypasses the public application review flow for affiliates. For affiliate programs, set `isAffiliate` to `true` to enroll a new participant as approved or `false` to create a non-affiliate. If you omit it, a valid `referredBy` creates a referred non-affiliate; without a valid referrer, the new participant is enrolled as approved. A valid `referredBy` can be combined with `isAffiliate: true`. A `409` means the same participant is already being added or cannot join right now, so do not retry in a loop. A `422` means the program's fraud rules blocked the participant. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {

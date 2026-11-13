@@ -27,6 +27,8 @@ export type GrowSurfRequestError = {
   // Returned when a participant signup is blocked.
   matchedParticipantIds?: string[];
   blockedAt?: string;
+  // The API's X-Request-Id, kept only when it is a short plain token. Support uses it to trace a request.
+  requestId?: string;
   [key: string]: unknown;
 };
 
@@ -83,7 +85,20 @@ const toQueryString = (params: Record<string, string | number | undefined>): str
   return qs ? `?${qs}` : "";
 };
 
+// Accepts only a short, plain token. The value is echoed into tool errors, so a longer value or one
+// with other characters is dropped.
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9_.:-]{1,128}$/;
+export const toRequestId = (value: unknown): string | undefined =>
+  typeof value === "string" && REQUEST_ID_PATTERN.test(value) ? value : undefined;
+
+// Adds the API's X-Request-Id to the error, whichever body shape the response had.
 const toError = async (response: Response): Promise<GrowSurfRequestError> => {
+  const requestId = toRequestId(response.headers.get("X-Request-Id"));
+  const error = await toErrorBody(response);
+  return requestId ? { ...error, requestId } : error;
+};
+
+const toErrorBody = async (response: Response): Promise<GrowSurfRequestError> => {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) {
     return {

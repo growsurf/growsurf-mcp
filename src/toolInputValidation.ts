@@ -71,6 +71,9 @@ const numericRangeMessage = (subschema: Record<string, unknown>): string | undef
     : undefined;
 };
 
+// Lists at most this many allowed values in an enum error, so a long enum cannot flood the message.
+const MAX_LISTED_ENUM_VALUES = 20;
+
 const messageForKeyword = (unit: OutputUnit, subschema: Record<string, unknown>): string => {
   const value = subschema[unit.keyword];
   switch (unit.keyword) {
@@ -78,8 +81,11 @@ const messageForKeyword = (unit: OutputUnit, subschema: Record<string, unknown>)
       return `Must have required property '${quotedName(unit.error) ?? "(unknown)"}'`;
     case "type":
       return `Must be ${Array.isArray(value) ? value.join(" or ") : String(value)}`;
-    case "enum":
-      return "Must be equal to one of the allowed values";
+    case "enum": {
+      if (!Array.isArray(value) || value.length === 0) return "Must be equal to one of the allowed values";
+      const listed = value.slice(0, MAX_LISTED_ENUM_VALUES).map((allowed) => JSON.stringify(allowed)).join(", ");
+      return `Must be equal to one of: ${listed}${value.length > MAX_LISTED_ENUM_VALUES ? ", …" : ""}`;
+    }
     case "const":
       return `Must be equal to ${JSON.stringify(value)}`;
     case "pattern":
