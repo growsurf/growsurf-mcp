@@ -8,6 +8,8 @@ export type GrowSurfWebhookEventName =
   | "CAMPAIGN_ENDED";
 
 export type GrowSurfWebhookEnvelope = {
+  /** The event ID (`evt_...`). The same event keeps it on every retry and every webhook it is sent to. */
+  id?: string;
   event: GrowSurfWebhookEventName | string;
   createdAt: number;
   data: unknown;
@@ -18,8 +20,8 @@ export type WebhookNormalizationResult =
       ok: true;
       envelope: GrowSurfWebhookEnvelope;
       /**
-       * A deterministic key you can use to ignore duplicate deliveries in your system.
-       * (GrowSurf docs do not guarantee a delivery id.)
+       * A key you can use to ignore duplicate deliveries in your system. This is the event `id`
+       * when the payload has one; otherwise it is built from the event fields.
        */
       idempotencyKey: string;
     }
@@ -50,9 +52,12 @@ export const normalizeWebhook = (payload: unknown): WebhookNormalizationResult =
   if (typeof createdAt !== "number" || !Number.isFinite(createdAt)) return { ok: false, error: "Missing 'createdAt'." };
   if (data === undefined) return { ok: false, error: "Missing 'data'." };
 
-  const envelope: GrowSurfWebhookEnvelope = { event, createdAt, data };
+  const id = typeof payload.id === "string" && payload.id.length > 0 ? payload.id : undefined;
+  const envelope: GrowSurfWebhookEnvelope = { ...(id ? { id } : {}), event, createdAt, data };
+  // The event ID is the same on every retry and every destination, so it is the dedupe key.
+  if (id) return { ok: true, envelope, idempotencyKey: id };
 
-  // Build a stable idempotency key from fields commonly present in examples.
+  // Payloads without an event ID: build a stable idempotency key from fields commonly present in examples.
   // Prefer deeply identifying ids where present.
   const candidateIds: Array<string> = [];
   if (isObject(data)) {

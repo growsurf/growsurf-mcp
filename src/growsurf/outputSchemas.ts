@@ -459,7 +459,7 @@ const CAMPAIGN_GROUP: ToolOutputSchema = {
     },
     signupCode: {
       type: "string",
-      description: "The code for this group's signup link. A participant who signs up through the link joins this group.",
+      description: "The group's signup link code. Joining requires verified identity matching the group's email or domain rules; the code alone grants no access.",
     },
     createdAt: { type: "integer", description: "When the group was created, in Unix milliseconds." },
     updatedAt: { type: "integer", description: "When the group was last changed, in Unix milliseconds." },
@@ -1104,8 +1104,8 @@ const CAMPAIGN_EMAILS: ToolOutputSchema = {
           description:
             "The physical mailing address shown in your email footers (required by anti-spam laws such as the US CAN-SPAM Act).",
           properties: {
-            companyName: { type: "string", maxLength: 255, description: "Company name. Required." },
-            // Null until the program sets its address and city; the API returns null for unset values.
+            // Null until the program sets its company name, address, and city; the API returns null for unset values.
+            companyName: { type: ["string", "null"], maxLength: 255, description: "Company name. Required." },
             addressLine1: { type: ["string", "null"], maxLength: 255, description: "First address line. Required." },
             addressLine2: { type: ["string", "null"], maxLength: 255, description: "Second address line shown in email footers." },
             city: { type: ["string", "null"], maxLength: 255, description: "City. Required." },
@@ -1241,6 +1241,20 @@ const CAMPAIGN_OPTIONS: ToolOutputSchema = {
           type: "object",
           additionalProperties: { type: ["string", "null"] },
           description: "The flag shown next to each language name when `showFlags` is on, keyed by language code (for example `{ en: 'GB' }`). Only languages with more than one flag to choose from are listed. Values are ISO 3166 country codes; `ES-CT` is Catalonia. Send `null` for a language to go back to its default flag.",
+        },
+        baseLanguageTranslation: {
+          type: ["object", "null"],
+          description: "Read-only. When `baseLanguage` is not `en`, how much of the program's text in the Program Editor is not in the base language yet. GrowSurf translates its own default text. Text the customer wrote stays as written until the customer translates it from Options > Languages in the dashboard. `null` when `baseLanguage` is `en`, or when the account does not include additional languages. It is ignored in updates.",
+          properties: {
+            untranslated: {
+              type: "integer",
+              description: "How many texts have no current translation in the base language. This includes default text GrowSurf is still translating, so it can stay high for a few minutes after `baseLanguage` changes.",
+            },
+            total: {
+              type: "integer",
+              description: "How many texts the Program Editor holds for this program.",
+            },
+          },
         },
       },
     },
@@ -1524,8 +1538,8 @@ const EMAIL_ANALYTICS_COUNT_PROPERTIES = {
 const EMAIL_ANALYTICS_METRIC_PROPERTIES = {
   ...EMAIL_ANALYTICS_COUNT_PROPERTIES,
   deliveryRate: { type: "number", description: "Delivered divided by sent, from 0 to 1." },
-  openRate: { type: "number", description: "Opened divided by delivered, from 0 to 1." },
-  clickRate: { type: "number", description: "Clicked divided by delivered, from 0 to 1." },
+  openRate: { type: "number", description: "Opened divided by delivered emails with open tracking enabled, from 0 to 1; zero when none qualify." },
+  clickRate: { type: "number", description: "Clicked divided by delivered emails with click tracking enabled, from 0 to 1; zero when none qualify." },
   bounceRate: { type: "number", description: "Bounced divided by sent, from 0 to 1." },
 } as const;
 
@@ -1551,7 +1565,7 @@ const EMAIL_ANALYTICS_RESPONSE = {
     },
     isPartial: {
       type: "boolean",
-      description: "Whether the requested window starts before `coverageStartDate`.",
+      description: "Whether the requested window starts before `coverageStartDate` or some emails lack open, click, or spam complaint tracking. Totals can be incomplete.",
     },
   },
 } as const;
@@ -2497,6 +2511,7 @@ const WEBHOOK_NORMALIZATION_RESULT: ToolOutputSchema = {
       type: "object",
       description: "The normalized webhook envelope. Present only when `ok` is `true`.",
       properties: {
+        id: { type: "string", description: "The event ID (e.g. `evt_...`). The same event keeps it on every retry and every webhook it is sent to. Absent on payloads that have none." },
         event: { type: "string", description: "The webhook event name (e.g. `NEW_PARTICIPANT_ADDED`)." },
         createdAt: { type: "integer", description: "When the event occurred, as a Unix timestamp in milliseconds." },
         data: { description: "The event payload." },
@@ -2504,7 +2519,7 @@ const WEBHOOK_NORMALIZATION_RESULT: ToolOutputSchema = {
     },
     idempotencyKey: {
       type: "string",
-      description: "A deterministic key for ignoring duplicate deliveries. Present only when `ok` is `true`.",
+      description: "A key for ignoring duplicate deliveries: the event `id` when the payload has one, otherwise a key built from the event fields. Present only when `ok` is `true`.",
     },
     error: { type: "string", description: "Why the payload failed validation. Present only when `ok` is `false`." },
   },

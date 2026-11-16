@@ -526,7 +526,7 @@ const refundTransactionSchema = z
     amount: z.number().int().positive().optional(),
     refundId: z.string().min(1).max(500).optional(),
     refundStatus: z.string().min(1).max(500).optional(),
-    refundAmount: z.number().int().nonnegative().optional(),
+    refundAmount: z.number().int().positive().optional(),
     refundHistoryComplete: z.boolean().optional(),
     currency: z.string().length(3).regex(/^[A-Za-z]{3}$/).optional(),
     invoiceId: z.string().min(1).max(500).optional(),
@@ -1778,14 +1778,15 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_campaign_group",
           description:
-            "Create a group on your GrowSurf program. GrowSurf copies each active Default reward into it, except Leaderboard rewards; change the copies with `growsurf_update_campaign_reward`. `rules` place participants: `EMAIL` matches an exact email, `DOMAIN` matches a company domain (public email domains are refused), and `PARTICIPANT` moves an existing participant in now. Each email and domain can be in one group only. Email and domain rules place new signups and affiliate approvals only. Group names must be unique in the program (case is ignored), and \"Default\" is reserved. Confirm reward amounts with the person before you change the copies. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Create an empty group on your GrowSurf program. Add Campaign Rewards with this group's `groupId` before adding participants or rules. Omit `rules` or send an empty array; nonempty rules return `400`. Use `growsurf_update_campaign_group` to add rules after configuring rewards. Group names must be unique, ignoring case; Default is reserved. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
               name: { type: "string", minLength: 1, maxLength: 100, description: "The group name (internal only, never shown to participants)." },
               rules: {
                 type: "array",
-                maxItems: 500,
+                maxItems: 0,
+                description: "Omit or send an empty array. Add rules after configuring a reward.",
                 items: {
                   type: "object",
                   properties: {
@@ -1800,7 +1801,6 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
                   required: ["type", "value"],
                   additionalProperties: false,
                 },
-                description: "The rules that place participants in this group. Up to 500.",
               },
             },
             required: ["name"],
@@ -2146,13 +2146,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_get_campaign_options",
           description:
-            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, affiliate enrollment and application review, notifications, the program's languages under `languages`, and other behavior options). Returns the full object with every field and its current value, the same shape you send back on update. `autoFulfillRewards: false` permits manual fulfillment and does not prove that any reward went undelivered. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Fetch the Options tab configuration for your GrowSurf program (referral triggers, anti-fraud lists and toggles, affiliate enrollment and application review, notifications, the program's languages under `languages`, and other behavior options). `languages.baseLanguageTranslation` is read-only: it counts Program Editor text that is not in a non-English base language yet, which the customer can translate from Options > Languages in the dashboard. Returns the full object with every field and its current value, the same shape you send back on update. `autoFulfillRewards: false` permits manual fulfillment and does not prove that any reward went undelivered. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
         {
           name: "growsurf_update_campaign_options",
           description:
-            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. `languages.showFlags` shows or hides the flag next to each language name. `languages.flagCountries` picks the flag for a language that offers more than one, such as `{ \"en\": \"GB\" }`; `null` restores the default flag. Turning on `languages.additionalLanguages` returns `403` if your account does not include additional languages. While any are on, every `languages` change, including turning them off, returns the same `403`. Translations are managed in the GrowSurf dashboard, not through this tool. `notificationEmails.recipients` needs at least one valid email address. One call can change many fields, so send related changes together instead of one field per call. Read `growsurf_get_campaign_options` first and use its field names and allowed values exactly. An invalid field returns an error that names the field. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Update the Options tab configuration for your GrowSurf program under `fields`, in its existing nested shape. Only supplied fields change; omitted fields retain their existing values and arrays replace wholesale. `languages.additionalLanguages` takes the full list of extra languages; send `[]` to turn them off. The base language is dropped from that list and duplicates collapse. `languages.showFlags` shows or hides the flag next to each language name. `languages.flagCountries` picks the flag for a language that offers more than one, such as `{ \"en\": \"GB\" }`; `null` restores the default flag. Turning on `languages.additionalLanguages` returns `403` if your account does not include additional languages. While any are on, every `languages` change, including turning them off, returns the same `403`. Translations are managed in the GrowSurf dashboard, not through this tool. The response's read-only `languages.baseLanguageTranslation` counts Program Editor text that is not in a non-English base language yet (`untranslated` of `total`; `null` for `en`, or when the account does not include additional languages). When `untranslated` is above `0` a few minutes after a `baseLanguage` change, tell the customer they can translate that text from Options > Languages in the dashboard. The field is ignored if you send it back. Do not rewrite the text yourself. `notificationEmails.recipients` needs at least one valid email address. One call can change many fields, so send related changes together instead of one field per call. Read `growsurf_get_campaign_options` first and use its field names and allowed values exactly. An invalid field returns an error that names the field. Targets `campaignId` if supplied, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2858,7 +2858,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
             properties: {
               participantId: { type: "string" },
               participantEmail: { type: "string" },
-              currency: { type: "string", minLength: 3, maxLength: 3, pattern: "^[A-Za-z]{3}$", description: "3-letter ISO 4217 currency code for the sale. Must match the program currency." },
+              currency: { type: "string", minLength: 3, maxLength: 3, pattern: "^[A-Za-z]{3}$", description: "3-letter ISO 4217 currency code for the sale. A sale in another currency is converted to the program currency." },
               grossAmount: { type: "integer", minimum: 1 },
               paymentProvider: { type: "string", enum: ["stripe", "chargebee", "recurly"],
                 description: "Connected provider for this payment. Requires `transactionId` and `testMode`. Supply matching `grossAmount` and `currency`; other payment IDs and tax or net-amount overrides are not accepted. GrowSurf reads payment details from the provider and detects duplicate webhook/API/manual submissions." },
@@ -2924,7 +2924,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               amountRefunded: {
                 type: "integer",
                 minimum: 0,
-                description: "Total refunded so far, in the currency's minor unit. Omit for a full refund. For a partial refund send the running total, not the amount of this one refund.",
+                description: "Total refunded so far, in the currency's minor unit. Omit for a full refund. For a partial refund send the running total, not the amount of this one refund. Required when `refundStatus` is `canceled`: send the total that stays refunded after the cancellation (`0` when none remain).",
               },
               amount: { type: "integer", minimum: 1 },
               refundId: {
@@ -2962,7 +2962,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_create_mobile_participant_token",
           description:
-            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST. Participant creation is trusted direct enrollment and bypasses the public application review flow for affiliates. The program must have mobile SDK access enabled. `isNew` is `false` when the participant already existed. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
+            "Create or fetch a participant, then create a participant-scoped mobile SDK token via GrowSurf REST. Participant creation is trusted direct enrollment and bypasses the public application review flow for affiliates. The program must have mobile SDK access enabled. `isNew` is `false` when the participant already existed; a repeat call can return `true` while the first signup is still finishing. Targets `campaignId` if you pass it, otherwise `GROWSURF_CAMPAIGN_ID`.",
           inputSchema: {
             type: "object",
             properties: {
