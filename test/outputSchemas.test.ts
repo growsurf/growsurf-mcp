@@ -227,6 +227,7 @@ describe("tool output schemas", () => {
       "issued",
       "failed",
       "reversed",
+      "attention",
     ]);
   });
 

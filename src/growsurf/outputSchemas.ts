@@ -1844,6 +1844,10 @@ const CAMPAIGN_ANALYTICS_RESPONSE: ToolOutputSchema = {
             issued: { ...PAYOUT_STATUS_METRIC, description: "Issued payouts." },
             failed: { ...PAYOUT_STATUS_METRIC, description: "Failed payouts." },
             reversed: { ...PAYOUT_STATUS_METRIC, description: "Reversed payouts." },
+            attention: {
+              ...PAYOUT_STATUS_METRIC,
+              description: "Queued or issued Wise payouts that are paused until a refund is confirmed.",
+            },
           },
         },
       },

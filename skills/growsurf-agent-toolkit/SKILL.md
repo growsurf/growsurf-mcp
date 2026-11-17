@@ -95,7 +95,7 @@ Use `growsurf_agent_program_creation_eval` when you need one-shot eval prompts o
 
 Use `growsurf_list_campaign_rewards` first. Prefer updating existing reward configs over creating duplicates. For new rewards, state whether the reward is visible, active, referrer-only or double-sided, and whether the value has tax-reporting implications.
 
-To give some participants different rewards, such as partners, use a group. Call `growsurf_list_campaign_groups` first. `growsurf_create_campaign_group` copies the active Default rewards into the new group; change the copies with `growsurf_update_campaign_reward` only after the person confirms the amounts. Move existing participants with `growsurf_bulk_move_participants`. A move applies to new referrals only.
+To give some participants different rewards, such as partners, use a group. Call `growsurf_list_campaign_groups` first. `growsurf_create_campaign_group` creates an empty group. Add Campaign Rewards with the group's `groupId` only after the person confirms the amounts, and before adding participants or rules. Omit `rules` when creating the group; add them with `growsurf_update_campaign_group` after configuring rewards. Move existing participants with `growsurf_bulk_move_participants`. A move applies to new referrals only.
 
 ### Connect an Integration
 

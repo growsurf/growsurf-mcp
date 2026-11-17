@@ -37,7 +37,7 @@ Anything the GrowSurf team needs to track that is not safe to publish belongs in
 - Advertised JSON schemas must express every runtime cross-field requirement. When runtime validation requires one of several identifiers, keep that `anyOf`/`allOf` requirement in `tools/list` too.
 - When a public API field, mobile SDK install snippet, participant-token handoff, or webhook behavior changes in the public contract, update the matching MCP tool metadata and snippets in the same work session when practical.
 - When a new GrowSurf mobile SDK version is published, bump the mobile SDK version literal everywhere this repo hardcodes it:
-  - `src/growsurf/mobileSdkGuide.ts` — constant `MOBILE_SDK_GUIDANCE_VERSION`.
+  - `src/growsurf/mobileSdkGuide.ts` — constants `IOS_SDK_GUIDANCE_VERSION` and `ANDROID_SDK_GUIDANCE_VERSION`.
   - `src/index.ts` — inline `iOS/Android SDK X.Y.Z` references in the capabilities overview and the `growsurf_mobile_sdk_guide` tool description. The `Server({ version })` argument is the `GROWSURF_MCP_VERSION` literal in `src/index.ts` (this MCP server's own version; `test/package.test.ts` asserts it equals `package.json`) and is NOT the mobile SDK version — do not point it at the mobile SDK literal.
   - `src/growsurf/installKit.ts` — the `native iOS/Android SDK X.Y.Z` capability line.
   - `test/mobileSdkGuide.test.ts` — version assertions and test names that embed the version.

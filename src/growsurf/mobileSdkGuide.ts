@@ -1,16 +1,18 @@
 import { z } from "zod";
 import { kotlinString } from "./snippetLiterals.js";
 
-const MOBILE_SDK_GUIDANCE_VERSION = "0.10.4";
+// The native SDKs can release separately, so each platform has its own version.
+const IOS_SDK_GUIDANCE_VERSION = "0.10.6";
+const ANDROID_SDK_GUIDANCE_VERSION = "0.10.6";
 const IOS_DISTRIBUTION_REPO = "growsurf/growsurf-ios-sdk-distribution";
 const IOS_DISTRIBUTION_URL = `https://github.com/${IOS_DISTRIBUTION_REPO}.git`;
-const IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_REPO}/v${MOBILE_SDK_GUIDANCE_VERSION}/GrowSurfSDK.podspec`;
+const IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_REPO}/v${IOS_SDK_GUIDANCE_VERSION}/GrowSurfSDK.podspec`;
 // The React Native package has its own version and pins its native SDK versions itself.
-const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.3.3";
+const REACT_NATIVE_SDK_GUIDANCE_VERSION = "0.3.4";
 const REACT_NATIVE_PACKAGE_NAME = "growsurf-react-native-sdk";
 const REACT_NATIVE_SDK_DOCS_URL = "https://raw.githubusercontent.com/growsurf/growsurf-react-native-sdk-distribution/main/README.md";
-// The native iOS version that REACT_NATIVE_SDK_GUIDANCE_VERSION pins; it can differ from MOBILE_SDK_GUIDANCE_VERSION.
-const REACT_NATIVE_PINNED_IOS_SDK_VERSION = "0.10.4";
+// The native iOS version that REACT_NATIVE_SDK_GUIDANCE_VERSION pins; it can differ from IOS_SDK_GUIDANCE_VERSION.
+const REACT_NATIVE_PINNED_IOS_SDK_VERSION = "0.10.6";
 const REACT_NATIVE_IOS_PODSPEC_URL = `https://raw.githubusercontent.com/${IOS_DISTRIBUTION_REPO}/v${REACT_NATIVE_PINNED_IOS_SDK_VERSION}/GrowSurfSDK.podspec`;
 // Device-specific SDK preferences that must not move to another installation through Android backup.
 const ANDROID_BACKUP_EXCLUDED_PREFERENCES = [
@@ -207,7 +209,7 @@ const renderAndroidAttributionSnippet = (provider: AttributionProvider) => {
 };
 
 const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicKey: string) => {
-  const sections: string[] = [`### iOS SDK ${MOBILE_SDK_GUIDANCE_VERSION}`];
+  const sections: string[] = [`### iOS SDK ${IOS_SDK_GUIDANCE_VERSION}`];
 
   if (input.includeInstallSnippets) {
     sections.push(
@@ -216,7 +218,7 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
         "swift",
         [
           "dependencies: [",
-          `    .package(url: "${IOS_DISTRIBUTION_URL}", from: "${MOBILE_SDK_GUIDANCE_VERSION}"),`,
+          `    .package(url: "${IOS_DISTRIBUTION_URL}", from: "${IOS_SDK_GUIDANCE_VERSION}"),`,
           "],",
           "targets: [",
           "    .target(",
@@ -315,7 +317,7 @@ const renderIos = (input: MobileSdkGuideInput, campaignId: string, mobilePublicK
 };
 
 const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePublicKey: string) => {
-  const sections: string[] = [`### Android SDK ${MOBILE_SDK_GUIDANCE_VERSION}`];
+  const sections: string[] = [`### Android SDK ${ANDROID_SDK_GUIDANCE_VERSION}`];
 
   if (input.includeInstallSnippets) {
     sections.push(
@@ -329,7 +331,7 @@ const renderAndroid = (input: MobileSdkGuideInput, campaignId: string, mobilePub
           "}",
           "",
           "dependencies {",
-          `    implementation("com.growsurf:growsurf-android-sdk:${MOBILE_SDK_GUIDANCE_VERSION}")`,
+          `    implementation("com.growsurf:growsurf-android-sdk:${ANDROID_SDK_GUIDANCE_VERSION}")`,
           "}",
         ].join("\n"),
       ),
@@ -653,7 +655,12 @@ export const renderMobileSdkGuide = (input: MobileSdkGuideInput, context: Mobile
     "",
     reactNative
       ? `- Use React Native SDK version \`${REACT_NATIVE_SDK_GUIDANCE_VERSION}\` (npm package \`${REACT_NATIVE_PACKAGE_NAME}\`).`
-      : `- Use SDK version \`${MOBILE_SDK_GUIDANCE_VERSION}\`.`,
+      : `- Use ${[
+          input.platform !== "android" && `iOS SDK version \`${IOS_SDK_GUIDANCE_VERSION}\``,
+          input.platform !== "ios" && `Android SDK version \`${ANDROID_SDK_GUIDANCE_VERSION}\``,
+        ]
+          .filter(Boolean)
+          .join(" and ")}.`,
     "- Native apps use a public Mobile SDK key, not the secret REST API key.",
     "- The recommended mobile referral or affiliate portal is the native GrowSurf Window opened from your own app UI.",
     "- For signed-in users, mint a participant-scoped mobile token on your backend and pass it to the SDK.",

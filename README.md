@@ -415,7 +415,7 @@ Program, reward-configuration, options, and participant reads also include a `re
   Delete a campaign reward by its reward key.
 
 - `growsurf_list_campaign_groups` / `growsurf_create_campaign_group` / `growsurf_update_campaign_group` / `growsurf_delete_campaign_group`
-  Manage groups, which give some participants a different reward list. A new group gets a copy of each active Default reward except Leaderboard rewards; change the copies with `growsurf_update_campaign_reward`. `EMAIL` and `DOMAIN` rules place new signups, and `PARTICIPANT` rules move existing participants. Deleting a group moves its members to Default.
+  Manage groups, which give some participants a different reward list. A new group starts empty. Add Campaign Rewards with the group's `groupId` before adding participants or rules; `growsurf_create_campaign_group` returns `400` for nonempty `rules`, so add rules with `growsurf_update_campaign_group` after configuring rewards. `EMAIL` and `DOMAIN` rules place new signups, and `PARTICIPANT` rules move existing participants. Deleting a group moves its members to Default.
 
 - `growsurf_list_program_resources` / `growsurf_create_program_resource` / `growsurf_update_program_resource` / `growsurf_delete_program_resource`
   Manage ordered participant resources. LINK uses HTTPS and TEXT uses plain text.
