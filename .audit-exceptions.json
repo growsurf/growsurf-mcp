@@ -3,5 +3,20 @@
   "projects": [
     "."
   ],
-  "exceptions": []
+  "exceptions": [
+    {
+      "project": ".",
+      "advisory": "GHSA-fc5q-39xc-vjpf",
+      "package": "picomatch",
+      "version": "4.0.7",
+      "owner": "Kevin Yun",
+      "expires": "2026-12-18",
+      "reason": "Temporary acceptance: trusted build/test configuration only; no app-owned runtime glob-pattern caller found. Reopen on caller or packaging changes; no upstream patch available.",
+      "evidence": [
+        ".ai/memory/picomatch-advisory.md",
+        "package-lock.json",
+        "package.json"
+      ]
+    }
+  ]
 }

@@ -459,7 +459,7 @@ const CAMPAIGN_GROUP: ToolOutputSchema = {
     },
     signupCode: {
       type: "string",
-      description: "The group's signup link code. Joining requires verified identity matching the group's email or domain rules; the code alone grants no access.",
+      description: "The code for this group's signup link. The link alone does not reveal private rewards. A participant who signs up with the link and verifies their identity joins the group.",
     },
     createdAt: { type: "integer", description: "When the group was created, in Unix milliseconds." },
     updatedAt: { type: "integer", description: "When the group was last changed, in Unix milliseconds." },
