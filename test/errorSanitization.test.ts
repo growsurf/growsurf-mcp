@@ -147,7 +147,6 @@ describe("rejected tool input", () => {
   });
 
   it.each([
-    ["growsurf_trigger_referral", { participantId: "participant_1", delayInDays: 0 }, "delayInDays"],
     ["growsurf_trigger_referral", { participantId: "participant_1", delayInDays: -1 }, "delayInDays"],
     ["growsurf_trigger_referral", { participantId: "participant_1", delayInDays: 91 }, "delayInDays"],
     ["growsurf_update_campaign", { currencyISO: "ZZZZ" }, "currencyISO"],
@@ -179,7 +178,7 @@ describe("rejected tool input", () => {
       expect(parsed.status).toBe(400);
       expect(parsed.errors?.some((error) => error.field === expectedField)).toBe(true);
       if (expectedField === "delayInDays") {
-        expect(text).toContain("between 1 and 90");
+        expect(text).toContain("between 0 and 90");
       }
       expect(fetchMock).not.toHaveBeenCalled();
     } finally {

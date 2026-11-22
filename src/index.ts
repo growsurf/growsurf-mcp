@@ -416,7 +416,7 @@ const triggerReferralSchema = z
   .object({
     participantId: z.string().min(1).optional(),
     participantEmail: z.string().min(3).optional(),
-    delayInDays: z.number().int().min(1).max(90).optional(),
+    delayInDays: z.number().int().min(0).max(90).optional(),
   })
   .refine((v) => Boolean(v.participantId) || Boolean(v.participantEmail), {
     message: "Provide participantId or participantEmail.",
@@ -802,7 +802,7 @@ const campaignGroupRuleSchema = z.object({
 
 const createCampaignGroupSchema = z.object({
   name: z.string().min(1).max(100),
-  rules: z.array(campaignGroupRuleSchema).max(500).optional(),
+  rules: z.array(campaignGroupRuleSchema).max(0).optional(),
 });
 
 const updateCampaignGroupSchema = z
@@ -1786,7 +1786,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               rules: {
                 type: "array",
                 maxItems: 0,
-                description: "Omit or send an empty array. Add rules after configuring a reward.",
+                description: "Omit this field or send an empty array. Add rules with `growsurf_update_campaign_group` after configuring at least one reward.",
                 items: {
                   type: "object",
                   properties: {
@@ -2693,7 +2693,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_email_participant",
           description:
-            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). For programs with `settings.design.layoutMode` set to `INLINE`, `body` must include `{{emailFooter}}`; `{{emailHeader}}` is optional. Free-form emails are sent with the same compliance handling (company name, postal address, and an unsubscribe link are added automatically, and unsubscribed participants are suppressed). Sending requires the team to be verified by GrowSurf and a verified custom email domain on the program (set up in *Program Editor > 3. Emails > Email Settings*). Returns 400 until one is verified. The email is accepted for delivery. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Send an email to a participant (by GrowSurf participant ID or email). Provide EITHER `emailType` to trigger one of the program's configured email templates, OR `subject` + `body` for a free-form email (optionally `preheader`). For programs with `settings.design.layoutMode` set to `INLINE`, `body` must include `{{emailFooter}}`; `{{emailHeader}}` is optional. Free-form emails are sent with the same compliance handling (company name, postal address, and an unsubscribe link are added automatically, and unsubscribed participants are suppressed). Sending requires the team to be verified by GrowSurf and a verified custom email domain on the program (set up in *Program Editor > 3. Emails > Email Settings*). Returns 400 until one is verified. Returns `400` while the program's emails are paused because too many emails bounced or were marked as spam. Goal, winner, commission, and payout emails still send. Resume emails in *Program Editor > 3. Emails*. The email is accepted for delivery. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
@@ -2789,13 +2789,13 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_trigger_referral",
           description:
-            "Trigger referral credit for a referred participant (use when your trigger is Sign up + Qualifying Action). Optionally pass delayInDays (1-90) to hold the credit for N days before awarding it (e.g. to cover a refund window). Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
+            "Trigger referral credit for a referred participant (use when your trigger is Sign up + Qualifying Action). Optionally pass `delayInDays` (whole days, 0-90) to hold the credit for N days before awarding it (e.g. to cover a refund window). Omit it, or pass `0`, to award credit immediately. Targets `campaignId` if you pass it, otherwise GROWSURF_CAMPAIGN_ID.",
           inputSchema: {
             type: "object",
             properties: {
               participantId: { type: "string" },
               participantEmail: { type: "string" },
-              delayInDays: { type: "integer", minimum: 1, maximum: 90 },
+              delayInDays: { type: "integer", minimum: 0, maximum: 90 },
             },
             anyOf: [{ required: ["participantId"] }, { required: ["participantEmail"] }],
             additionalProperties: false,

@@ -58,7 +58,7 @@ This MCP server is NOT for:
   - List, get, add, and bulk delete participants
   - Update a participant, email a participant, and get a participant's analytics and activity logs
   - Get a participant's payout-destination status and ask them to confirm a payout destination
-  - Trigger referral credit (for referral programs), with optional delayed award (1-90 days)
+  - Trigger referral credit (for referral programs), with optional delayed award (0-90 days)
   - Cancel a pending delayed referral trigger (for referral programs)
   - Record affiliate sales/transactions and their refunds or chargebacks (for affiliate programs)
   - Create mobile participant tokens for signed-in native app users
@@ -484,7 +484,7 @@ Program, reward-configuration, options, and participant reads also include a `re
   List a participant's activity logs (offset/limit paginated).
 
 - `growsurf_trigger_referral`
-  Trigger referral (for referral programs only). Optionally pass `delayInDays` (1-90) to hold the credit for N days before awarding it (e.g. to cover a refund window).
+  Trigger referral (for referral programs only). Optionally pass `delayInDays` (0-90) to hold the credit for N days before awarding it (e.g. to cover a refund window). Omit it, or pass `0`, to award credit immediately.
 
 - `growsurf_cancel_delayed_referral`
   Cancel a pending delayed referral trigger before the delay elapses (e.g. on refund/cancellation).
