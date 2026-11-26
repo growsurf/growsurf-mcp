@@ -570,7 +570,7 @@ export const renderGrsfConfigSnippet = (input: z.infer<typeof grsfConfigSnippetS
     lines.push("  */");
   }
   lines.push(
-    `  (function(g,r,s,f){g.grsfSettings={campaignId:${htmlScriptString(campaignId)},version:"2.0.0"};s=r.getElementsByTagName("head")[0];f=r.createElement("script");f.async=1;f.src="https://app.growsurf.com/growsurf.js"+"?v="+g.grsfSettings.version;f.setAttribute("grsf-campaign", g.grsfSettings.campaignId);!g.grsfInit?s.appendChild(f):"";})(window,document);`,
+    `  (function(g,r,s,f){g.grsfSettings={campaignId:${htmlScriptString(campaignId)},version:"2.0.0"};s=r.getElementsByTagName("head")[0];f=r.createElement("script");f.async=1;f.referrerPolicy="no-referrer";f.src="https://app.growsurf.com/growsurf.js"+"?v="+g.grsfSettings.version;f.setAttribute("grsf-campaign", g.grsfSettings.campaignId);!g.grsfInit?s.appendChild(f):"";})(window,document);`,
   );
   lines.push("</script>");
   lines.push("```");
