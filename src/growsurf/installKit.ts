@@ -336,8 +336,13 @@ export const grsfConfigSnippetSchema = z
      */
     includeAutoAuthCommentHeader: z.boolean().default(true),
   })
-  .refine((v) => !v.enableParticipantAutoAuth || (Boolean(v.email) && Boolean(v.hash)), {
-    message: "If enableParticipantAutoAuth is true, provide email and hash.",
+  .refine((v) => !v.enableParticipantAutoAuth || Boolean(v.email), {
+    path: ["email"],
+    message: "Required when `enableParticipantAutoAuth` is true.",
+  })
+  .refine((v) => !v.enableParticipantAutoAuth || Boolean(v.hash), {
+    path: ["hash"],
+    message: "Required when `enableParticipantAutoAuth` is true. Get it from `growsurf_participant_auth_hash`.",
   });
 
 export const renderClientSnippets = (

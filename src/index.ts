@@ -3066,19 +3066,25 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
         {
           name: "growsurf_grsf_config_snippet",
           description:
-            "Generate the HTML code for GrowSurf Participant Auto Authentication using `window.grsfConfig`. The generated code belongs in `<head>`, before the GrowSurf Universal Code.",
+            "Generate the HTML code for GrowSurf Participant Auto Authentication using `window.grsfConfig`. The generated code belongs in `<head>`, before the GrowSurf Universal Code. With no arguments it returns the commented template with placeholder values. Set `enableParticipantAutoAuth: true` only when you also pass the participant's `email` and `hash`; get the `hash` from `growsurf_participant_auth_hash`.",
           inputSchema: {
             type: "object",
             properties: {
               useCampaignIdPlaceholder: { type: "boolean", default: true },
               campaignId: { type: "string" },
-              enableParticipantAutoAuth: { type: "boolean", default: false },
-              email: { type: "string" },
-              hash: { type: "string" },
+              enableParticipantAutoAuth: {
+                type: "boolean",
+                default: false,
+                description: "Output a live `window.grsfConfig` block for one participant. Requires `email` and `hash`.",
+              },
+              email: { type: "string", minLength: 3, description: "The participant's email. Required when `enableParticipantAutoAuth` is true." },
+              hash: { type: "string", minLength: 32, description: "The participant's auth hash from `growsurf_participant_auth_hash`. Required when `enableParticipantAutoAuth` is true." },
               affiliateJoin: { type: "boolean", default: false },
               includeAutoAuthCommentHeader: { type: "boolean", default: true }
             },
             required: [],
+            if: { properties: { enableParticipantAutoAuth: { const: true } }, required: ["enableParticipantAutoAuth"] },
+            then: { required: ["email", "hash"] },
             additionalProperties: false
           }
         },
@@ -3099,7 +3105,7 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
               },
               campaignId: {
                 type: "string",
-                description: "Target program for the link. Defaults to GROWSURF_CAMPAIGN_ID.",
+                description: "Target program for the link. Required unless the server has a default program set with `GROWSURF_CAMPAIGN_ID`.",
               },
             },
             required: ["integration"],
@@ -3881,13 +3887,12 @@ export const createGrowSurfMcpServer = (options: CreateGrowSurfMcpServerOptions 
           // credentials, the way it worked before it gained a live check.
           const campaignId = input.campaignId ?? env.GROWSURF_CAMPAIGN_ID;
           if (!campaignId) {
-            return {
-              content: [{
-                type: "text",
-                text: "No program (campaign) id. Pass campaignId to this tool (for example the id returned by growsurf_create_campaign), or set GROWSURF_CAMPAIGN_ID.",
-              }],
-              isError: true,
-            };
+            // Coded like any other rejected input, so the caller sees which field to add.
+            throw createToolInputValidationError([{
+              field: "campaignId",
+              code: "required",
+              message: "No program (campaign) id. Pass campaignId to this tool (for example the id returned by growsurf_create_campaign), or set GROWSURF_CAMPAIGN_ID.",
+            }]);
           }
           // The live read is what verifies the program and reports current state, but it needs an
           // API key with `program:read` and a reachable API. Without either, the offline link is
